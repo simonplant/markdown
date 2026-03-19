@@ -16,8 +16,7 @@
         "VoiceOver announces file opened with filename",
         "Security-scoped bookmark persists — file reopens on next launch without re-picking",
         "Opening a file already open in another editor window shows that window instead of duplicating",
-        "File provider going offline mid-session preserves in-memory content and shows non-modal error",
-        "User can open a .txt, .rst, or config file — it opens in source editing mode without markdown rendering"
+        "File provider going offline mid-session preserves in-memory content and shows non-modal error"
       ],
       "status": "todo",
       "passes": false,
@@ -79,7 +78,6 @@
       "acceptanceCriteria": [
         "User types a list item and presses Enter — list continues with correct marker and indentation",
         "Ordered lists auto-renumber when items added/removed/reordered",
-        "Table columns auto-align as user types, Tab moves between cells",
         "Each auto-format action is independently undoable with Cmd+Z",
         "Haptic feedback confirms list auto-continuation",
         "Enter on empty list item ends the list and removes the empty marker",
@@ -145,7 +143,9 @@
         "All text, backgrounds, and UI elements are legible and intentionally designed in both modes",
         "Contrast ratios meet WCAG AA in both modes",
         "Theme override preference persists across app updates",
-        "Dynamic theme switch during editing causes no text loss, no cursor jump"
+        "Dynamic theme switch during editing causes no text loss, no cursor jump",
+        "Theme transition animates with 200ms crossfade between modes",
+        "Reduced Motion setting triggers instant switch instead of animated crossfade"
       ],
       "status": "todo",
       "passes": false,
@@ -165,7 +165,8 @@
         "Save failure shows non-modal error with retry option",
         "External file change during editing triggers conflict detection (FEAT-045)",
         "Auto-save on a 500KB file completes within 100ms with no perceptible input lag",
-        "Disk full during save shows non-modal error and retains in-memory content"
+        "Disk full during save shows non-modal error and retains in-memory content",
+        "Subtle haptic pulse confirms background save when app is foregrounded"
       ],
       "status": "todo",
       "passes": false,
@@ -223,9 +224,7 @@
         "User selects a paragraph, taps Improve, sees inline diff within 3 seconds, accepts with one tap",
         "AI works in airplane mode with no network connection",
         "AI works on iPhone 15 and does not appear on iPhone 14",
-        "Ghost text continuation appears after 3s pause, Tab accepts, typing dismisses",
         "All AI actions are undoable with Cmd+Z",
-        "VoiceOver announces AI suggestion available when ghost text appears",
         "Inline diff preview shows original and suggestion clearly distinguishable",
         "Accept replaces text and triggers haptic confirmation",
         "Dismissing returns to original text with no modifications",
@@ -249,7 +248,8 @@
         "VoiceOver can read current word count and reading time via status bar",
         "Word count updates cause no perceptible input lag (under 1ms overhead per keystroke)",
         "CJK text word count uses appropriate segmentation (not space-delimited)",
-        "Status bar does not overlap editor content on iPhone SE screen size"
+        "Status bar does not overlap editor content on iPhone SE screen size",
+        "Tapping the status bar expands to show paragraph count, sentence count, and Flesch-Kincaid readability score"
       ],
       "status": "todo",
       "passes": false,
@@ -294,7 +294,8 @@
         "Reverse animation rich-to-source plays at equal quality to forward",
         "Toggle latency (tap to first animation frame) under 50ms",
         "Works correctly on empty document and on 1-line document",
-        "Rapid toggle (tap 5 times quickly) does not crash or produce glitched state"
+        "Rapid toggle (tap 5 times quickly) does not crash or produce glitched state",
+        "The Render animation plays when opening a file (not just on source toggle)"
       ],
       "status": "todo",
       "passes": false,
@@ -367,13 +368,12 @@
       "steps": [],
       "acceptanceCriteria": [
         "User exports a document with headings, lists, code blocks, and images to PDF — result looks like a polished document",
-        "HTML export produces clean standalone file with inline CSS",
         "PDF export includes images from relative paths",
-        "Share sheet opens for the exported file",
+        "User can save/copy the .md file to a different directory or cloud drive",
         "User shares .md file via AirDrop to a colleague",
         "User prints document and output matches in-editor rich text appearance",
         "Rendered PDF includes images and code blocks with syntax highlighting",
-        "No proprietary format options appear anywhere in the export flow"
+        "No proprietary format options appear anywhere in the export flow (no Word, Pages, RTF, HTML)"
       ],
       "status": "todo",
       "passes": false,
@@ -390,7 +390,8 @@
       "acceptanceCriteria": [
         "User selects a different theme and font — entire editor updates immediately",
         "Selection persists across app launches",
-        "All themes pass WCAG AA contrast check"
+        "All themes pass WCAG AA contrast check",
+        "Theme preview shows the effect on editor content before committing the selection"
       ],
       "status": "todo",
       "passes": false,
@@ -533,10 +534,9 @@
       "category": "Platform",
       "steps": [],
       "acceptanceCriteria": [
-        "App feels native on Windows and Linux respectively",
-        "Opens any .md file via native file picker",
+        "App feels native on Linux — follows GNOME HIG or provides distro-appropriate theming",
+        "Opens any markdown file (.md, .markdown, .mdown, .mkd, .mkdn, .mdx) via native file dialog",
         "App launches and runs natively on Ubuntu 24.04 and Fedora 40",
-        "Opens any text file via native file dialog",
         "Local AI runs on Linux with NVIDIA or AMD GPU"
       ],
       "status": "todo",
@@ -1108,6 +1108,153 @@
         "Hovering over a doctor indicator shows the issue preview",
         "Right-clicking selected text shows context menu with AI actions",
         "Pointer changes from arrow to I-beam when entering the text editing area"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true
+    },
+    {
+      "id": "FEAT-059",
+      "title": "INFRA: Performance Regression Test Suite",
+      "intent": "Every build must be automatically validated against performance targets — a regression that crosses any threshold blocks the build, not just gets noticed in a post-launch review.",
+      "description": "Per D-QA-2. Automated performance tests that run on every CI build and block merges on regression. Must measure: cold launch time (D-PERF-1: <1s), keystroke-to-render latency (D-PERF-2: <16ms), scroll FPS (D-PERF-3: 120fps ProMotion / 60fps baseline), memory usage for typical session (D-PERF-5: <100MB). Tests run on device simulators in CI and on physical devices in nightly runs. Test results published as build artifacts. Any target breach fails the build. Baseline captured at first green build and updated only via intentional PR.",
+      "priority": "must",
+      "category": "Infrastructure",
+      "steps": [],
+      "acceptanceCriteria": [
+        "All D-PERF-1 through D-PERF-5 targets have automated tests with pass/fail assertions",
+        "A commit that regresses cold launch above 1s fails the build with a clear message identifying the regression",
+        "Performance test results are visible as build artifacts for every CI run",
+        "Nightly physical-device run validates results match simulator results within 20%",
+        "Baseline is checked into the repo and requires a PR to update"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true
+    },
+    {
+      "id": "FEAT-059",
+      "title": "App Store Review Prompt",
+      "intent": "The review prompt must appear at the right moment — when the user is happy and engaged, never before. One shot, never again.",
+      "description": "Per PRODUCT.md §12. Prompt for App Store review only after: 7 days of active use AND 10+ AI feature uses. Uses SKStoreReviewController. Prompt appears at most once, ever. Timing tracked via on-device aggregate counters (FEAT-060). Never interrupts active editing — shown on return to home screen or after completing an AI action.",
+      "priority": "should",
+      "category": "Growth",
+      "steps": [],
+      "acceptanceCriteria": [
+        "Review prompt does not appear before 7 days of active use AND 10+ AI uses",
+        "Review prompt appears at most once per user, ever",
+        "Prompt never interrupts active editing",
+        "If user has not used AI features, prompt never appears regardless of time"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true
+    },
+    {
+      "id": "FEAT-060",
+      "title": "INFRA: On-Device Aggregate Counters",
+      "intent": "We must know if our AI features are landing without violating privacy — simple local counters tell us enough to make product decisions.",
+      "description": "Per D-BIZ-6. Track simple aggregate counts in UserDefaults: AI improve uses, AI summarize uses, AI continue accepts, doctor fixes accepted, documents opened, days active. Never transmitted off device. Powers App Store review prompt timing (FEAT-059) and status bar stats. No PII, no content, no telemetry — just counts.",
+      "priority": "must",
+      "category": "Infrastructure",
+      "steps": [],
+      "acceptanceCriteria": [
+        "AI feature usage counts increment correctly and persist across launches",
+        "Counter data is stored in UserDefaults only — never transmitted",
+        "Counters are accessible for review prompt eligibility check (FEAT-059)",
+        "Deleting and reinstalling the app resets counters (no external storage)"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true
+    },
+    {
+      "id": "FEAT-061",
+      "title": "Export Watermark (Made with easy-markdown)",
+      "intent": "Every exported PDF is a billboard — a subtle watermark drives organic discovery without being obnoxious.",
+      "description": "Per PRODUCT.md §12. When exporting rendered PDF, include a subtle \"Made with easy-markdown\" watermark in the footer. User can disable in settings. Tasteful, not tacky — small, light gray, bottom margin. Never appears on printed output unless user explicitly enables it.",
+      "priority": "should",
+      "category": "Growth",
+      "steps": [],
+      "acceptanceCriteria": [
+        "Exported PDF includes subtle footer watermark by default",
+        "Watermark can be disabled in settings",
+        "Watermark is unobtrusive — small, light gray, does not interfere with content",
+        "Print output does not include watermark by default"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true
+    },
+    {
+      "id": "FEAT-062",
+      "title": "Pro AI Subscription Screen and Purchase Flow",
+      "intent": "The subscription screen must be honest, clear, and never pushy — it sells Pro AI on its merits, not through dark patterns.",
+      "description": "Per D-STORE-1, D-BIZ-5, D-BIZ-7, and Journey 6. Subscription screen shown when non-subscriber taps a Pro AI action. Shows: price ($3.99/mo or $29.99/yr), what is included, what happens on cancellation, that the app and local AI keep working without it. Annual plan prominently presented (saves ~37%). Uses StoreKit 2 for purchase flow. No separate account creation. Links to terms of service. No persistent upgrade banners, no nag screens, no feature-shaped holes.",
+      "priority": "should",
+      "category": "Business",
+      "steps": [],
+      "acceptanceCriteria": [
+        "Subscription screen clearly shows monthly and annual pricing with annual savings highlighted",
+        "Screen states what Pro AI includes and what happens on cancellation",
+        "Purchase completes via standard StoreKit 2 flow — no separate account creation",
+        "After subscribing, Pro AI actions work immediately without app restart",
+        "Non-subscriber never sees persistent upgrade banners or nag screens anywhere in the app",
+        "Subscription terms satisfy Apple App Store Review Guideline 3.1.2"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true
+    },
+    {
+      "id": "FEAT-063",
+      "title": "INFRA: App Store Purchase and Receipt Validation",
+      "intent": "The $9.99 one-time purchase must just work — StoreKit handles it, we validate the receipt, done.",
+      "description": "Per D-BIZ-1 and D-BIZ-2. Implement StoreKit 2 for the one-time $9.99 app purchase. Receipt validation for purchase verification. Handles: purchase flow, restore purchases, family sharing eligibility. The app must be fully functional after purchase with no additional gates.",
+      "priority": "must",
+      "category": "Infrastructure",
+      "steps": [],
+      "acceptanceCriteria": [
+        "User can purchase the app for $9.99 via standard App Store flow",
+        "Purchase receipt validates correctly",
+        "Restore purchases works for users who reinstall or switch devices",
+        "No additional purchase gates after the initial $9.99 for non-Pro features"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true
+    },
+    {
+      "id": "FEAT-064",
+      "title": "INFRA: Performance Regression Test Suite",
+      "intent": "Performance degrades silently unless measured on every build — automated benchmarks are the only way to keep our performance promises.",
+      "description": "Per D-QA-2. Automated tests that run on every build measuring: cold launch time (D-PERF-1: <1s), keystroke-to-render latency (D-PERF-2: <16ms), scroll FPS (D-PERF-3: 120fps ProMotion), AI first token latency (D-PERF-4: <500ms), memory usage (D-PERF-5: <100MB). A regression that crosses any threshold blocks the build. Uses XCTest performance metrics and Instruments automation.",
+      "priority": "must",
+      "category": "Infrastructure",
+      "steps": [],
+      "acceptanceCriteria": [
+        "Automated benchmarks measure all 5 performance targets on every CI build",
+        "Build fails if any performance target is exceeded",
+        "Results are logged with historical comparison to detect gradual drift",
+        "Tests run on representative device targets (iPhone 15, iPad Pro)"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": false
+    },
+    {
+      "id": "FEAT-065",
+      "title": "INFRA: Error Presentation System",
+      "intent": "Every error the user sees must be designed — human-readable, non-modal, recoverable. No raw error codes, no unhandled states.",
+      "description": "Per D-ERR-1 and DP-8. Centralized error presentation layer: non-modal banners for recoverable errors (save failure, network timeout), modal alerts only for data-loss-risk scenarios (file deleted while editing). All error messages are human-written, not technical. Every error includes a recovery action (retry, save elsewhere, dismiss). Error states designed per feature: file I/O errors, AI model errors, network errors, permission errors.",
+      "priority": "must",
+      "category": "Infrastructure",
+      "steps": [],
+      "acceptanceCriteria": [
+        "All error messages are human-readable with no raw error codes or technical jargon",
+        "Recoverable errors appear as non-modal banners with retry action",
+        "Data-loss-risk errors appear as modal alerts with save/recovery options",
+        "No unhandled error state produces a blank screen or crash"
       ],
       "status": "todo",
       "passes": false,
