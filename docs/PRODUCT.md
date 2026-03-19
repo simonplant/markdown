@@ -2,7 +2,7 @@
 
 This document is the single source of truth for what we are building, why, and the decisions that constrain implementation. The backlog is derived from this document. If a decision isn't recorded here, it hasn't been made.
 
-**How to read this document**: Sections 1–3 establish intent (why we exist, who we serve, what we believe). Sections 4–6 establish constraints (what we will and won't do, and the decisions that bind us). Sections 7–9 define what gets built (features, phases, acceptance criteria). Sections 10–13 define how we measure, price, position, and grow.
+**How to read this document**: Section 1 is the north star (press release + why now). Sections 2–3 establish intent (who we serve, what problems we solve). Sections 4–6 establish constraints (principles, non-goals, and the decisions that bind us). Sections 7–9 define what gets built (features, journeys, phases). Sections 10–13 define how we position, price, grow, and measure.
 
 **Ambition level**: We are not building a nice indie app. We are building **the best markdown editor in the world** — the defacto tool everyone reaches for when they need to write markdown outside of Cursor or VS Code. Every decision in this document should be evaluated against that bar.
 
@@ -16,7 +16,7 @@ This is the Amazon "working backwards" press release. It describes the product a
 >
 > ### easy-markdown: The World's Best Markdown Editor
 >
-> *A beautifully crafted editor with built-in AI that opens any markdown file on your device — no vaults, no accounts, no lock-in.*
+> *A beautifully crafted editor with built-in AI that opens any markdown file on your device — no vaults, no sign-up, no lock-in.*
 >
 > **2026** — Today we're introducing easy-markdown, a cross-platform markdown editor for everyone who writes in markdown but doesn't want to write *inside an IDE*.
 >
@@ -40,7 +40,7 @@ This is the Amazon "working backwards" press release. It describes the product a
 |-------|-------------|------------|
 | "The world's best markdown editor" | We compete on quality, not features. UI, performance, and polish are non-negotiable P0 requirements. | Prioritization — quality over scope, always |
 | "Opens any `.md` file your device can see" | Must use OS-level file access APIs (UIDocument, file providers), not a custom file store | Architecture, file management |
-| "No vault, no library, no account" | Zero-configuration first launch. No onboarding flow that blocks editing. | UX, first-run experience |
+| "No vault, no library, no sign-up" | Zero-configuration first launch. No onboarding flow, no account creation to start editing. Pro AI uses App Store subscription auth — no separate account. | UX, first-run experience |
 | "The interface is outrageously good" | UI quality is a shipping requirement. Ship dates slip before UI quality does. | Prioritization, resourcing |
 | "The kind of app you show other people" | Must be visually remarkable enough to trigger organic sharing. This is our growth engine. | Design investment, viral coefficient |
 | "Auto-formatting cleans up your markdown as you type" | Real-time, inline formatting — not a batch operation or separate mode | Editor architecture |
@@ -49,7 +49,16 @@ This is the Amazon "working backwards" press release. It describes the product a
 | "Optional cloud-powered Pro AI" | Pro tier uses cloud APIs for advanced capabilities. Requires explicit opt-in per-request or per-session. Only selected text is sent, never full documents silently. | Privacy architecture, server infrastructure, billing |
 | "The app is a one-time purchase… Pro AI is optional" | Base app is complete and excellent without Pro. Pro is a genuine enhancement, not a crippled free tier. | Pricing, feature gating, UX — no dark patterns |
 | "Launches first on iOS" | iOS is the first platform. Not web. Not macOS. | Platform sequencing |
-| "One-time purchase" | No server infrastructure for auth, licensing, or subscriptions | Architecture, business model |
+| "One-time purchase" | Base app requires no server infrastructure. Pro AI requires a lightweight API relay and App Store subscription validation — minimal server footprint, no user data storage. | Architecture, business model |
+
+### Why now
+
+Four things converged in 2025–2026 that make this product possible and timely:
+
+1. **On-device AI crossed the quality threshold.** Apple's Neural Engine (A16+/M1+), Core ML, and the open-source MLX framework now run 1–4GB quantized language models with usable quality and sub-second latency. Two years ago, local AI writing assistance wasn't viable on a phone. Now it is.
+2. **Subscription fatigue peaked.** The App Store is saturated with subscription-based writing tools. Users are vocally pushing back — Bear's subscription pivot, Ulysses's pricing backlash, and the rise of "pay once" indie apps signal a market ready for a premium one-time-purchase alternative.
+3. **The IDE/prose split crystallized.** Cursor and GitHub Copilot proved that AI-powered editing is transformative — but only for code. The millions of developers and writers who produce prose in markdown have no equivalent. The "Cursor for prose" positioning didn't exist before Cursor existed.
+4. **Incumbents are stuck.** Obsidian can't easily abandon its vault architecture. Bear can't easily open its proprietary storage. Notion can't easily go offline. iA Writer hasn't shipped AI. The market leaders are architecturally constrained from building what we're building. The window is open, but it won't stay open forever.
 
 ---
 
@@ -71,7 +80,7 @@ And a second dimension no one has cracked:
 | **Locked storage** | Notion AI, Craft AI | Bear, Obsidian |
 | **Open files** | *empty* | iA Writer, Typora, everything else |
 
-**Decision [D-MKT-1]**: We are building for the intersection of three underserved positions: **great UI + open files + local AI + affordable**. No product in the market occupies this space. This is not a niche — it's the gap that everyone who writes markdown outside an IDE falls into.
+**Decision [D-MKT-1]**: We are building for the intersection of four underserved positions: **great UI + open files + AI (local-first) + affordable**. No product in the market occupies this space. This is not a niche — it's the gap that everyone who writes markdown outside an IDE falls into.
 
 ### Pain points we solve
 
@@ -98,7 +107,7 @@ And a second dimension no one has cracked:
 - Values craft and aesthetics in tools — will pay a fair price for quality
 - Wants AI assistance for writing but won't create cloud accounts or send content to servers
 - **Platforms**: iPhone + Mac most common, but Android and Windows are real
-- **Scale**: This is tens of millions of people (every developer, technical writer, blogger, student taking notes in markdown)
+- **Scale**: Realistic addressable market is 2–5M active markdown writers who would pay for a quality tool (developers writing docs/READMEs, technical writers, bloggers, academics). Broader markdown-adjacent audience (students, casual note-takers) is a growth opportunity, not the launch market.
 
 **Decision [D-USER-1]**: This is our primary user. When trade-offs arise, optimize for this persona. They value file freedom, UI quality, and AI assistance. They are not power users who want extensibility — they want a polished, opinionated tool that makes them better at writing.
 
@@ -207,8 +216,35 @@ AI is a core capability of the editor, not a bolted-on chatbot. It follows a **l
 
 **Decision [D-AI-2]**: Two-tier AI model. Local AI is included in the one-time app purchase. Pro AI is an optional monthly subscription ($3.99/mo) that covers our GPU/inference costs. This is the only recurring charge — and it's genuinely optional.
 
-### DP-8: Accessible to everyone
-The best editor in the world works for everyone. Accessibility is a P0 requirement, not a P1 enhancement.
+### DP-8: Graceful degradation
+When things go wrong, the user should never lose work or feel confused. Errors are handled quietly and recoverably. The app always prioritizes data safety over feature availability.
+
+**What this means in practice**:
+- If AI model download fails, the editor works perfectly — AI features are simply absent
+- If auto-save fails (disk full, permissions revoked), the document stays in memory and the user is notified non-modally with a retry option. Content is never silently lost.
+- If an iCloud file is evicted from local storage while open, we detect it and offer to re-download or save locally
+- If a Pro AI cloud request fails, we show the error inline and suggest retrying or using local AI instead
+- If the device runs out of storage during model download, we cancel gracefully and explain
+- Every error state has been designed — not just coded. Error messages are human, not technical.
+
+**Decision [D-ERR-1]**: No error state is undesigned. Every feature spec must include failure modes and recovery paths. "What happens when this fails?" is a required question in every backlog item review.
+
+### DP-9: The Render — our signature interaction
+When you open a file or toggle from source to rich view, the markdown doesn't just swap — it *transforms*. Raw markdown characters gracefully animate into their rendered form: `#` markers shrink as the heading scales up, `**` markers dissolve as text boldfaces, list markers morph into styled bullets, code fences fade as the code block materializes with its background. ~400ms, spring-animated, every time.
+
+This is the single most important "show someone" moment in the product. It demonstrates our value proposition in one gesture: we understand markdown AND we care about beauty. It's the thing people will describe when they recommend easy-markdown.
+
+**What this means in practice**:
+- The source-to-rich transition is a designed animation, not a state swap
+- It uses native Core Animation for 120fps fluidity — this is something Electron apps can't match
+- It has a Reduced Motion alternative (instant crossfade) per DP-8/[D-A11Y-3]
+- It receives disproportionate engineering and design investment
+- It works beautifully on every device class (iPhone SE through iPad Pro)
+
+**Decision [D-UX-3]**: The Render is a named, protected design element. It is never simplified, removed, or made optional for performance reasons. If it doesn't perform at 120fps, we fix the implementation — we don't cut the feature. It is easy-markdown's brand.
+
+### DP-10: Accessible to everyone
+The best editor in the world works for everyone. Accessibility is a P0 requirement, not a P1 enhancement. This is both a moral imperative and a practical one — Apple's review process flags accessibility issues, and accessible apps have broader reach.
 
 **What this means in practice**:
 - Full VoiceOver support on all screens (iOS and macOS)
@@ -264,6 +300,7 @@ All significant product and technical decisions are recorded here. Each decision
 | **D-EDIT-4** | Document doctor suggestions are **non-modal, inline indicators** (e.g., subtle underlines, margin icons). User taps/clicks to see the suggestion and accept/dismiss. | Must not interrupt writing flow. Modal dialogs or toasts that demand attention violate DP-2 and DP-5. | Modal dialog (disruptive); Bottom panel (takes space); Separate mode (too hidden). |
 | **D-EDIT-5** | Auto-save is **always on, automatic, with no manual save action**. Files saved continuously as user types (debounced). | Matches modern iOS/macOS expectations. Eliminates data loss anxiety. | Manual save (outdated UX); Save on close (risk of data loss); Prompt to save (unnecessary friction). |
 | **D-EDIT-6** | **Undo/redo is per-session, in-memory, unlimited depth.** Closing a file clears undo history. | Persistent undo requires a sidecar file or database, violating DP-1 and DP-6. | Persistent undo (requires sidecar storage); Limited undo depth (arbitrary, frustrating). |
+| **D-EDIT-7** | **Use the system spell checker (UITextChecker / NSSpellChecker).** Red underline squiggles on misspelled words, standard right-click/tap correction menu. Spell check is on by default, respects the user's system language settings. We do not build a custom spell checker. | Users expect spell check in any writing tool. The OS spell checker is free, mature, multilingual, and already integrated with the text system. Building our own adds complexity for no benefit. | Custom spell checker (unnecessary, violates DP-5); AI-only grammar correction (too slow for real-time spell check, not a replacement for squiggles); No spell check (unacceptable for "best in the world"). |
 
 ### AI
 
@@ -277,6 +314,7 @@ All significant product and technical decisions are recorded here. Each decision
 | **D-AI-6** | **AI capabilities ship incrementally.** MVP ships with local AI (improve, summarize, continue). Pro AI cloud tier ships in v1.0 with translation, tone, generation. | Ship what works well first. Local AI validates the concept. Cloud AI extends it for users who want more. Shipping cloud in v1.0 (not MVP) gives us time to build the infrastructure without delaying launch. | Ship everything at once (risk of low quality); Wait until AI is "complete" (delays launch); Ship cloud in MVP (too much infrastructure for launch). |
 | **D-AI-7** | **Pro AI cloud provider: use best-available API (initially Anthropic Claude or equivalent).** Evaluate on quality, latency, cost, and privacy policy. Provider can be swapped without user-facing changes. | We are not building our own inference infrastructure. Using a managed API gets us to market fast. Provider abstraction means we're not locked in. | Self-hosted inference (too expensive at our scale); OpenAI only (single vendor risk); Build our own (premature). |
 | **D-AI-8** | **Pro AI privacy: only user-selected text is sent. No full-document context unless user explicitly includes it. No data retained by provider beyond request processing.** | Trust is earned. Users must feel confident that Pro AI isn't silently reading their files. Minimal data transmission + contractual no-retention from the provider. | Send full document for context (better AI quality, but privacy violation); Log prompts for improvement (violates trust); Allow provider training on data (violates trust). |
+| **D-AI-9** | **AI model is downloaded separately from the app, on-demand, over Wi-Fi by default.** App ships at < 50MB (no model bundled). On first launch on a capable device, a non-blocking prompt offers to download the AI model (~2–4GB). Download happens in the background — the editor is fully usable (minus AI) during download. Cellular download requires explicit user opt-in. Model updates ship independently from app updates via on-demand resources (ODR) or background asset download. | App Store has a 200MB cellular download limit. Bundling a 4GB model would make the app undownloadable on cellular and slow to install. Separating the model respects the user's bandwidth and storage while keeping the editor instantly usable. | Bundle model with app (too large, bad first install); Download on first AI invocation only (surprise 4GB download when user wants to use a feature); Require Wi-Fi for app download (too restrictive). |
 
 ### Platform
 
@@ -304,7 +342,9 @@ All significant product and technical decisions are recorded here. Each decision
 | **D-BIZ-1** | **One-time purchase for the app. Optional subscription only for cloud AI compute.** | The editor itself is never a subscription. Subscription fatigue is a pain point we solve (P3) — so we only charge recurring for a service with genuine recurring costs (GPU inference). The app works completely without subscribing. | Full subscription (contradicts positioning); Freemium ([D-NO-7]); All-inclusive one-time (unsustainable with cloud AI costs). |
 | **D-BIZ-2** | **App price: $9.99 USD one-time. Pro AI: $3.99/month.** | $9.99 signals quality for the app. $3.99/mo for Pro AI is low enough to be a no-brainer for active users, high enough to cover API costs with margin. At ~$48/year for Pro, we're still cheaper than Bear ($30/yr) + any AI tool, and dramatically cheaper than Ulysses ($50/yr) or Notion ($96/yr). | $4.99 app (too low); $7.99/mo Pro (too high, approaches full subscription apps); $1.99/mo Pro (doesn't cover costs); Usage-based/token pricing (creates anxiety). |
 | **D-BIZ-3** | **Major version paid upgrades (v2, v3). Free updates within major version.** Existing version continues working indefinitely. | Sustainable without subscriptions. Rewards loyalty. Doesn't hold current version hostage. | Free forever (unsustainable); Yearly paid updates (feels like subscription); Feature tiers (complexity). |
-| **D-BIZ-4** | **No analytics, no telemetry, no data collection.** | Aligns with privacy positioning and "no accounts" promise. We learn from App Store reviews, support, and TestFlight. | Anonymous analytics (slippery slope); Opt-in analytics (biased data, erodes trust). |
+| **D-BIZ-7** | **Pro AI offers both monthly ($3.99/mo) and annual ($29.99/yr) plans.** Annual plan saves ~37% and is prominently presented. | Annual plans increase LTV (~$21 net vs ~$2.80/mo net after Apple cut), reduce churn, and align with App Store best practices. Apple also reduces commission to 15% on subscriptions after year one. The annual plan is the better deal for both user and us. | Monthly only (higher churn, lower LTV); Annual only (too much commitment upfront); Weekly (too granular, feels exploitative). |
+| **D-BIZ-4** | **No third-party analytics, no telemetry, no data exfiltration.** We use only Apple-provided App Store Connect metrics (downloads, retention, sales, crash reports) and aggregate on-device counters (see D-BIZ-6). | Aligns with privacy positioning. Third-party SDKs are a liability and a trust violation. Apple's built-in metrics are sufficient for business-level decisions. | Third-party analytics SDK (rejected — trust violation, bloat); No measurement at all (can't validate success metrics, flying blind). |
+| **D-BIZ-6** | **On-device aggregate counters for feature validation.** The app tracks simple counts locally (e.g., "AI improve used 12 times this week," "doctor fixes accepted: 5") stored in UserDefaults. These are never transmitted. They power the status bar stats and inform opt-in App Store review prompts (e.g., only prompt after user has used AI 10+ times). If we ever need feature-level metrics, we may add a voluntary, opt-in "share usage summary" — but not at launch. | We need to know if AI features are being used to validate our thesis. On-device counters achieve this without any data leaving the device. | No feature tracking (can't validate AI adoption metric); Server-side analytics (violates privacy); Always-on telemetry (rejected). |
 
 ### Performance
 
@@ -315,6 +355,21 @@ All significant product and technical decisions are recorded here. Each decision
 | **D-PERF-3** | **Scroll performance: 120fps on ProMotion devices, 60fps on all others.** No dropped frames during scroll. | Scroll jank is the most noticeable performance flaw in a text editor. ProMotion support signals native quality. | 60fps everywhere (doesn't leverage ProMotion); No target (scroll jank creeps in). |
 | **D-PERF-4** | **AI response: first token within 500ms, full response within 3 seconds** for typical operations (improve paragraph, fix grammar). | AI must feel fast enough that users don't context-switch while waiting. 500ms matches human perception of "instant." | No latency target (quality drift); 1 second first token (too slow for inline feel); Stream tokens (yes, also do this — progressive display). |
 | **D-PERF-5** | **Memory: < 100MB for a typical editing session** (single file < 100KB). | iOS aggressively kills background apps. Low memory footprint improves state restoration and multitasking. | No target (memory bloat); 50MB (too aggressive with AI model loaded — model may be memory-mapped separately). |
+
+### Quality Assurance
+
+| ID | Decision | Rationale | Alternatives considered |
+|----|----------|-----------|------------------------|
+| **D-QA-1** | **Every feature passes a 4-gate review before shipping: Design Review → Implementation Review → Device Test Matrix → Accessibility Audit.** Design Review: matches the approved design spec. Implementation Review: code review with performance profiling. Device Test Matrix: tested on iPhone SE, iPhone 15 Pro, iPad Mini, iPad Pro (and macOS equivalents in Phase 2). Accessibility Audit: VoiceOver, Dynamic Type at all sizes, Reduced Motion. | D-UI-1 says "no feature ships with unfinished UI." D-A11Y-1 says "no feature ships without VoiceOver." These promises need enforcement mechanisms, not just principles. | Ship and fix later (violates D-UI-1); Manual spot checks (inconsistent); Automated-only testing (misses design quality). |
+| **D-QA-2** | **Performance regression tests run on every build.** Automated tests measure cold launch time, keystroke-to-render latency, scroll FPS, and memory usage against the targets in D-PERF-1 through D-PERF-5. A regression that crosses any threshold blocks the build. | Performance degrades gradually unless actively monitored. "Best in the world" performance requires continuous measurement, not periodic audits. | Manual performance testing (inconsistent, easy to skip); No automation (performance slowly degrades). |
+
+### App Store Risk
+
+| ID | Decision | Rationale | Alternatives considered |
+|----|----------|-----------|------------------------|
+| **D-STORE-1** | **Subscription terms clearly communicated before paywall.** Pro AI subscription screen must: show price, billing frequency, and annual option prominently; state what's included and what happens on cancellation; link to terms of service. This follows Apple's App Store Review Guideline 3.1.2. | Apple rejects apps that obscure subscription terms. We also genuinely want transparency — it's our brand. | Minimal disclosure (rejected — risks rejection and violates D-BIZ-5). |
+| **D-STORE-2** | **AI-generated content is not labeled in-document, but the AI origin is clear in the UX flow.** The inline diff preview makes it obvious that text was AI-suggested. We do not inject "generated by AI" markers into the markdown (violates DP-6). If Apple requires content labeling in the future, we comply via UX, not file modification. | Apple's AI guidelines are evolving. Our inline-diff UX already makes AI involvement transparent to the user. Injecting metadata into files would violate our no-lock-in principle. | Add "AI-generated" metadata to files (rejected — violates DP-6); Hide AI origin (rejected — dishonest). |
+| **D-STORE-3** | **App is fully functional at download (minus model download).** The editor, auto-formatting, document doctor, themes, keyboard support, and all non-AI features work immediately. AI features become available after model download. The app is never a "shell" that requires a download to function. This satisfies Apple's minimum functionality requirement (Guideline 4.2). | Apple rejects apps that are not functional at download. Our architecture naturally satisfies this because the editor doesn't depend on the AI model. | Bundle model (app too large); Require download before any use (rejected — violates D-UX-1 and Apple guidelines). |
 
 ### Accessibility
 
@@ -476,6 +531,57 @@ Intentional, beautiful typography per DP-2.
 - Respects Dynamic Type: custom fonts scale with system text size preference per [D-A11Y-2]
 - **Acceptance**: A designer reviews rendered markdown on iPhone SE, iPhone 15 Pro Max, iPad Mini, and iPad Pro at default and large Dynamic Type sizes. All feel intentionally designed.
 
+#### F-033: Word Count and Document Stats
+Always-visible writing statistics in the status bar.
+
+- Word count, character count (with and without spaces), estimated reading time
+- Displayed in a compact status bar at the bottom of the editor — always visible, never intrusive
+- Updates in real time as user types
+- Tapping the status bar expands to show additional stats: paragraph count, sentence count, Flesch-Kincaid readability score (basic — extended analysis moves to F-017)
+- Selection-aware: when text is selected, stats show selection count alongside total count
+- **Accessibility**: VoiceOver can read current word count and reading time via status bar
+- **Acceptance**: User is writing and can see "342 words · 2 min read" in the status bar at all times. Selecting a paragraph updates to "342 words (87 selected) · 2 min read."
+
+#### F-034: Spell Check
+System spell checking integrated into the editor.
+
+- Uses UITextChecker (iOS) / NSSpellChecker (macOS) per [D-EDIT-7]
+- Red underline on misspelled words (standard system behavior)
+- Tap/right-click for correction suggestions
+- Respects user's system language and custom dictionary
+- Spell check indicators coexist with document doctor indicators without visual conflict
+- Works in both rich text and source view
+- On by default, can be toggled off in settings
+- **Acceptance**: User types "recieve" — red underline appears. User taps → "receive" is the first suggestion. User accepts → word is corrected.
+
+#### F-035: The Render (Signature Transition)
+Animated source-to-rich transition per DP-9.
+
+- When opening a file or toggling from source to rich view, markdown syntax characters animate into their rendered form:
+  - `#` markers shrink and fade as headings scale to their rendered size and weight
+  - `**`/`*` markers dissolve as text boldfaces/italicizes
+  - `-`/`*`/`1.` list markers morph into styled bullets/numbers with proper indentation
+  - `` ``` `` fences fade as code blocks materialize with background color
+  - `[text](url)` compacts as links render with their styled appearance
+  - `> ` blockquote markers transform into the visual left border
+- Total duration: ~400ms, spring-animated
+- Reverse animation plays when toggling from rich to source view
+- Reduced Motion alternative: instant crossfade (200ms opacity transition)
+- **Performance**: 120fps on ProMotion devices throughout the animation. No dropped frames. Uses Core Animation, not SwiftUI animation modifiers, for guaranteed performance.
+- **Accessibility**: VoiceOver is not affected by the animation — it announces the rendered content immediately
+- **Acceptance**: A non-technical observer watching over the user's shoulder can see the transition and finds it visually striking. The animation is smooth, purposeful, and delightful — never janky or distracting. A user toggles source/rich multiple times just to watch it.
+
+#### F-036: iPad Optimization
+Purpose-built iPad experience that goes beyond "big iPhone."
+
+- **Stage Manager**: Full support for resizable windows and multi-window. User can have two easy-markdown documents side by side, or easy-markdown alongside Safari/Notes for reference.
+- **External display**: When connected to an external display, the editor can span the full display with appropriate content width constraints. No letterboxing, no awkward scaling.
+- **Split View / Slide Over**: Works correctly in 1/3, 1/2, and 2/3 split. Content reflows gracefully at every width. Slide Over is ideal for quick edits while in another app.
+- **Pointer/trackpad**: Full trackpad and mouse support with hover states on interactive elements (doctor indicators, AI action bar, toolbar buttons). Right-click context menus.
+- **Keyboard**: All F-009 shortcuts work, plus iPad-specific: Cmd+Option+arrows for split view management.
+- **Pencil** (P2 — future, if validated): Apple Pencil for handwriting-to-markdown conversion or annotation. Not in MVP but the architecture should not preclude it.
+- **Acceptance**: An iPad Pro user with Magic Keyboard and external display uses easy-markdown as their primary writing environment for a full day. It feels native to the iPad, not like an iPhone app running on a larger screen.
+
 #### F-025: AI Assist (MVP — Local)
 On-device AI writing assistance per [D-AI-1] through [D-AI-6]. Included with app purchase.
 
@@ -617,6 +723,7 @@ Context-aware autocomplete that goes beyond simple text prediction. Included wit
 - Completes front matter patterns (if present in file — we read but don't generate per DP-6)
 - Ghost text presentation, Tab to accept
 - Runs on-device — works offline
+- **Device floor**: Same as F-025 — requires iPhone 15 / M1 Mac (A16+ / Apple Silicon). Uses the same on-device model. Not available on older devices.
 - **Acceptance**: User types `| Name | Email |` and presses Enter. AI suggests a separator row and first data row. User Tabs to accept.
 
 ### P2 — Phase 3 / Future (validated demand required)
@@ -694,17 +801,19 @@ Open file → See doctor indicators → Tap indicator → Read suggestion → Ac
 - "Dismiss" hides indicator for this session
 - Doctor re-analyzes in background after changes settle
 
-### Journey 5: Switching Between Rich and Source View
+### Journey 5: The Render — Switching Between Rich and Source View
 
 ```
-Rich view → Tap toggle → Raw markdown → Edit → Tap back → Updated rich view
+Rich view → Tap toggle → Markdown animates into raw source → Edit → Tap back → Source transforms into rich view (The Render)
 ```
 
 - Toggle always visible (toolbar button or gesture)
+- **The Render (F-035)**: When toggling back to rich view, markdown syntax characters animate into their rendered form — headings scale up, bold markers dissolve, list markers morph into bullets, code fences materialize with backgrounds. ~400ms, spring-animated, 120fps. This is the signature moment of the app.
+- Reverse plays when toggling to source (rich elements decompose back into syntax characters)
 - Cursor position maps between views (same line, best effort)
 - Changes in source reflected in rich view immediately
 - Auto-formatting rules apply in both views
-- Animation: smooth crossfade between views (reduced motion: instant switch)
+- Reduced Motion alternative: instant crossfade (per DP-9)
 
 ### Journey 6: Discovering Pro AI (Natural Upgrade)
 
@@ -738,7 +847,7 @@ Each phase has explicit exit criteria — conditions that must be true before we
 
 **Goal**: Ship the best markdown editor on iOS. Validate that great UI + open files + local AI is a product people love and recommend.
 
-**Scope**: Features F-001 through F-010 + F-025 (Local AI Assist MVP).
+**Scope**: Features F-001 through F-010, F-025 (Local AI Assist), F-033 (Word Count), F-034 (Spell Check), F-035 (The Render), F-036 (iPad Optimization).
 
 **Performance contract**: All targets in [D-PERF-1] through [D-PERF-5] must be met before launch.
 
@@ -810,7 +919,7 @@ Each phase has explicit exit criteria — conditions that must be true before we
 | Stream | Type | Price | What the user gets | ID |
 |--------|------|-------|--------------------|----|
 | **App purchase** | One-time | $9.99 | Full editor, auto-formatting, document doctor, local on-device AI (improve, summarize, continue, smart completions). Works offline. No account. | [D-BIZ-1], [D-BIZ-2] |
-| **Pro AI** | Monthly subscription (optional) | $3.99/mo | Cloud-powered AI: advanced translation, tone/style adjustment, generation from prompts, document-level analysis, longer context window. | [D-AI-2], [D-BIZ-2] |
+| **Pro AI** | Subscription (optional) | $3.99/mo or $29.99/yr | Cloud-powered AI: advanced translation, tone/style adjustment, generation from prompts, document-level analysis, longer context window. | [D-AI-2], [D-BIZ-2], [D-BIZ-7] |
 | **Major upgrades** | One-time (periodic) | ~$7.99 | v2, v3 major version upgrades. Existing version continues working indefinitely. | [D-BIZ-3] |
 
 ### What we don't charge for
@@ -842,7 +951,7 @@ This is critical to get right. The subscription is for **cloud compute**, not fo
 
 **App revenue**: At $9.99, Apple takes 30% year one → net ~$7/sale. Target 1,500 sales/month by month 6. Annual: 18,000 sales × $7 = ~$126K net.
 
-**Pro AI revenue**: Assume 15% of active users subscribe (conservative for a quality AI tier). At 1,500 monthly sales growing to steady-state ~10K active users, that's ~1,500 Pro subscribers × $3.99 × 0.70 (Apple cut) = ~$4,190/month = ~$50K/year. Pro AI API costs estimated at $0.50–1.00/subscriber/month → $750–1,500/month cost → healthy margin.
+**Pro AI revenue**: Assume 15% of active users subscribe (conservative for a quality AI tier). At steady-state ~10K active users, that's ~1,500 Pro subscribers. Blended revenue assuming 60% annual / 40% monthly: ~$4,500/month net (after Apple cut). Pro AI API costs estimated at $0.50–1.00/subscriber/month → $750–1,500/month cost → healthy margin. Annual plans (~$21 net each) dramatically improve LTV vs. monthly (~$2.80 net/month).
 
 **Combined year-one target**: ~$126K (app) + ~$30K (Pro AI, ramping) = ~$156K gross. Sustainable for a small team.
 
@@ -873,11 +982,22 @@ We are not relying solely on word-of-mouth. "Defacto" requires intentional growt
 - **Launch on Product Hunt, Hacker News** — target the developer-writer audience first
 - **Reach out to indie app reviewers** and Apple-ecosystem bloggers (MacStories, The Sweet Setup, etc.)
 - **Apple editorial**: Target "New Apps We Love" and "Apps We Love Right Now" features. Apple promotes native, well-designed apps — we check every box.
+- **SEO/content**: Own the "best markdown editor" search query. Blog posts, comparison pages, and landing page content targeting "markdown editor for Mac," "markdown editor for iPhone," "best writing app," etc.
 
 ### Referral mechanics
 
 - **Share sheet**: When exporting PDF/HTML, include a subtle "Made with easy-markdown" watermark (user can disable in settings). Tasteful, not tacky.
-- **App Store review prompt**: After 7 days of active use (not before), prompt for review. Only once. Never again.
+- **App Store review prompt**: After 7 days of active use AND 10+ AI uses (not before), prompt for review. Only once. Never again.
+- **"The Render" is a built-in demo**: Users will toggle source/rich view to show others. The animation is marketing.
+
+### Scaling to defacto (Phase 2–3)
+
+These are the growth levers that take us from "great indie app" to "the default":
+
+- **Education**: Partner with coding bootcamps and university CS programs. Students who learn to write markdown with easy-markdown become lifetime users. Offer education pricing ($4.99 one-time) via Apple's educational volume purchasing.
+- **Enterprise/team licensing**: Companies buy writing tools for technical writers, developer relations teams, and documentation teams. Apple Business Manager volume purchasing support. No "enterprise features" (violates DP-5) — just volume licensing.
+- **Integration story**: Become the default markdown previewer on iOS/macOS. Register for `.md` file associations. Build the Quick Look extension (F-016) so that even non-users see easy-markdown's rendering in Finder/Files. Every Quick Look preview is a billboard.
+- **"Cursor for prose" narrative**: Co-market with the IDE ecosystem. Blog posts like "I use Cursor for code and easy-markdown for everything else." Position in developer tool roundups alongside IDE recommendations.
 
 ---
 
@@ -887,7 +1007,7 @@ We are not relying solely on word-of-mouth. "Defacto" requires intentional growt
 |--------|-----------|-------------|-------------------|---------------|
 | **App Store rating** | ≥ 4.7 | ≥ 4.8 | ≥ 4.8 sustained | Best-in-class quality signal |
 | **D7 retention** | ≥ 60% | ≥ 70% | ≥ 75% | People are replacing their current editor |
-| **AI feature adoption** | ≥ 50% use in week 1 | ≥ 60% weekly active | ≥ 70% | AI is landing as a differentiator |
+| **AI feature adoption** | ≥ 50% use in week 1 | ≥ 60% weekly active | ≥ 70% | AI is landing as a differentiator. Measured via on-device counters (D-BIZ-6) informing App Store review prompt eligibility and via qualitative signals (reviews, support, TestFlight feedback). |
 | **UI/AI mentions in reviews** | ≥ 30% | ≥ 40% | ≥ 50% | Positioning is landing |
 | **File access confusion (support)** | < 5% | < 3% | < 2% | Open-file model works without explanation |
 | **Monthly app sales** | 1,000+ | 2,000+ | 5,000+ | Viable and growing business |
@@ -913,6 +1033,7 @@ We are not relying solely on word-of-mouth. "Defacto" requires intentional growt
 | D-EDIT-4 | Doctor suggestions are non-modal inline indicators | §6 |
 | D-EDIT-5 | Auto-save always on, debounced | §6 |
 | D-EDIT-6 | Undo is per-session, in-memory, unlimited | §6 |
+| D-EDIT-7 | System spell checker, on by default | §6 |
 | D-AI-1 | Local-first AI; cloud is opt-in enhancement | §6 |
 | D-AI-2 | Two-tier pricing: local included, Pro AI $3.99/mo | §6 |
 | D-AI-3 | AI surfaces inline, no chat panel | §6 |
@@ -921,6 +1042,7 @@ We are not relying solely on word-of-mouth. "Defacto" requires intentional growt
 | D-AI-6 | AI ships incrementally: local MVP, cloud v1.0 | §6 |
 | D-AI-7 | Pro AI uses best-available cloud API (initially Anthropic/equivalent) | §6 |
 | D-AI-8 | Pro AI: only selected text sent, no retention by provider | §6 |
+| D-AI-9 | AI model downloaded separately, on-demand, Wi-Fi default | §6 |
 | D-PLAT-1 | Ship order: iOS → macOS → Android → desktop | §6 |
 | D-PLAT-2 | SwiftUI for Apple UI, Swift core logic | §6 |
 | D-PLAT-3 | iOS 17+ minimum | §6 |
@@ -933,7 +1055,9 @@ We are not relying solely on word-of-mouth. "Defacto" requires intentional growt
 | D-BIZ-1 | One-time app purchase; subscription only for cloud AI compute | §6 |
 | D-BIZ-2 | App $9.99 one-time; Pro AI $3.99/mo | §6 |
 | D-BIZ-3 | Paid major version upgrades | §6 |
-| D-BIZ-4 | No analytics or telemetry | §6 |
+| D-BIZ-4 | No third-party analytics; Apple metrics + on-device counters only | §6 |
+| D-BIZ-6 | On-device aggregate counters for feature validation | §6 |
+| D-BIZ-7 | Pro AI monthly ($3.99) and annual ($29.99) plans | §6 |
 | D-PERF-1 | Cold launch < 1 second | §6 |
 | D-PERF-2 | Keystroke-to-render < 16ms | §6 |
 | D-PERF-3 | Scroll 120fps on ProMotion | §6 |
@@ -942,9 +1066,16 @@ We are not relying solely on word-of-mouth. "Defacto" requires intentional growt
 | D-A11Y-1 | VoiceOver is P0 for every feature | §6 |
 | D-A11Y-2 | Dynamic Type support | §6 |
 | D-A11Y-3 | Reduced Motion support | §6 |
+| D-ERR-1 | No error state is undesigned | §4 |
+| D-QA-1 | 4-gate review: design, implementation, device matrix, accessibility | §6 |
+| D-QA-2 | Performance regression tests on every build | §6 |
+| D-STORE-1 | Subscription terms clearly communicated per Apple guidelines | §6 |
+| D-STORE-2 | AI origin clear in UX, not injected into files | §6 |
+| D-STORE-3 | App fully functional at download (minus model) | §6 |
 | D-UI-1 | No feature ships with unfinished UI | §4 |
 | D-UX-1 | No onboarding flow | §8 |
 | D-UX-2 | Last-open file restoration | §8 |
+| D-UX-3 | The Render is a named, protected signature interaction | §4 |
 | D-GROWTH-1 | Design for over-the-shoulder impact | §8, §12 |
 | D-USER-1 | Primary persona: Everyday Markdown Writer | §3 |
 | D-USER-2 | Developer-Writer served, not optimized for | §3 |
