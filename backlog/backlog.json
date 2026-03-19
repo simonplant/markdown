@@ -5,7 +5,7 @@
       "id": "FEAT-001",
       "title": "F-001: Open File",
       "intent": "Users must be able to open any markdown file from any location via the system file picker — no vault, no import, no friction",
-      "description": "Open any text file via UIDocumentPickerViewController. Default filter shows markdown extensions but user can switch to All Files. UTF-8 only (D-FILE-2). Error on non-UTF-8. Warning on >1MB. Editable immediately. Markdown features activate for markdown extensions; other text files open in source-editing mode. File open to editing ready <500ms for <100KB files.",
+      "description": "Open any markdown file via UIDocumentPickerViewController. Filters to markdown extensions (.md, .markdown, .mdown, .mkd, .mkdn, .mdx) per D-FILE-6. UTF-8 only (D-FILE-2). Error on non-UTF-8. Warning on >1MB. Editable immediately. File open to editing ready <500ms for <100KB files. Depends on: FEAT-040 (File Coordination Layer).",
       "priority": "must",
       "category": "File Management",
       "steps": [],

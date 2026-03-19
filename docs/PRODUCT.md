@@ -335,7 +335,7 @@ All significant product and technical decisions are recorded here. Each decision
 | **D-FILE-3** | **Line endings: preserve on read, default to LF on create.** | Preserving line endings prevents unnecessary diffs in version-controlled files. | Normalize to LF (breaks Git diffs for CRLF files); Platform default (inconsistent). |
 | **D-FILE-4** | **Large files: 1MB soft limit with dismissable warning. No hard limit.** | Most markdown <100KB. Warning protects against accidental opens; no hard limit respects user agency. | Hard limit (too restrictive); No limit (UI freeze risk). |
 | **D-FILE-5** | **File conflict: last-write-wins with notification.** External changes detected → user chooses reload or keep. | User agency beats automatic merging. | Auto-reload (loses edits); Merge (too complex); Ignore (loses awareness). |
-| **D-FILE-6** | **Open ANY text file. No extension restrictions.** Default file browser filters to markdown extensions (`.md`, `.markdown`, `.mdown`, `.mkd`, `.mkdn`, `.mdx`), but user can switch to "All Files" and open anything text-based. `.txt`, `.rst`, `.adoc`, `.csv`, config files — if it's UTF-8 text, we open it. Markdown-specific features (rendering, doctor, auto-format) activate only for markdown extensions. Other text files open in a clean source-editing mode. | Our principle is no artificial limitations. If the OS lets you access it and it's text, we open it. Restricting to `.md` only means users can't use easy-markdown as their go-to text editor. | `.md` only (too restrictive, artificial limitation); All files including binary (would show garbage for non-text). |
+| **D-FILE-6** | **Supported extensions: `.md`, `.markdown`, `.mdown`, `.mkd`, `.mkdn`, `.mdx`.** File picker filters to these extensions. We are a markdown editor — not a general text editor. Every feature (rendering, doctor, auto-format, AI) is optimized for markdown. Opening non-markdown files is out of scope. | Stay in our lane. Markdown is our format. Opening config files and CSVs dilutes what we are and creates edge cases we don't want to maintain. If you need a text editor, use one. If you need a markdown editor, use easy-markdown. | All text files (scope creep, dilutes identity); `.md` only (too restrictive — `.markdown` and `.mdown` are common). |
 
 ### Business
 
@@ -1055,7 +1055,7 @@ These are the growth levers that take us from "great indie app" to "the default"
 | D-FILE-3 | Preserve line endings, default LF | §6 |
 | D-FILE-4 | 1MB soft limit with warning | §6 |
 | D-FILE-5 | Last-write-wins with notification on conflict | §6 |
-| D-FILE-6 | Open any text file, no extension restrictions | §6 |
+| D-FILE-6 | Markdown extensions only (.md, .markdown, .mdown, .mkd, .mkdn, .mdx) | §6 |
 | D-BIZ-1 | One-time app purchase; subscription only for cloud AI compute | §6 |
 | D-BIZ-2 | App $9.99 one-time; Pro AI $3.99/mo | §6 |
 | D-BIZ-3 | Paid major version upgrades | §6 |
