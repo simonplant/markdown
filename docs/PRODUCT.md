@@ -14,23 +14,23 @@ This is the Amazon "working backwards" press release. It describes the product a
 
 > **FOR IMMEDIATE RELEASE**
 >
-> ### easy-markdown: The World's Best Markdown Editor
+> ### easy-markdown: Markdown Is the Document Format of the AI Age. This Is Its Editor.
 >
-> *A beautifully crafted editor with built-in AI that opens any markdown file on your device — no vaults, no sign-up, no lock-in.*
+> *The native markdown editor with built-in AI that opens any file on your device — no vaults, no sign-up, no lock-in, no limitations.*
 >
-> **2026** — Today we're introducing easy-markdown, a cross-platform markdown editor for everyone who writes in markdown but doesn't want to write *inside an IDE*.
+> **2026** — Markdown has won. It's how developers write documentation, how writers draft blog posts, how teams capture knowledge, how AI reads and generates text. It's the universal plain-text format that everything understands. But the tools for writing it are stuck in the past — trapped behind vaults, locked in proprietary storage, or buried inside code editors that treat prose as an afterthought.
 >
-> Developers live in Cursor and VS Code for code — but when it's time to write a README, draft a blog post, edit documentation, or capture notes, they deserve a purpose-built tool. Writers and note-takers deserve one that doesn't trap their files. Until now, the choice has been: beautiful editors with locked storage, or open-file editors with mediocre UX.
->
-> easy-markdown eliminates that trade-off. It opens any `.md` file your device can see — iCloud Drive, Dropbox, a Git repo, your desktop — and lets you create files anywhere. There's no vault to set up, no library to import, no account to create. You just open a file and start writing.
+> easy-markdown is the tool markdown deserves. It opens any `.md` file your device can see — iCloud Drive, Dropbox, a Git repo, your desktop, a USB drive, anywhere — and lets you create files wherever you have access. No vault. No library. No import step. No artificial limitations. Full file system access, limited only by what your OS allows.
 >
 > **The interface is outrageously good.** Intelligent auto-formatting cleans up your markdown as you type — fixing list indentation, aligning tables, normalizing headings. A built-in document doctor catches broken links, inconsistent structure, and formatting issues before they become problems. Every animation, every gesture, every pixel has been considered. It's the kind of app you show other people because it feels that good to use.
 >
-> **Built-in AI that works instantly.** Ask it to improve a paragraph, generate a summary, fix grammar, translate a section, or continue your thought. Core AI features run right on your device — private, offline, and instant. For heavier tasks like long-document analysis, advanced translation, and generation, optional cloud-powered Pro AI delivers state-of-the-art results. You choose: local-only for maximum privacy, or Pro for maximum capability. Either way, the editor is extraordinary without spending another cent.
+> **Built-in AI that works instantly.** Ask it to improve a paragraph, generate a summary, fix grammar, translate a section, or continue your thought. Core AI features run right on your device — private, offline, and instant. For heavier tasks like long-document analysis, advanced translation, and generation, optional cloud-powered Pro AI delivers state-of-the-art results. You choose: local-only for maximum privacy, or Pro for maximum capability.
 >
-> "Cursor changed how developers write code. easy-markdown is doing the same for how everyone writes prose," said the easy-markdown team. "Your files shouldn't be held hostage by the app you edit them with. And writing them shouldn't feel like work."
+> **Markdown is the first-class format.** You write in markdown. You save in markdown. You share in markdown. But when you need to hand it to someone who doesn't live in markdown, easy-markdown renders it beautifully — print it, share it via the iOS share sheet, export a rendered PDF, or save the `.md` file to any location. No Word documents. No proprietary formats. Markdown in, markdown stored, beautifully rendered out when needed. This is the tool that makes markdown the primary format for unstructured data in the age of AI.
 >
-> easy-markdown launches first on iOS, with native macOS, Android, and desktop to follow. The app is a one-time purchase at $9.99 — no subscription required. Pro AI is an optional $3.99/month for users who want cloud-powered capabilities, and you can cancel anytime without losing any app functionality.
+> "In the age of AI, markdown is the universal interface between human thought and machine intelligence. easy-markdown is how you write for that world," said the easy-markdown team.
+>
+> easy-markdown launches first on iOS, with native macOS and Linux desktop to follow. The app is a one-time purchase at $9.99 — no subscription required. Pro AI is an optional $3.99/month for users who want cloud-powered capabilities, and you can cancel anytime without losing any app functionality.
 >
 > **Getting started is instant**: download, open a file, write. That's it.
 
@@ -48,7 +48,8 @@ This is the Amazon "working backwards" press release. It describes the product a
 | "Core AI features run right on your device" | On-device inference for core features (improve, summarize, continue). Must work offline with no account. | Architecture — Core ML / MLX for local inference |
 | "Optional cloud-powered Pro AI" | Pro tier uses cloud APIs for advanced capabilities. Requires explicit opt-in per-request or per-session. Only selected text is sent, never full documents silently. | Privacy architecture, server infrastructure, billing |
 | "The app is a one-time purchase… Pro AI is optional" | Base app is complete and excellent without Pro. Pro is a genuine enhancement, not a crippled free tier. | Pricing, feature gating, UX — no dark patterns |
-| "Launches first on iOS" | iOS is the first platform. Not web. Not macOS. | Platform sequencing |
+| "Markdown is the first-class format" | Markdown is the native format. We render, print, and share beautifully — but we never convert to proprietary formats (Word, Pages, etc.). PDF/print is a rendered view, not a conversion. | Format philosophy, export features |
+| "Launches first on iOS" | iOS is the first platform, then macOS, then Linux desktop. Not web. Not Windows-first. | Platform sequencing |
 | "One-time purchase" | Base app requires no server infrastructure. Pro AI requires a lightweight API relay and App Store subscription validation — minimal server footprint, no user data storage. | Architecture, business model |
 
 ### Why now
@@ -267,7 +268,8 @@ These are explicit decisions about what we will **not** build. They exist to pre
 | **Personal knowledge management** (graph views, backlinks, bidirectional links) | Obsidian owns this space. Competing here dilutes our focus and pulls us toward vault-based storage. | **[D-NO-1]** No PKM features. |
 | **Note-taking database** (tags DB, search index, metadata layer) | Requires a proprietary data layer, violating DP-1 and DP-6. | **[D-NO-2]** No database. Files are the source of truth. |
 | **Real-time collaboration** (co-editing, shared workspaces, comments) | Requires server infrastructure and accounts, violating the press release promise. | **[D-NO-3]** No collaboration. Personal tool only. |
-| **Publishing** (blog export, CMS integration, static site generation) | Out of scope. Write here, publish elsewhere. | **[D-NO-4]** No publishing features. |
+| **Publishing pipelines** (CMS integration, static site generation, blog deployment) | We render, print, and share markdown beautifully — but we don't build publishing pipelines. Write here, publish via your own tools. | **[D-NO-4]** No publishing pipelines. Render/print/share are in scope. |
+| **Proprietary document formats** (Word, Pages, Google Docs, RTF conversion) | Markdown is the format. We never convert to or from proprietary formats. PDF/print is a rendered view of markdown, not a format conversion. | **[D-NO-12]** No proprietary format import/export. |
 | **General-purpose code editing** (multi-language support, LSP, terminal) | We are a markdown editor, not an IDE. Developers have Cursor/VS Code. | **[D-NO-5]** Markdown-first. No general editing. |
 | **Plugin/extension system** | Complexity multiplier. Breaks UI quality guarantee. Obsidian already won this. | **[D-NO-6]** No plugins. No extension API. |
 | **Free tier or ad-supported model** | Misaligns incentives. We work for the user, not advertisers. | **[D-NO-7]** Paid only. |
@@ -320,7 +322,7 @@ All significant product and technical decisions are recorded here. Each decision
 
 | ID | Decision | Rationale | Alternatives considered |
 |----|----------|-----------|------------------------|
-| **D-PLAT-1** | Ship order: **iOS → macOS → Android → Windows/Linux**. | Primary user is in the Apple/iCloud ecosystem. iOS validates core thesis with smallest surface area. macOS follows because SwiftUI shares well. Android and desktop are Phase 3 based on demand. | macOS first (larger screen, but mobile-first validates simplicity); Web first (wide reach, but violates DP-4); All simultaneously (too much surface area). |
+| **D-PLAT-1** | Ship order: **iOS → macOS → Linux desktop → Android**. | iOS validates the core thesis mobile-first. macOS follows because SwiftUI shares well and our primary users are in the Apple ecosystem. Linux desktop is next because developers (our secondary persona) live on Linux and markdown is a developer-native format — this audience is underserved and vocal. Android follows based on demand. Windows is not a priority (developers on Windows increasingly use WSL/Linux). | macOS first (larger screen, but mobile-first validates simplicity); Web first (wide reach, but violates DP-4); Windows before Linux (rejected — our developer audience skews Linux). |
 | **D-PLAT-2** | **SwiftUI for all UI** on Apple platforms. Shared logic (parser, formatter, doctor, AI pipeline) in **Swift** with potential future extraction to cross-platform (Kotlin Multiplatform or Rust) when Android ships. | SwiftUI delivers native feel with significant iOS/macOS code sharing. Premature cross-platform adds complexity before validation. | UIKit (more mature but harder to share with macOS); Flutter (violates DP-4); React Native (violates DP-4); KMP from day one (premature). |
 | **D-PLAT-3** | **iOS 17+ minimum deployment target.** | iOS 17 has 90%+ adoption. Modern SwiftUI APIs, document-based app improvements, file provider enhancements. | iOS 16 (limits SwiftUI); iOS 18 (too restrictive). |
 
@@ -333,7 +335,7 @@ All significant product and technical decisions are recorded here. Each decision
 | **D-FILE-3** | **Line endings: preserve on read, default to LF on create.** | Preserving line endings prevents unnecessary diffs in version-controlled files. | Normalize to LF (breaks Git diffs for CRLF files); Platform default (inconsistent). |
 | **D-FILE-4** | **Large files: 1MB soft limit with dismissable warning. No hard limit.** | Most markdown <100KB. Warning protects against accidental opens; no hard limit respects user agency. | Hard limit (too restrictive); No limit (UI freeze risk). |
 | **D-FILE-5** | **File conflict: last-write-wins with notification.** External changes detected → user chooses reload or keep. | User agency beats automatic merging. | Auto-reload (loses edits); Merge (too complex); Ignore (loses awareness). |
-| **D-FILE-6** | **Supported extensions: `.md`, `.markdown`, `.mdown`, `.mkd`, `.mkdn`, `.mdx`, `.txt` (opt-in).** | Cover all common markdown extensions. `.txt` opt-in because ambiguous. | `.md` only (too restrictive); All text files (too broad). |
+| **D-FILE-6** | **Open ANY text file. No extension restrictions.** Default file browser filters to markdown extensions (`.md`, `.markdown`, `.mdown`, `.mkd`, `.mkdn`, `.mdx`), but user can switch to "All Files" and open anything text-based. `.txt`, `.rst`, `.adoc`, `.csv`, config files — if it's UTF-8 text, we open it. Markdown-specific features (rendering, doctor, auto-format) activate only for markdown extensions. Other text files open in a clean source-editing mode. | Our principle is no artificial limitations. If the OS lets you access it and it's text, we open it. Restricting to `.md` only means users can't use easy-markdown as their go-to text editor. | `.md` only (too restrictive, artificial limitation); All files including binary (would show garbage for non-text). |
 
 ### Business
 
@@ -648,13 +650,15 @@ In-document search and replace.
 - Case-sensitive toggle
 - **Acceptance**: User searches for a regex pattern in a 500-line document. All matches highlighted. Replace-all correctly substitutes all occurrences.
 
-#### F-013: Export
-Export to PDF and HTML.
+#### F-013: Render, Print, and Share
+Share markdown with the world — rendered beautifully, printed cleanly, or shared as the `.md` file itself.
 
-- PDF: uses rendered rich text layout, matches in-editor appearance including custom typography
-- HTML: clean, standalone with inline CSS
-- Share sheet integration for exported file
-- **Acceptance**: User exports a document with headings, lists, code blocks, and images to PDF. Result looks like a polished document, not a browser print.
+- **Share as markdown**: Share the `.md` file via iOS share sheet to any app, AirDrop, email, Messages, etc.
+- **Save to new location**: Save/copy the `.md` file to a different directory, cloud drive, or external storage
+- **Print**: Print the rendered rich text view directly (matches in-editor appearance with custom typography)
+- **Rendered PDF**: Export a beautifully rendered PDF of the document (same quality as print, for sharing with non-markdown users)
+- **No proprietary formats**: No Word, Pages, RTF, or Google Docs export. PDF is a rendered view, not a format conversion.
+- **Acceptance**: User shares a `.md` file via AirDrop to a colleague. User prints a document and the output matches the in-editor rich text appearance. User exports a PDF that looks polished, not like a browser print.
 
 #### F-014: Custom Themes and Fonts
 User-selectable visual themes and typeface options.
@@ -901,7 +905,7 @@ Each phase has explicit exit criteria — conditions that must be true before we
 | **Notion** | Free/$8+/mo | All | Proprietary | Good | Cloud AI | Open files. No subscription. Local/private AI. |
 | **Cursor/VS Code** | Free/$20/mo | Desktop | Open files | Dev-focused | Cloud AI | Purpose-built for prose. Mobile. Native. Private AI. Complementary, not competitive. |
 
-**Strategic position**: The only editor combining open file access, local-first AI (with optional cloud upgrade), exceptional UI, native cross-platform apps, and a one-time fair price.
+**Strategic position**: The definitive markdown editor for the AI age. The only tool that treats markdown as the primary format for unstructured data — not a stepping stone to PDF or Word — combined with open file access, local-first AI, exceptional native UI, and a one-time fair price. We don't just edit markdown — we make the case that markdown is all you need.
 
 **Competitive moat**: Three reinforcing advantages that are hard to replicate:
 1. **Local-first AI + optional cloud** — the only editor with high-quality AI that works offline. Competitors either have no AI, or require cloud-only. Our hybrid model (local for privacy/speed, cloud for power) is the best of both worlds and hard to retrofit.
@@ -1043,7 +1047,7 @@ These are the growth levers that take us from "great indie app" to "the default"
 | D-AI-7 | Pro AI uses best-available cloud API (initially Anthropic/equivalent) | §6 |
 | D-AI-8 | Pro AI: only selected text sent, no retention by provider | §6 |
 | D-AI-9 | AI model downloaded separately, on-demand, Wi-Fi default | §6 |
-| D-PLAT-1 | Ship order: iOS → macOS → Android → desktop | §6 |
+| D-PLAT-1 | Ship order: iOS → macOS → Linux → Android | §6 |
 | D-PLAT-2 | SwiftUI for Apple UI, Swift core logic | §6 |
 | D-PLAT-3 | iOS 17+ minimum | §6 |
 | D-FILE-1 | No vault/library/proprietary file store | §6 |
@@ -1051,7 +1055,7 @@ These are the growth levers that take us from "great indie app" to "the default"
 | D-FILE-3 | Preserve line endings, default LF | §6 |
 | D-FILE-4 | 1MB soft limit with warning | §6 |
 | D-FILE-5 | Last-write-wins with notification on conflict | §6 |
-| D-FILE-6 | Supported extensions list | §6 |
+| D-FILE-6 | Open any text file, no extension restrictions | §6 |
 | D-BIZ-1 | One-time app purchase; subscription only for cloud AI compute | §6 |
 | D-BIZ-2 | App $9.99 one-time; Pro AI $3.99/mo | §6 |
 | D-BIZ-3 | Paid major version upgrades | §6 |
@@ -1083,4 +1087,4 @@ These are the growth levers that take us from "great indie app" to "the default"
 | D-USER-4 | Global audience, i18n from day one | §3 |
 | D-SCOPE-1 | No plugin/extension system | §2 |
 | D-BIZ-5 | Pro AI positioned as enhancement, no dark patterns | §11 |
-| D-NO-1 – D-NO-11 | Non-goals | §5 |
+| D-NO-1 – D-NO-12 | Non-goals | §5 |

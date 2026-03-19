@@ -1,0 +1,1118 @@
+{
+  "description": "Feature backlog",
+  "items": [
+    {
+      "id": "FEAT-001",
+      "title": "F-001: Open File",
+      "intent": "Users must be able to open any markdown file from any location via the system file picker — no vault, no import, no friction",
+      "description": "Open any text file via UIDocumentPickerViewController. Default filter shows markdown extensions but user can switch to All Files. UTF-8 only (D-FILE-2). Error on non-UTF-8. Warning on >1MB. Editable immediately. Markdown features activate for markdown extensions; other text files open in source-editing mode. File open to editing ready <500ms for <100KB files.",
+      "priority": "must",
+      "category": "File Management",
+      "steps": [],
+      "acceptanceCriteria": [
+        "User opens a .md file from iCloud Drive, edits it, and the edit is saved back to the same file in place",
+        "Non-UTF-8 file shows error without crashing or corrupting",
+        "File >1MB shows dismissable warning",
+        "VoiceOver announces file opened with filename",
+        "Security-scoped bookmark persists — file reopens on next launch without re-picking",
+        "Opening a file already open in another editor window shows that window instead of duplicating",
+        "File provider going offline mid-session preserves in-memory content and shows non-modal error",
+        "User can open a .txt, .rst, or config file — it opens in source editing mode without markdown rendering"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true
+    },
+    {
+      "id": "FEAT-002",
+      "title": "F-002: Create File",
+      "intent": "Users must be able to create new markdown files anywhere they have write access — no app-specific folders, no restrictions",
+      "description": "Create new .md file via system file picker save dialog. LF line endings. Default filename Untitled.md. File immediately opened for editing after creation.",
+      "priority": "must",
+      "category": "File Management",
+      "steps": [],
+      "acceptanceCriteria": [
+        "User creates a new .md file in any accessible location and begins writing immediately",
+        "New file uses LF line endings",
+        "Default filename is Untitled.md, user can rename in picker",
+        "User cancels save picker and returns to previous state with no side effects",
+        "Write failure (disk full, permissions) shows error with no corrupt or empty file left behind",
+        "Creating a file with an existing name at that location prompts for overwrite or rename"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true
+    },
+    {
+      "id": "FEAT-003",
+      "title": "F-003a: Rich Text Rendering (Core)",
+      "intent": "Core markdown-to-styled-text rendering: headings, bold, italic, lists, blockquotes, code spans. The foundation that makes writing feel beautiful. Tables, images, interactive elements, and source toggle are separate items.",
+      "description": "Depends on: FEAT-038 (Parser), FEAT-039 (Text Engine). Render AST nodes as attributed text: 6 heading levels, bold/italic/strikethrough inline, ordered/unordered lists with indentation, blockquotes with left border, code spans with monospace+background, horizontal rules, paragraph spacing. Performance: <16ms render, 120fps scroll. Malformed markdown renders best-effort.",
+      "priority": "must",
+      "category": "Editor",
+      "steps": [],
+      "acceptanceCriteria": [
+        "User writes markdown and sees styled output in real time",
+        "Toggling to source shows valid markdown, round-trip preserves content perfectly",
+        "CJK, RTL text, accented characters, and emoji render and edit correctly",
+        "VoiceOver navigates document structure semantically",
+        "Dynamic Type scales editor content",
+        "All 6 heading levels render at distinct sizes and weights",
+        "Bold, italic, strikethrough render inline with syntax chars hidden in rich view",
+        "Nested lists render with correct indentation up to 4 levels",
+        "Keystroke-to-render under 16ms measured via Instruments on iPhone 15",
+        "5000-line doc scrolls at 120fps on ProMotion with zero dropped frames",
+        "Malformed markdown renders best-effort without crash or blank screen"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true
+    },
+    {
+      "id": "FEAT-004",
+      "title": "F-004a: Auto-Format Lists",
+      "intent": "List auto-formatting is the first-keystroke wow moment — Enter continues the list, renumbering just works, indentation is always correct.",
+      "description": "Depends on: FEAT-039 (Text Engine), FEAT-038 (Parser). Enter in list item continues with correct marker and indentation. Enter on empty list item ends the list. Ordered lists auto-renumber on add/remove/reorder. Nested lists auto-correct to 2 or 4 spaces (configurable in settings). Tab/Shift-Tab indent/outdent list items. Haptic feedback on continuation. Each operation is discrete undo step. Does NOT fire inside code blocks.",
+      "priority": "must",
+      "category": "Editor",
+      "steps": [],
+      "acceptanceCriteria": [
+        "User types a list item and presses Enter — list continues with correct marker and indentation",
+        "Ordered lists auto-renumber when items added/removed/reordered",
+        "Table columns auto-align as user types, Tab moves between cells",
+        "Each auto-format action is independently undoable with Cmd+Z",
+        "Haptic feedback confirms list auto-continuation",
+        "Enter on empty list item ends the list and removes the empty marker",
+        "Auto-format does NOT fire inside fenced code blocks",
+        "Tab indents a list item one level, Shift-Tab outdents",
+        "Performance: auto-format completes within same frame as keystroke on a 500-item list"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true
+    },
+    {
+      "id": "FEAT-005",
+      "title": "F-005: Document Doctor",
+      "intent": "The editor must proactively catch structural issues in markdown files — broken links, heading hierarchy, formatting problems — without interrupting the writing flow",
+      "description": "Background analysis with inline indicators. MVP rules: broken relative links, heading hierarchy skips, duplicate headings, trailing whitespace, missing blank lines between blocks. Subtle underline/margin indicators (shape+color, not color alone). Tap for popover with Fix/Dismiss. Per-file per-session dismissals. Non-blocking. Haptic on fix. Evaluates within 1s of open, re-evaluates within 500ms after edits pause.",
+      "priority": "must",
+      "category": "Editor",
+      "steps": [],
+      "acceptanceCriteria": [
+        "Doctor indicators appear within 1 second of opening a file with structural issues",
+        "User taps indicator, sees suggestion, can accept fix or dismiss",
+        "Dismissals persist for the session but not across file closes",
+        "Doctor never prevents writing or saving",
+        "VoiceOver announces each issue when navigating to indicators",
+        "Doctor does not flag valid but unusual markdown as an issue (low false positive rate)",
+        "Doctor runs in both rich text and source view",
+        "Doctor evaluates a 3000-line document within 2 seconds"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true
+    },
+    {
+      "id": "FEAT-006",
+      "title": "F-006: Syntax Highlighting",
+      "intent": "Code blocks must look good — syntax highlighting makes markdown files with code feel professional and readable",
+      "description": "Fenced code blocks with language detection from info string. Min languages: Python, JS/TS, Swift, Go, Rust, HTML/CSS, JSON, YAML, SQL, Bash, Ruby, Java, Kotlin, C/C++, PHP. Monospace font, background differentiation. Editable inline. Colors adapt to dark/light theme.",
+      "priority": "must",
+      "category": "Editor",
+      "steps": [],
+      "acceptanceCriteria": [
+        "User writes a fenced code block with a language tag — code is syntax-highlighted correctly",
+        "Highlighting adapts correctly in both light and dark modes",
+        "Unknown or unsupported language tag falls back to plain monospace, no broken rendering",
+        "Empty code block renders correctly with background but no content",
+        "Code block inside a blockquote renders with both blockquote border and code background"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true
+    },
+    {
+      "id": "FEAT-007",
+      "title": "F-007: Dark and Light Mode",
+      "intent": "The app must look intentionally designed in both dark and light modes — not just inverted colors, but a considered palette for each",
+      "description": "Defaults to system preference. User can override to always-light or always-dark. All UI elements, editor chrome, rendered markdown, and syntax highlighting adapt. All themes meet WCAG AA contrast ratios. Theme transitions animated (crossfade 200ms) with Reduced Motion alternative (instant switch).",
+      "priority": "must",
+      "category": "Appearance",
+      "steps": [],
+      "acceptanceCriteria": [
+        "Toggling iOS dark mode causes the app to switch immediately",
+        "All text, backgrounds, and UI elements are legible and intentionally designed in both modes",
+        "Contrast ratios meet WCAG AA in both modes",
+        "Theme override preference persists across app updates",
+        "Dynamic theme switch during editing causes no text loss, no cursor jump"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true
+    },
+    {
+      "id": "FEAT-008",
+      "title": "F-008: Auto-Save",
+      "intent": "Users must never lose work — saving is automatic, continuous, and invisible",
+      "description": "Save triggers: 1s after last keystroke (debounced), on app background, on file close. Uses file coordination APIs. No save button/indicator/confirmation. Non-modal error with retry on failure. Subtle haptic pulse on background save.",
+      "priority": "must",
+      "category": "File Management",
+      "steps": [],
+      "acceptanceCriteria": [
+        "User edits a file, switches to another app, switches back — all changes preserved",
+        "User force-quits the app — content saved up to last debounce is preserved",
+        "Save failure shows non-modal error with retry option",
+        "External file change during editing triggers conflict detection (FEAT-045)",
+        "Auto-save on a 500KB file completes within 100ms with no perceptible input lag",
+        "Disk full during save shows non-modal error and retains in-memory content"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true
+    },
+    {
+      "id": "FEAT-009",
+      "title": "F-009: Keyboard Support",
+      "intent": "iPad with external keyboard must be a first-class writing experience — every action reachable without touching the screen",
+      "description": "Text editing: Cmd+B/I/K, Cmd+Shift+K. Navigation: Cmd+Up/Down, Option+arrows, Cmd+arrows. App: Cmd+O/N/W, Cmd+Shift+P (source toggle). AI: Cmd+J. Cmd-hold shows shortcut overlay.",
+      "priority": "must",
+      "category": "Input",
+      "steps": [],
+      "acceptanceCriteria": [
+        "User with external keyboard performs all common editing, navigation, and AI tasks without touching the screen",
+        "Cmd-hold shows keyboard shortcut overlay",
+        "All 15+ documented shortcuts (Cmd+B/I/K, Cmd+O/N/W, Cmd+J, Cmd+Shift+P, etc.) work in both rich and source view",
+        "No shortcuts conflict with iOS system shortcuts",
+        "Cmd-hold overlay lists ALL registered shortcuts organized by category"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true
+    },
+    {
+      "id": "FEAT-010",
+      "title": "F-010: Typography and Layout",
+      "intent": "Typography is our silent differentiator — the rendered markdown must be so beautiful that users notice it subconsciously and can never go back to other editors",
+      "description": "Custom typefaces for editor and UI chrome. Line height, paragraph spacing, margins optimized per device class. Responsive layout adapts to screen size. Max content width on large screens (~70-80 chars). Respects Dynamic Type.",
+      "priority": "must",
+      "category": "Appearance",
+      "steps": [],
+      "acceptanceCriteria": [
+        "Designer reviews rendered markdown on iPhone SE, iPhone 15 Pro Max, iPad Mini, and iPad Pro — all feel intentionally designed",
+        "Dynamic Type at default and large sizes renders correctly on all device classes",
+        "Content width is 65-80 characters on iPad landscape and external displays",
+        "Line height is 1.5-1.7x font size, paragraph spacing is at least 0.5x line height",
+        "Minimum margins: 16pt on iPhone, 32pt on iPad",
+        "Custom typeface renders correctly for Latin, CJK, Arabic, and Devanagari scripts",
+        "Extreme Dynamic Type accessibility sizes render without clipping or text overlap"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true
+    },
+    {
+      "id": "FEAT-011",
+      "title": "F-025a: AI Improve Writing",
+      "intent": "Select text, tap Improve, get a better version. This is the primary AI interaction and the one we demo to sell the product.",
+      "description": "Depends on: FEAT-041 (AI Model Pipeline), FEAT-054 (AI Action Bar). Select text, see Improve in floating action bar, tap it. AI produces improved version with grammar, clarity, and conciseness fixes. Shows inline diff preview: original with strikethrough, suggestion in green. User taps Accept (text replaced, haptic), edits suggestion, or dismisses. Undoable with Cmd+Z. Streams progressively. First token <500ms, full response <3s. Works offline.",
+      "priority": "must",
+      "category": "AI",
+      "steps": [],
+      "acceptanceCriteria": [
+        "User selects a paragraph, taps Improve, sees inline diff within 3 seconds, accepts with one tap",
+        "AI works in airplane mode with no network connection",
+        "AI works on iPhone 15 and does not appear on iPhone 14",
+        "Ghost text continuation appears after 3s pause, Tab accepts, typing dismisses",
+        "All AI actions are undoable with Cmd+Z",
+        "VoiceOver announces AI suggestion available when ghost text appears",
+        "Inline diff preview shows original and suggestion clearly distinguishable",
+        "Accept replaces text and triggers haptic confirmation",
+        "Dismissing returns to original text with no modifications",
+        "AI output streams token-by-token into the diff preview"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true
+    },
+    {
+      "id": "FEAT-012",
+      "title": "F-033: Word Count and Document Stats",
+      "intent": "Writers need to see their progress at a glance — word count and reading time must be always visible without being intrusive",
+      "description": "Compact status bar at bottom: word count, character count (with/without spaces), estimated reading time. Updates in real time. Tap to expand: paragraph count, sentence count, Flesch-Kincaid readability. Selection-aware: shows selection count alongside total.",
+      "priority": "must",
+      "category": "Editor",
+      "steps": [],
+      "acceptanceCriteria": [
+        "User sees word count and reading time in status bar at all times while writing",
+        "Selecting text updates stats to show selection count alongside total",
+        "VoiceOver can read current word count and reading time via status bar",
+        "Word count updates cause no perceptible input lag (under 1ms overhead per keystroke)",
+        "CJK text word count uses appropriate segmentation (not space-delimited)",
+        "Status bar does not overlap editor content on iPhone SE screen size"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true
+    },
+    {
+      "id": "FEAT-013",
+      "title": "F-034: Spell Check",
+      "intent": "Spell check is table stakes for any writing tool — it must work out of the box using the system spell checker",
+      "description": "Uses UITextChecker (iOS) / NSSpellChecker (macOS). Red underline on misspelled words. Tap/right-click for correction suggestions. Respects system language and custom dictionary. Coexists with document doctor indicators without visual conflict. Works in both rich text and source view. On by default, toggleable.",
+      "priority": "must",
+      "category": "Editor",
+      "steps": [],
+      "acceptanceCriteria": [
+        "User types a misspelled word — red underline appears",
+        "Tapping the underlined word shows correction suggestions",
+        "Spell check works in both rich text and source view",
+        "Spell check and doctor indicators do not visually conflict",
+        "Spell check does NOT flag words inside code blocks, code spans, or URLs",
+        "Spell check works for the users system language, not just English",
+        "Custom dictionary additions persist across app launches"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true
+    },
+    {
+      "id": "FEAT-014",
+      "title": "F-035: The Render (Signature Transition)",
+      "intent": "The source-to-rich transition is our brand — a designed animation that makes people say 'whoa' and toggle it just to watch. This is the show-someone moment.",
+      "description": "When opening a file or toggling source to rich: # markers shrink as headings scale up, ** dissolves as text boldfaces, list markers morph into styled bullets, code fences fade as blocks materialize, links compact to styled form, blockquote markers become visual borders. ~400ms spring-animated. Reverse plays on rich-to-source. Reduced Motion: instant crossfade 200ms. Uses Core Animation for guaranteed 120fps on ProMotion. VoiceOver unaffected — announces rendered content immediately.",
+      "priority": "must",
+      "category": "Appearance",
+      "steps": [],
+      "acceptanceCriteria": [
+        "Non-technical observer watching over the shoulder finds the transition visually striking",
+        "Animation runs at 120fps on ProMotion devices with no dropped frames",
+        "Reduced Motion setting triggers instant crossfade instead",
+        "User toggles source/rich multiple times because the animation is delightful",
+        "Animation duration is 350-450ms using spring curve with damping 0.8 and response 0.4",
+        "Every element type has an interpolated transition (no elements pop in or out)",
+        "Reverse animation rich-to-source plays at equal quality to forward",
+        "Toggle latency (tap to first animation frame) under 50ms",
+        "Works correctly on empty document and on 1-line document",
+        "Rapid toggle (tap 5 times quickly) does not crash or produce glitched state"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true
+    },
+    {
+      "id": "FEAT-015",
+      "title": "F-036a: iPad Multi-Window and Stage Manager",
+      "intent": "iPad multi-window is what makes easy-markdown a serious writing tool — two documents side by side, or easy-markdown next to Safari for research",
+      "description": "Depends on: FEAT-037 (App Shell). Full Stage Manager support: resizable windows, multiple instances. UIScene-based lifecycle. Each window is an independent editor with its own file. Memory managed across windows. Minimum iPad: iPad Air 4th gen (M1 for Stage Manager, but basic multi-window on older iPads via Split View).",
+      "priority": "must",
+      "category": "Platform",
+      "steps": [],
+      "acceptanceCriteria": [
+        "iPad Pro user with Magic Keyboard and external display uses easy-markdown as primary writing environment for a full day",
+        "Stage Manager multi-window works with two easy-markdown documents side by side",
+        "Split View at 1/3, 1/2, and 2/3 widths reflows content gracefully",
+        "Trackpad hover states appear on doctor indicators, AI action bar, and toolbar buttons",
+        "Two easy-markdown windows open side by side in Stage Manager with independent files",
+        "No crashes or memory warnings during 2-hour session with 2 windows open",
+        "Closing one window does not affect the other"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true
+    },
+    {
+      "id": "FEAT-016",
+      "title": "F-011: Quick Open",
+      "intent": "Power users need instant file switching — fuzzy find across recent files must be faster than the system file picker",
+      "description": "Cmd+P or swipe gesture to invoke. Searches recent files and bookmarked directories. Fuzzy matching on filename and path. Results ranked by recency and match quality. Results within 200ms of typing 3 characters.",
+      "priority": "should",
+      "category": "File Management",
+      "steps": [],
+      "acceptanceCriteria": [
+        "User presses Cmd+P, types 3 characters, correct file appears in top 3 results within 200ms",
+        "Empty state (no recent files) shows a helpful message, not a blank screen",
+        "Recents entry for deleted/inaccessible file is excluded from results"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true
+    },
+    {
+      "id": "FEAT-017",
+      "title": "F-012: Find and Replace",
+      "intent": "In-document search and replace is essential for editing longer documents — must support regex for power users",
+      "description": "Cmd+F to invoke find bar. Plain text and regex modes. Match highlighting in document. Replace one / replace all. Case-sensitive toggle.",
+      "priority": "should",
+      "category": "Editor",
+      "steps": [],
+      "acceptanceCriteria": [
+        "User searches for a regex pattern in a 500-line document — all matches highlighted",
+        "Replace-all correctly substitutes all occurrences",
+        "Replace-all is a single undo step",
+        "Search in a 5000-line document returns results within 200ms",
+        "Invalid regex shows a clear error message, does not crash"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true
+    },
+    {
+      "id": "FEAT-018",
+      "title": "F-013: Render, Print, and Share",
+      "intent": "Share markdown with the world — as a .md file via share sheet, as a beautiful print, or as a rendered PDF. Markdown is the primary format; rendering is for handoff to non-markdown users.",
+      "description": "Share as markdown: iOS share sheet for .md file (AirDrop, email, Messages, any app). Save to new location: copy .md to different directory/cloud/external storage. Print: rendered rich text matching in-editor appearance. Rendered PDF: polished PDF for sharing with non-markdown users. No Word, Pages, RTF, or proprietary format export (D-NO-12).",
+      "priority": "should",
+      "category": "File Management",
+      "steps": [],
+      "acceptanceCriteria": [
+        "User exports a document with headings, lists, code blocks, and images to PDF — result looks like a polished document",
+        "HTML export produces clean standalone file with inline CSS",
+        "PDF export includes images from relative paths",
+        "Share sheet opens for the exported file",
+        "User shares .md file via AirDrop to a colleague",
+        "User prints document and output matches in-editor rich text appearance",
+        "Rendered PDF includes images and code blocks with syntax highlighting",
+        "No proprietary format options appear anywhere in the export flow"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true
+    },
+    {
+      "id": "FEAT-019",
+      "title": "F-014: Custom Themes and Fonts",
+      "intent": "Personalization deepens attachment to the tool — users should be able to make easy-markdown feel like theirs",
+      "description": "3-5 built-in color themes with light and dark variants each. Font selection from curated list (we control quality). Font size adjustment. Theme preview before committing. Settings persist via UserDefaults. All themes meet WCAG AA contrast ratios.",
+      "priority": "should",
+      "category": "Appearance",
+      "steps": [],
+      "acceptanceCriteria": [
+        "User selects a different theme and font — entire editor updates immediately",
+        "Selection persists across app launches",
+        "All themes pass WCAG AA contrast check"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true
+    },
+    {
+      "id": "FEAT-020",
+      "title": "F-015: Image Handling",
+      "intent": "Working with images in markdown should be effortless — drag, drop, done",
+      "description": "Drop/paste image into editor prompts for save location, inserts relative path markdown. Images rendered inline in rich text mode. Broken image paths shown with placeholder and doctor warning (F-005).",
+      "priority": "should",
+      "category": "Editor",
+      "steps": [],
+      "acceptanceCriteria": [
+        "User drags image into editor — saved to chosen location, relative markdown link inserted, renders inline",
+        "Broken image paths show placeholder with doctor warning",
+        "Pasting an image from clipboard prompts for save location and inserts relative path",
+        "Very large image (10MB+) shows progress during save, does not freeze the editor"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true
+    },
+    {
+      "id": "FEAT-021",
+      "title": "F-016: macOS App",
+      "intent": "macOS must feel like a native Mac app — not a port. Mac users are discerning and will reject anything that feels like iOS on a bigger screen.",
+      "description": "Native macOS window management (tabs, split view, full screen). Menu bar with complete keyboard shortcut coverage. Drag-and-drop file opening. Services menu integration. Finder Quick Look preview for .md files. Touch Bar support if applicable.",
+      "priority": "should",
+      "category": "Platform",
+      "steps": [],
+      "acceptanceCriteria": [
+        "macOS app passes Apple HIG review",
+        "A Mac-native user would not guess it was ported from iOS",
+        "Quick Look preview works for .md files in Finder",
+        "Uses NSWindow, not UIWindow via Catalyst",
+        "Menu bar has standard File/Edit/View/Format/Window/Help menus",
+        "Cmd+comma opens preferences, Cmd+Q quits",
+        "Right-click context menu matches system style and includes AI actions on selected text"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true
+    },
+    {
+      "id": "FEAT-022",
+      "title": "F-017: Extended Document Doctor",
+      "intent": "Deepen writing intelligence beyond structural checks — help users write better prose, not just better markdown",
+      "description": "Readability scoring (Flesch-Kincaid or similar) in status bar. Writing goals: user sets target word count, progress shown visually. Prose suggestions (opt-in): flag very long sentences, passive voice, repeated words.",
+      "priority": "should",
+      "category": "Editor",
+      "steps": [],
+      "acceptanceCriteria": [
+        "User enables prose suggestions — doctor flags a 60-word sentence with suggestion to break it up",
+        "User can accept suggestion (cursor positioned for edit) or dismiss",
+        "Writing goal progress is shown visually as user approaches target word count"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true
+    },
+    {
+      "id": "FEAT-023",
+      "title": "F-026: AI — Tone and Style Adjustment (Pro AI)",
+      "intent": "Users need to adapt their writing tone for different audiences — Pro AI delivers quality tone shifts that exceed local model capability",
+      "description": "Select text, adjust tone: more formal, more casual, more technical, simpler. 4 preset tone adjustments + custom instruction option. Same inline diff preview as F-025. Appears in floating action bar with Pro badge. Non-subscribers see tasteful upgrade prompt. Only selected text sent to cloud per D-AI-8.",
+      "priority": "should",
+      "category": "AI",
+      "steps": [],
+      "acceptanceCriteria": [
+        "Pro subscriber selects casual paragraph, taps More Formal, sees rewritten version within 3 seconds, accepts with one tap",
+        "Non-subscriber sees a non-intrusive explanation of Pro AI with subscribe option",
+        "Only selected text is sent to cloud API",
+        "Cloud API timeout after 10 seconds shows error and suggests using local AI Improve instead",
+        "Malformed API response does not crash — shows generic error and preserves original text"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true
+    },
+    {
+      "id": "FEAT-024",
+      "title": "F-027: AI — Translation (Pro AI)",
+      "intent": "Translation is a killer Pro AI feature — select text, pick a language, get an inline preview. Must work across 20+ languages.",
+      "description": "Select text, translate to another language. Cloud-powered for quality across 20+ languages: EN, ES, FR, DE, ZH, JA, KO, PT, IT, RU, AR, HI, NL, SV, PL, DA, NO, FI, TR, TH. Translation appears as inline replacement preview. Original recoverable via undo. Only selected text sent per D-AI-8.",
+      "priority": "should",
+      "category": "AI",
+      "steps": [],
+      "acceptanceCriteria": [
+        "Pro subscriber selects English paragraph, taps Translate to Spanish, translated text appears as preview within 3 seconds",
+        "Undo restores original English text",
+        "Only selected text is sent to cloud API",
+        "Cloud API failure mid-translation shows partial result with option to retry or cancel",
+        "Very long selection (5000+ words) shows warning about processing time"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true
+    },
+    {
+      "id": "FEAT-025",
+      "title": "F-028: AI — Smart Completions (Local AI)",
+      "intent": "Context-aware autocomplete should understand markdown structure — suggest table layouts, list continuations, and patterns, not just words",
+      "description": "Completes markdown structures: table header suggests column layout, list suggests next items based on pattern. Completes front matter patterns if present (read-only per DP-6). Ghost text, Tab to accept. On-device, works offline. Same device floor as F-025: iPhone 15 / M1 Mac minimum.",
+      "priority": "should",
+      "category": "AI",
+      "steps": [],
+      "acceptanceCriteria": [
+        "User types table header row and presses Enter — AI suggests separator row and first data row",
+        "User Tabs to accept ghost text suggestion",
+        "Works offline on supported devices, not available on older devices"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true
+    },
+    {
+      "id": "FEAT-026",
+      "title": "F-018: Android App",
+      "intent": "Expand to Android to serve the broader market — must be native Kotlin, not a lowest-common-denominator port",
+      "description": "Native Android app using Kotlin with native UI. Shared logic via KMP or Rust. Must feel native to Android — Material Design, Android navigation patterns, system file picker integration.",
+      "priority": "future",
+      "category": "Platform",
+      "steps": [],
+      "acceptanceCriteria": [
+        "Android app feels native — an Android user would not guess it was ported from iOS",
+        "Opens any .md file via Android file picker",
+        "Local AI works on supported Android devices"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": false
+    },
+    {
+      "id": "FEAT-027",
+      "title": "F-019: Linux Desktop App",
+      "intent": "Linux developers are our people — they write markdown daily, they value open formats, and they are completely underserved by native markdown editors",
+      "description": "Native Linux desktop app. Tech approach: evaluate GTK4 with Rust or Kotlin Multiplatform. Shared logic (parser, formatter, AI) from Swift codebase via Rust bridge or rewrite. Must feel native to Linux — follows GNOME HIG or provides distro-appropriate theming. Full file system access. Local AI via llama.cpp or ONNX Runtime (no Core ML on Linux).",
+      "priority": "future",
+      "category": "Platform",
+      "steps": [],
+      "acceptanceCriteria": [
+        "App feels native on Windows and Linux respectively",
+        "Opens any .md file via native file picker",
+        "App launches and runs natively on Ubuntu 24.04 and Fedora 40",
+        "Opens any text file via native file dialog",
+        "Local AI runs on Linux with NVIDIA or AMD GPU"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": false
+    },
+    {
+      "id": "FEAT-028",
+      "title": "F-020: Folder Browsing Sidebar",
+      "intent": "Opt-in convenience for users who work within a project folder — never required, never a vault",
+      "description": "Optional sidebar showing contents of a bookmarked directory. Not a vault — just a file browser convenience. Opt-in, not shown by default. User can bookmark multiple directories. Never required for any workflow.",
+      "priority": "future",
+      "category": "File Management",
+      "steps": [],
+      "acceptanceCriteria": [
+        "User bookmarks a folder and sees its .md files in a sidebar",
+        "Sidebar is opt-in, not shown by default",
+        "All workflows work without the sidebar"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": false
+    },
+    {
+      "id": "FEAT-029",
+      "title": "F-021: Snippet/Template System",
+      "intent": "Let users insert predefined markdown structures quickly — meeting notes, blog post scaffolds, table templates",
+      "description": "Insert predefined markdown structures from a template library. Ship with a few built-in templates. Users can create custom snippets. Invoked via command palette or keyboard shortcut.",
+      "priority": "future",
+      "category": "Editor",
+      "steps": [],
+      "acceptanceCriteria": [
+        "User invokes snippet picker and inserts a predefined markdown structure",
+        "User can create and save custom snippets"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": false
+    },
+    {
+      "id": "FEAT-030",
+      "title": "F-022: Extended Syntax Rendering",
+      "intent": "Users encounter Mermaid diagrams, math blocks, and footnotes in existing files — we should render them even if we do not generate them",
+      "description": "Render-only support (per D-MD-2) for: Mermaid diagrams, KaTeX/LaTeX math blocks, footnotes. We render these when present in files but never generate or auto-format them. No proprietary syntax.",
+      "priority": "future",
+      "category": "Editor",
+      "steps": [],
+      "acceptanceCriteria": [
+        "User opens a file containing a Mermaid diagram — it renders as a visual diagram",
+        "KaTeX math blocks render as formatted equations",
+        "Editor never generates these syntaxes, only renders them"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": false
+    },
+    {
+      "id": "FEAT-031",
+      "title": "F-023: Shortcuts/Siri Integration",
+      "intent": "Deep Apple platform integration — let users create new notes, open recent files, and trigger actions via Shortcuts and Siri",
+      "description": "iOS Shortcuts integration: create new file, open recent file, open specific file. Siri: voice commands for common actions. Requires iOS/macOS apps to be shipped and stable first.",
+      "priority": "future",
+      "category": "Platform",
+      "steps": [],
+      "acceptanceCriteria": [
+        "User creates a Shortcut that opens a specific .md file in easy-markdown",
+        "Siri can create a new markdown file via voice command"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": false
+    },
+    {
+      "id": "FEAT-032",
+      "title": "F-024: Quick Capture Widget",
+      "intent": "Capture a thought instantly from the home screen without opening the app — lowest friction path to a new note",
+      "description": "iOS home screen widget for quick capture. Tap to create a new markdown file and start typing immediately. Requires iOS app to be shipped and stable.",
+      "priority": "future",
+      "category": "Platform",
+      "steps": [],
+      "acceptanceCriteria": [
+        "User taps home screen widget and is editing a new markdown file within 2 seconds",
+        "Widget works without the app being open in the foreground"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": false
+    },
+    {
+      "id": "FEAT-033",
+      "title": "F-029: AI — Generate from Prompt (Pro AI)",
+      "intent": "Let users describe what they want and have AI generate the markdown — README scaffolds, comparison tables, outlines",
+      "description": "Cloud-powered Pro AI feature. User types a prompt like 'write a README for a React component library' or 'create a table comparing AWS vs GCP storage'. AI generates markdown inserted at cursor. Inline preview before accepting.",
+      "priority": "future",
+      "category": "AI",
+      "steps": [],
+      "acceptanceCriteria": [
+        "User types a generation prompt and receives structured markdown output within 5 seconds",
+        "Generated content appears as preview before being inserted"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": false
+    },
+    {
+      "id": "FEAT-034",
+      "title": "F-030: AI — Document-Level Analysis (Pro AI)",
+      "intent": "Let users ask the AI about their entire document — what is missing, suggest an outline, identify gaps in coverage",
+      "description": "Cloud-powered Pro AI feature. User can ask document-level questions: 'what is missing from this doc?', 'suggest an outline', 'identify gaps'. Requires sending document content to cloud with explicit user consent per D-AI-8.",
+      "priority": "future",
+      "category": "AI",
+      "steps": [],
+      "acceptanceCriteria": [
+        "User asks what is missing from their document and receives actionable suggestions",
+        "User explicitly consents before document content is sent to cloud"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": false
+    },
+    {
+      "id": "FEAT-035",
+      "title": "F-031: AI — OCR + Image-to-Markdown",
+      "intent": "Paste a screenshot and get markdown — tables extracted as markdown tables, text extracted as paragraphs",
+      "description": "Paste screenshot or image, AI extracts text and tables as markdown. Could run locally (vision model) or via Pro AI cloud depending on hardware/model capability. Tables extracted as markdown tables, text as paragraphs.",
+      "priority": "future",
+      "category": "AI",
+      "steps": [],
+      "acceptanceCriteria": [
+        "User pastes a screenshot of a table — AI extracts it as a formatted markdown table",
+        "User pastes a screenshot of text — AI extracts it as markdown paragraphs"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": false
+    },
+    {
+      "id": "FEAT-036",
+      "title": "F-032: UI Localization",
+      "intent": "The defacto global markdown editor needs to speak the user's language — localize the app interface to top 10 languages",
+      "description": "Translate app interface (menus, buttons, settings, error messages, doctor suggestions) to top 10 languages. Content editing already supports all languages per D-USER-4. This is UI chrome localization only.",
+      "priority": "future",
+      "category": "Platform",
+      "steps": [],
+      "acceptanceCriteria": [
+        "App interface displays correctly in all 10 supported languages",
+        "All strings including doctor suggestions and AI action labels are localized"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": false
+    },
+    {
+      "id": "FEAT-037",
+      "title": "INFRA: App Shell and Navigation",
+      "intent": "The container for the entire app — launch screen, home screen, toolbar, status bar, settings gear. Nothing can be built without the shell.",
+      "description": "Basic app structure: LaunchScreen, home screen with Open File / New File buttons (per D-UX-1 — no onboarding). Top toolbar (format actions, source toggle, settings gear). Bottom status bar (word count slot, doctor indicator count). Navigation between home, editor, and settings. SwiftUI-based per D-PLAT-2. iOS 17+ per D-PLAT-3.",
+      "priority": "must",
+      "category": "Infrastructure",
+      "steps": [],
+      "acceptanceCriteria": [
+        "App launches to home screen with Open File and New File buttons within 1 second (D-PERF-1)",
+        "No onboarding, no tutorial, no account creation screens appear on first launch",
+        "Toolbar, status bar, and settings gear are visible and tappable in the editor view",
+        "VoiceOver can navigate all shell elements",
+        "App runs on iOS 17+ and crashes gracefully with a message on iOS 16"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true
+    },
+    {
+      "id": "FEAT-038",
+      "title": "INFRA: Markdown Parser (CommonMark + GFM)",
+      "intent": "The parser is the foundation — every rendering, formatting, doctor, and export feature depends on a correct AST. Get this wrong and everything downstream is broken.",
+      "description": "Integrate or build a CommonMark + GFM compliant parser that produces an AST (per D-MD-1). Must handle: headings, paragraphs, bold/italic/strikethrough, links, images, code spans, fenced code blocks with language info, blockquotes, ordered/unordered lists, task lists, tables, thematic breaks, autolinks. Must handle malformed/incomplete markdown gracefully (partial parse, not crash). Must be fast: parse a 10,000-line document in <100ms. Evaluate: swift-markdown, cmark-gfm Swift wrapper, or custom. AST must support round-trip (AST → markdown preserves original formatting). AST must include source positions (line:column ranges) for doctor indicators and cursor mapping.",
+      "priority": "must",
+      "category": "Infrastructure",
+      "steps": [],
+      "acceptanceCriteria": [
+        "Parser produces correct AST for all CommonMark + GFM spec examples",
+        "Malformed markdown produces a partial AST without crashing",
+        "10,000-line document parses in <100ms on iPhone 15",
+        "AST round-trips to identical markdown (AST → markdown → AST produces same tree)",
+        "AST nodes include source position ranges (line:column start/end)"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true
+    },
+    {
+      "id": "FEAT-039",
+      "title": "INFRA: Text Editing Engine",
+      "intent": "The core text system that handles every keystroke — must be fast enough for <16ms render and flexible enough for rich text, source view, and auto-formatting hooks.",
+      "description": "Core text input and rendering engine. Decision needed: TextKit 2 (modern, SwiftUI-friendly, but less mature) vs UITextView with custom NSAttributedString (proven but harder to customize). Must support: text input and editing, attributed string rendering, cursor/selection management, custom text attributes for markdown styling, hooks for auto-formatting (intercept keystrokes before commit), undo manager integration, IME support for CJK input, RTL text layout, Dynamic Type font scaling. Performance: <16ms keystroke-to-render (D-PERF-2), 120fps scroll (D-PERF-3).",
+      "priority": "must",
+      "category": "Infrastructure",
+      "steps": [],
+      "acceptanceCriteria": [
+        "User types and sees characters appear with <16ms latency (measured via instruments)",
+        "Scrolling a 5,000-line document maintains 60fps on all devices, 120fps on ProMotion",
+        "CJK IME composition works correctly (partial input displayed, committed on confirm)",
+        "RTL text (Arabic, Hebrew) displays and edits with correct cursor behavior",
+        "Dynamic Type at all sizes (including accessibility sizes) renders without clipping or overlap",
+        "Undo manager tracks all text changes with unlimited depth"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true
+    },
+    {
+      "id": "FEAT-040",
+      "title": "INFRA: File Coordination Layer",
+      "intent": "iOS file access is sandboxed and complex — security-scoped URLs, file coordination, and bookmarking must be rock-solid or users lose access to their files.",
+      "description": "Foundation for all file operations. Security-scoped URL handling: obtain, persist, and resolve bookmarks so files remain accessible across app launches (required for recents). NSFileCoordinator integration for safe reads/writes that respect other processes (iCloud, Dropbox, Git). NSFilePresenter for detecting external file changes (D-FILE-5). UTF-8 encoding validation (D-FILE-2). Line ending detection and preservation (D-FILE-3). File size check and warning (D-FILE-4).",
+      "priority": "must",
+      "category": "Infrastructure",
+      "steps": [],
+      "acceptanceCriteria": [
+        "Security-scoped URL bookmark persists across app launches — file reopens without re-picking",
+        "File coordination prevents data corruption when iCloud syncs during a write",
+        "External file change triggers a notification to the editor (reload/keep choice)",
+        "Non-UTF-8 file detected and error shown without crash or corruption",
+        "File with CRLF line endings preserved on save (not converted to LF)",
+        "File >1MB triggers dismissable warning before opening"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true
+    },
+    {
+      "id": "FEAT-041",
+      "title": "INFRA: AI Model Pipeline",
+      "intent": "The local AI model must download, load, and run inference reliably — a failed model download or slow inference kills the entire AI value proposition.",
+      "description": "Per D-AI-5 and D-AI-9. Model download: separate from app (<50MB app, ~2-4GB model). Download via ODR or background asset download. Wi-Fi only by default, cellular opt-in. Non-blocking — editor usable during download. Progress indicator. Resume on interruption. Model loading: load into Core ML / MLX on app launch (for capable devices). Memory-mapped to minimize RAM impact. Model inference: token streaming pipeline. First token <500ms (D-PERF-4). Full response <3s. Model update: independent of app updates. Capability detection: check device (A16+/M1+), show/hide AI features accordingly (no broken affordances on unsupported devices).",
+      "priority": "must",
+      "category": "Infrastructure",
+      "steps": [],
+      "acceptanceCriteria": [
+        "Model downloads in background while user edits — no UI blocking",
+        "Download interrupted at 50% resumes from where it left off",
+        "Cellular download requires explicit user opt-in",
+        "Model loads and first inference completes with first token in <500ms on iPhone 15",
+        "Memory usage with model loaded stays under 100MB for editing session (D-PERF-5, model may be memory-mapped separately)",
+        "iPhone 14 shows no AI-related UI elements (buttons, ghost text, action bar items)",
+        "Device running low on storage shows clear message and option to skip/delete model"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true
+    },
+    {
+      "id": "FEAT-042",
+      "title": "INFRA: Settings Screen",
+      "intent": "Minimal but essential — the single place users configure auto-format rules, spell check, AI behavior, theme, and font.",
+      "description": "SwiftUI settings view accessible via gear icon in toolbar. Sections: Appearance (theme, font, font size), Editor (auto-format toggles per rule, spell check toggle, trailing whitespace behavior), AI (ghost text on/off, model management — download/delete), About (version, licenses, support link). Persists via UserDefaults (no sidecar files per DP-1). Opinionated defaults — settings exist to turn things OFF, not to configure complexity.",
+      "priority": "must",
+      "category": "Infrastructure",
+      "steps": [],
+      "acceptanceCriteria": [
+        "Settings screen opens from gear icon in toolbar",
+        "Toggling an auto-format rule takes effect immediately in the editor",
+        "All settings persist across app launches",
+        "VoiceOver can navigate and toggle every setting",
+        "Settings screen renders correctly at all Dynamic Type sizes"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true
+    },
+    {
+      "id": "FEAT-043",
+      "title": "INFRA: Recents and State Restoration",
+      "intent": "The app must always return users to where they left off — last file, last cursor position, no friction on relaunch.",
+      "description": "Per D-UX-2: if user had a file open when app closed, reopen it on next launch with cursor at last position. If no last file, show recents list. Recents stored via security-scoped URL bookmarks (depends on File Coordination Layer). Recents list shows: filename, path, last opened date, file size. Max 20 recent entries. Entries removed if file no longer accessible. Recents list is the fallback home screen — not a separate mode.",
+      "priority": "must",
+      "category": "Infrastructure",
+      "steps": [],
+      "acceptanceCriteria": [
+        "User opens a file, backgrounds the app, force-quits, relaunches — same file opens at same cursor position",
+        "User with no last file sees recents list with previously opened files",
+        "Recents entry for a deleted/moved file is removed gracefully (no crash, no stale entry)",
+        "Recents list shows filename, parent folder, and last opened date"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true
+    },
+    {
+      "id": "FEAT-044",
+      "title": "INFRA: First-Run Experience",
+      "intent": "First launch must be instant and self-evident — open the app and you're writing within 30 seconds, with AI model downloading silently in the background.",
+      "description": "Per D-UX-1 (no onboarding) and D-AI-9 (model download). First launch flow: app opens to home screen (Open/New buttons). No splash screen beyond system launch image. On capable devices (A16+/M1+): after 2 seconds, a non-modal banner offers AI model download ('Download AI assistant? ~3GB, Wi-Fi recommended'). User can accept (download starts in background), dismiss (asked again next launch), or go to settings. User can open/create a file immediately regardless of model download state. AI features hidden until model ready.",
+      "priority": "must",
+      "category": "Infrastructure",
+      "steps": [],
+      "acceptanceCriteria": [
+        "First launch to editor-ready state (file open and cursor active) in <30 seconds including user interaction",
+        "No onboarding screens, tutorials, or account prompts appear",
+        "AI model download prompt appears non-modally and is dismissable",
+        "User can edit a file while model downloads in background",
+        "On unsupported devices (pre-A16), no AI download prompt appears"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true
+    },
+    {
+      "id": "FEAT-045",
+      "title": "INFRA: File Conflict Detection",
+      "intent": "When a file changes on disk while open in the editor, the user must know — silent data loss from sync conflicts is unacceptable.",
+      "description": "Per D-FILE-5. Uses NSFilePresenter to monitor the open file for external changes. When detected: pause auto-save, show non-modal notification with file diff summary ('This file was modified by another app. Reload external changes or keep your version?'). Options: Reload (discard editor state, load new file), Keep Mine (continue with editor version, next save overwrites), View Diff (show what changed — stretch goal). If file is deleted externally: notify user, offer to save to a new location.",
+      "priority": "must",
+      "category": "Infrastructure",
+      "steps": [],
+      "acceptanceCriteria": [
+        "File modified externally while open triggers a visible notification within 5 seconds",
+        "User can choose to reload external changes (editor updates to new content)",
+        "User can choose to keep their version (next save overwrites external changes)",
+        "File deleted externally triggers notification with option to save elsewhere",
+        "No data is silently lost in any conflict scenario"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true
+    },
+    {
+      "id": "FEAT-046",
+      "title": "INFRA: Pro AI Cloud Infrastructure",
+      "intent": "The cloud relay for Pro AI must be minimal, private, and reliable — it routes requests to the AI provider and validates subscriptions, nothing more.",
+      "description": "Lightweight API relay (serverless function or minimal server) that: validates App Store subscription receipt via StoreKit 2 server-side verification, forwards selected text to AI provider (initially Anthropic Claude per D-AI-7), streams response back to client, logs nothing (no prompts, no responses, no user data per D-AI-8). Client-side: StoreKit 2 subscription management, subscription status caching, graceful degradation on network failure (suggest local AI alternative). Privacy pipeline: only user-selected text sent (never full document silently), provider contractual no-retention.",
+      "priority": "should",
+      "category": "Infrastructure",
+      "steps": [],
+      "acceptanceCriteria": [
+        "Pro AI request completes end-to-end (client → relay → provider → client) in <5 seconds",
+        "Expired/invalid subscription receipt is rejected with clear user-facing message",
+        "Network failure during Pro AI request shows error and suggests using local AI instead",
+        "Server logs contain zero user content (prompts, responses, or file data)",
+        "Subscription status is cached client-side so the app doesn't block on network for every AI action"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true
+    },
+    {
+      "id": "FEAT-047",
+      "title": "F-003b: Table Rendering",
+      "intent": "Tables must render as formatted, aligned tables in rich view — not as pipe-delimited text",
+      "description": "Depends on: FEAT-038 (Parser), FEAT-003 (Core Rendering). GFM tables render as visually formatted tables with column alignment, cell padding, and header row styling. Tables are editable inline in rich view. Works with auto-format table features (FEAT-004 decomposed).",
+      "priority": "must",
+      "category": "Editor",
+      "steps": [],
+      "acceptanceCriteria": [
+        "GFM table renders with visible column alignment and cell padding",
+        "Header row is visually distinct from data rows",
+        "Table with 10+ columns renders without horizontal overflow on iPad",
+        "Table with 100+ rows scrolls smoothly at 60fps minimum",
+        "Empty cells render as empty space, not collapsed"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true
+    },
+    {
+      "id": "FEAT-048",
+      "title": "F-003c: Image Rendering",
+      "intent": "Images referenced in markdown must render inline in rich view — broken paths must show a clear placeholder, not a blank space",
+      "description": "Depends on: FEAT-038 (Parser), FEAT-003 (Core Rendering). Render images from relative and absolute paths inline in rich view. Images scale to fit content width with aspect ratio preserved. Broken/missing image paths show a placeholder icon with the alt text. Supports common formats: PNG, JPEG, GIF, WebP, SVG (render as bitmap).",
+      "priority": "must",
+      "category": "Editor",
+      "steps": [],
+      "acceptanceCriteria": [
+        "Image with valid relative path renders inline at appropriate size",
+        "Image scales to content width and preserves aspect ratio",
+        "Broken image path shows placeholder icon with alt text displayed",
+        "Very large image (5000x5000px) does not cause memory spike or lag",
+        "GIF renders as static first frame (animated GIF support is P2)"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true
+    },
+    {
+      "id": "FEAT-049",
+      "title": "F-003d: Interactive Elements (Checkboxes and Links)",
+      "intent": "Task list checkboxes must be tappable and links must be clickable — these are the elements that make the rich view feel alive, not static",
+      "description": "Depends on: FEAT-003 (Core Rendering). Task list checkboxes: rendered as interactive checkboxes. Tapping toggles the checkbox AND updates the underlying markdown (- [ ] to - [x]). Links: rendered as styled tappable text. Tap opens URL in system browser. Long-press shows URL preview and copy option. Link text styled with color and subtle underline.",
+      "priority": "must",
+      "category": "Editor",
+      "steps": [],
+      "acceptanceCriteria": [
+        "Tapping a task list checkbox toggles it and updates the markdown source",
+        "Toggling a checkbox is a single undo step",
+        "Tapping a link opens the URL in Safari/system browser",
+        "Long-pressing a link shows the URL and a copy option",
+        "Links to relative files open the file in easy-markdown (if .md) or system handler"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true
+    },
+    {
+      "id": "FEAT-050",
+      "title": "F-003e: Source Toggle with Cursor Mapping",
+      "intent": "Switching between rich and source view must preserve context — the user should land on the same paragraph, not the top of the document",
+      "description": "Depends on: FEAT-003 (Core Rendering), FEAT-038 (Parser). Toggle button in toolbar switches between rich text view and raw markdown source view. Cursor position maps between views using AST source positions — same paragraph, best-effort same line. Changes made in source view are reflected when returning to rich view (re-parse and re-render). Toggle latency (tap to first frame of new view) under 50ms excluding The Render animation. The Render animation (FEAT-014) triggers on this toggle.",
+      "priority": "must",
+      "category": "Editor",
+      "steps": [],
+      "acceptanceCriteria": [
+        "Toggling from rich to source shows raw markdown with cursor at the corresponding line",
+        "Toggling from source to rich shows styled view with cursor at the corresponding paragraph",
+        "Edits in source view are correctly reflected when toggling back to rich view",
+        "Toggle latency under 50ms (excluding Render animation)",
+        "Toggle works correctly on an empty document"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true
+    },
+    {
+      "id": "FEAT-051",
+      "title": "F-003f: i18n Text Support (CJK, RTL, Emoji)",
+      "intent": "The editor must handle every writing system correctly — CJK, Arabic, Hebrew, Devanagari, emoji. A global editor that breaks on non-Latin text is not the best in the world.",
+      "description": "Depends on: FEAT-039 (Text Engine). CJK text: correct rendering, line breaking at character boundaries (not mid-character), IME composition display. RTL text: correct bidirectional layout, cursor moves right-to-left, mixed LTR/RTL in same line. Emoji: correct grapheme cluster handling (cursor treats multi-codepoint emoji as single unit). Accented characters: correct rendering and cursor behavior. All writing systems work in both rich and source view.",
+      "priority": "must",
+      "category": "Editor",
+      "steps": [],
+      "acceptanceCriteria": [
+        "Chinese/Japanese/Korean text renders correctly and line-breaks at character boundaries",
+        "Arabic and Hebrew text displays right-to-left with correct cursor direction",
+        "Mixed LTR and RTL text in the same line renders with correct bidirectional ordering",
+        "Multi-codepoint emoji (flags, skin tones, ZWJ sequences) treated as single cursor unit",
+        "IME composition for CJK shows partial input correctly before commit"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true
+    },
+    {
+      "id": "FEAT-052",
+      "title": "F-004b: Auto-Format Tables",
+      "intent": "Tables should format themselves — columns align as you type, Tab moves between cells, new rows appear automatically",
+      "description": "Depends on: FEAT-039 (Text Engine), FEAT-047 (Table Rendering). Auto-align table columns with space padding as user types. Tab key moves to next cell (or creates new column). Enter in last cell of last row adds a new row. Auto-add missing header separator row when user types a second row. Each operation is discrete undo step. Does NOT fire inside code blocks.",
+      "priority": "must",
+      "category": "Editor",
+      "steps": [],
+      "acceptanceCriteria": [
+        "Table columns auto-align with space padding as user types in any cell",
+        "Tab moves cursor to next cell, Shift-Tab to previous cell",
+        "Enter in last cell of last row creates a new row with correct column count",
+        "Missing header separator row is auto-inserted when second row is typed",
+        "Each auto-format is independently undoable",
+        "Table with 20 columns auto-aligns without perceptible lag"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true
+    },
+    {
+      "id": "FEAT-053",
+      "title": "F-004c: Auto-Format Headings and Whitespace",
+      "intent": "Heading and whitespace formatting keeps documents structurally clean without the user thinking about it",
+      "description": "Depends on: FEAT-039 (Text Engine), FEAT-038 (Parser). Headings: auto-add space after # markers if missing, normalize ATX style (remove trailing #). Whitespace: trim trailing whitespace when user presses Enter, ensure single blank line between block elements, ensure file ends with newline. Each operation is discrete undo step. Configurable: individual rules toggleable in settings. Does NOT fire inside code blocks.",
+      "priority": "must",
+      "category": "Editor",
+      "steps": [],
+      "acceptanceCriteria": [
+        "Typing ##Heading auto-corrects to ## Heading",
+        "Trailing # markers on headings are auto-removed",
+        "Pressing Enter trims trailing whitespace from the completed line",
+        "Block elements without blank lines between them get a blank line auto-inserted",
+        "File always ends with exactly one newline on save",
+        "All whitespace rules can be individually toggled off in settings"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true
+    },
+    {
+      "id": "FEAT-054",
+      "title": "F-025b: AI Floating Action Bar",
+      "intent": "The AI action bar is the interaction hub — it must feel like a native extension of text selection, not a separate AI mode",
+      "description": "Depends on: FEAT-039 (Text Engine). When user selects text, a floating action bar appears above the selection. Contains: standard format actions (Bold, Italic, Link) AND AI actions (Improve, Summarize). Pro AI actions (Translate, Tone) appear with Pro badge for subscribers or as discoverable options for non-subscribers. Bar follows selection, dismisses on deselect. Keyboard shortcut Cmd+J focuses the AI section of the bar. Bar adapts to available width. VoiceOver announces all actions.",
+      "priority": "must",
+      "category": "AI",
+      "steps": [],
+      "acceptanceCriteria": [
+        "Floating bar appears within 200ms of text selection",
+        "Bar contains both formatting (Bold, Italic) and AI (Improve, Summarize) actions",
+        "Pro AI actions show subtle Pro badge for subscribers",
+        "Non-subscriber tapping a Pro action sees a non-intrusive upgrade explanation",
+        "Bar dismisses cleanly on deselect with no ghost UI",
+        "Cmd+J invokes AI assist when text is selected",
+        "VoiceOver can navigate and activate all bar actions"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true
+    },
+    {
+      "id": "FEAT-055",
+      "title": "F-025c: AI Summarize",
+      "intent": "One-tap summarization — select a section or full document and get a concise summary you can insert or copy",
+      "description": "Depends on: FEAT-041 (AI Model Pipeline), FEAT-054 (AI Action Bar). Select text or full document, tap Summarize. AI generates 1-3 sentence summary (for section) or 1 paragraph (for full doc). Summary appears in a popover. User can: Insert at cursor, Copy to clipboard, or Dismiss. Works offline on supported devices. First token <500ms, full response <3s.",
+      "priority": "must",
+      "category": "AI",
+      "steps": [],
+      "acceptanceCriteria": [
+        "Selected section produces 1-3 sentence summary in a popover within 3 seconds",
+        "User can insert summary at cursor position",
+        "User can copy summary to clipboard",
+        "Works offline on iPhone 15 and newer"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true
+    },
+    {
+      "id": "FEAT-056",
+      "title": "F-025d: AI Continue Writing (Ghost Text)",
+      "intent": "The editor should anticipate what you want to write next — ghost text that appears naturally after a pause and accepts with Tab",
+      "description": "Depends on: FEAT-041 (AI Model Pipeline), FEAT-039 (Text Engine). After a 3-second typing pause at end of text, AI generates 1-3 sentences continuing the thought. Appears as dimmed ghost text inline at cursor. Tab accepts (text inserted, ghost text becomes real). Typing any character dismisses ghost text. Can be toggled off in settings (FEAT-042). Must not conflict with auto-formatting. First token <500ms.",
+      "priority": "must",
+      "category": "AI",
+      "steps": [],
+      "acceptanceCriteria": [
+        "Ghost text appears after 3-second pause at end of content",
+        "Tab key accepts ghost text and it becomes real document text",
+        "Typing any character dismisses ghost text immediately",
+        "Ghost text does not appear inside code blocks",
+        "Ghost text can be toggled off in settings",
+        "Ghost text does not trigger auto-formatting rules",
+        "VoiceOver announces AI suggestion available when ghost text appears"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true
+    },
+    {
+      "id": "FEAT-057",
+      "title": "F-036b: iPad Split View, Slide Over, and External Display",
+      "intent": "Content must reflow gracefully at every width — from narrow Slide Over to full external display",
+      "description": "Depends on: FEAT-037 (App Shell), FEAT-010 (Typography). Split View at 1/3, 1/2, 2/3 widths with graceful content reflow. Slide Over for quick edits. External display: editor spans full display with content width constraints (70-80 char max per D-PERF typography). No letterboxing. Resolution independent (sharp on non-Retina external displays). Content width adapts in real time during Split View resize.",
+      "priority": "must",
+      "category": "Platform",
+      "steps": [],
+      "acceptanceCriteria": [
+        "Content reflows without jumpiness during Split View resize drag",
+        "Slide Over at narrowest width shows content without horizontal scrolling",
+        "External display shows sharp text with appropriate content width constraints",
+        "No letterboxing or awkward black bars on any display size"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true
+    },
+    {
+      "id": "FEAT-058",
+      "title": "F-036c: iPad Pointer and Trackpad Support",
+      "intent": "iPad with trackpad should feel like a desktop app — hover states, right-click menus, precise cursor placement",
+      "description": "Depends on: FEAT-003 (Core Rendering), FEAT-005 (Doctor). Full trackpad and mouse support via UIPointerInteraction. Hover states on: toolbar buttons, doctor indicators, AI action bar items, links, settings controls. Right-click context menu with: Cut, Copy, Paste, AI actions (if text selected), Look Up. Pointer automatically switches between arrow (UI) and I-beam (text) based on target. Smooth pointer acceleration.",
+      "priority": "must",
+      "category": "Platform",
+      "steps": [],
+      "acceptanceCriteria": [
+        "Hovering over a toolbar button shows a highlight/tooltip",
+        "Hovering over a doctor indicator shows the issue preview",
+        "Right-clicking selected text shows context menu with AI actions",
+        "Pointer changes from arrow to I-beam when entering the text editing area"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true
+    }
+  ],
+  "_dependsOn_docs": "Items may include an optional 'dependsOn' array of item ID strings (e.g. \"dependsOn\": [\"FEAT-001\"]). Auto-pick skips items whose dependencies are not yet done."
+}
