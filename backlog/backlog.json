@@ -118,7 +118,9 @@
       "description": "Fenced code blocks with language detection from info string. Min languages: Python, JS/TS, Swift, Go, Rust, HTML/CSS, JSON, YAML, SQL, Bash, Ruby, Java, Kotlin, C/C++, PHP. Monospace font, background differentiation. Editable inline. Colors adapt to dark/light theme.",
       "priority": "must",
       "category": "Editor",
-      "dependsOn": ["SPIKE-007"],
+      "dependsOn": [
+        "SPIKE-007"
+      ],
       "steps": [],
       "acceptanceCriteria": [
         "User writes a fenced code block with a language tag — code is syntax-highlighted correctly",
@@ -284,7 +286,9 @@
       "description": "When opening a file or toggling source to rich: # markers shrink as headings scale up, ** dissolves as text boldfaces, list markers morph into styled bullets, code fences fade as blocks materialize, links compact to styled form, blockquote markers become visual borders. ~400ms spring-animated. Reverse plays on rich-to-source. Reduced Motion: instant crossfade 200ms. Uses Core Animation for guaranteed 120fps on ProMotion. VoiceOver unaffected — announces rendered content immediately.",
       "priority": "must",
       "category": "Appearance",
-      "dependsOn": ["SPIKE-004"],
+      "dependsOn": [
+        "SPIKE-004"
+      ],
       "steps": [],
       "acceptanceCriteria": [
         "Non-technical observer watching over the shoulder finds the transition visually striking",
@@ -585,7 +589,9 @@
       "description": "Render Mermaid diagram blocks as visual diagrams inline in the editor. Fenced code blocks with mermaid language tag render as visual diagrams in rich view. Supported types: flowcharts, sequence, ER, class, Gantt, pie, state, mind maps. Diagrams adapt to light/dark theme. Included in PDF/print export as vector graphics. The Render animation applies. Malformed Mermaid shows raw code with doctor warning. Depends on: FEAT-038 (Parser).",
       "priority": "must",
       "category": "Editor",
-      "dependsOn": ["SPIKE-006"],
+      "dependsOn": [
+        "SPIKE-006"
+      ],
       "steps": [],
       "acceptanceCriteria": [
         "User opens a file with a Mermaid flowchart — it renders as a visual diagram inline",
@@ -712,9 +718,10 @@
         "VoiceOver can navigate all shell elements",
         "App runs on iOS 17+ and crashes gracefully with a message on iOS 16"
       ],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
+      "completedAt": "2026-03-19T14:16:29-07:00"
     },
     {
       "id": "FEAT-038",
@@ -723,7 +730,10 @@
       "description": "Integrate or build a CommonMark + GFM compliant parser that produces an AST (per D-MD-1). Must handle: headings, paragraphs, bold/italic/strikethrough, links, images, code spans, fenced code blocks with language info, blockquotes, ordered/unordered lists, task lists, tables, thematic breaks, autolinks. Must handle malformed/incomplete markdown gracefully (partial parse, not crash). Must be fast: parse a 10,000-line document in <100ms. Evaluate: swift-markdown, cmark-gfm Swift wrapper, or custom. AST must support round-trip (AST → markdown preserves original formatting). AST must include source positions (line:column ranges) for doctor indicators and cursor mapping.",
       "priority": "must",
       "category": "Infrastructure",
-      "dependsOn": ["SPIKE-002", "SPIKE-003"],
+      "dependsOn": [
+        "SPIKE-002",
+        "SPIKE-003"
+      ],
       "steps": [],
       "acceptanceCriteria": [
         "Parser produces correct AST for all CommonMark + GFM spec examples",
@@ -743,7 +753,9 @@
       "description": "Core text input and rendering engine. Decision needed: TextKit 2 (modern, SwiftUI-friendly, but less mature) vs UITextView with custom NSAttributedString (proven but harder to customize). Must support: text input and editing, attributed string rendering, cursor/selection management, custom text attributes for markdown styling, hooks for auto-formatting (intercept keystrokes before commit), undo manager integration, IME support for CJK input, RTL text layout, Dynamic Type font scaling. Performance: <16ms keystroke-to-render (D-PERF-2), 120fps scroll (D-PERF-3).",
       "priority": "must",
       "category": "Infrastructure",
-      "dependsOn": ["SPIKE-001"],
+      "dependsOn": [
+        "SPIKE-001"
+      ],
       "steps": [],
       "acceptanceCriteria": [
         "User types and sees characters appear with <16ms latency (measured via instruments)",
@@ -784,7 +796,9 @@
       "description": "Per D-AI-5 and D-AI-9. Model download: separate from app (<50MB app, ~2-4GB model). Download via ODR or background asset download. Wi-Fi only by default, cellular opt-in. Non-blocking — editor usable during download. Progress indicator. Resume on interruption. Model loading: load into Core ML / MLX on app launch (for capable devices). Memory-mapped to minimize RAM impact. Model inference: token streaming pipeline. First token <500ms (D-PERF-4). Full response <3s. Model update: independent of app updates. Capability detection: check device (A16+/M1+), show/hide AI features accordingly (no broken affordances on unsupported devices).",
       "priority": "must",
       "category": "Infrastructure",
-      "dependsOn": ["SPIKE-005"],
+      "dependsOn": [
+        "SPIKE-005"
+      ],
       "steps": [],
       "acceptanceCriteria": [
         "Model downloads in background while user edits — no UI blocking",
@@ -1497,7 +1511,9 @@
       "description": "Phase 2. 'Open from GitHub' option on home screen alongside 'Open File'. User authenticates via GitHub OAuth device flow (one-time). Browses their repos, selects a file. EMGit clones the repo (or pulls if already cloned) to a local app container directory. File opens in the editor via EMFile — editing is identical to any local file. Cloned repos cached locally; repos not accessed in 30 days offered for cleanup in Settings.",
       "priority": "should",
       "category": "File Management",
-      "dependsOn": ["SPIKE-009"],
+      "dependsOn": [
+        "SPIKE-009"
+      ],
       "steps": [],
       "acceptanceCriteria": [
         "User taps Open from GitHub, authenticates once, browses repos, and opens a .md file",
@@ -1518,7 +1534,10 @@
       "description": "Phase 2. When user closes a file or the app backgrounds: auto-save fires, then EMGit commits the change ('Update filename.md') and pushes to the remote. Pull-with-rebase before push to detect conflicts. If push fails (network, conflict): non-modal banner, changes remain committed locally and push on next opportunity. Subtle toolbar indicator shows when there are unpushed local commits. User can tap the indicator to push manually at any time without closing the file. Conflict on pull surfaces via the same external-change flow as file conflict detection (FEAT-045).",
       "priority": "should",
       "category": "File Management",
-      "dependsOn": ["SPIKE-009", "FEAT-070"],
+      "dependsOn": [
+        "SPIKE-009",
+        "FEAT-070"
+      ],
       "steps": [],
       "acceptanceCriteria": [
         "User edits a file from a GitHub repo, backgrounds the app — changes are committed and pushed automatically",
@@ -1540,7 +1559,9 @@
       "description": "Phase 2. GitHub OAuth device flow: user enters a code at github.com/login/device — no web view required in the app. Token stored in Keychain (not UserDefaults). Token refresh handled automatically. Sign out available in Settings. Repo browser: list user's repos (personal + orgs), search/filter, show last updated date. Navigate into repo to browse .md files. Repo list cached for offline access to previously cloned repos.",
       "priority": "should",
       "category": "File Management",
-      "dependsOn": ["SPIKE-009"],
+      "dependsOn": [
+        "SPIKE-009"
+      ],
       "steps": [],
       "acceptanceCriteria": [
         "OAuth device flow completes without a web view embedded in the app",
