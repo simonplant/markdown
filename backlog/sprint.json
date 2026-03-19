@@ -1,7 +1,7 @@
 {
   "sprintId": "sprint-1773954496",
   "startedAt": "2026-03-19T14:08:16-07:00",
-  "status": "in_progress",
+  "status": "completed",
   "item": {
     "id": "FEAT-037",
     "title": "INFRA: App Shell and Navigation",
@@ -17,6 +17,10 @@
       "App runs on iOS 17+ and crashes gracefully with a message on iOS 16"
     ],
     "scope": [],
-    "startedAt": "2026-03-19T14:08:16-07:00"
-  }
+    "startedAt": "2026-03-19T14:08:16-07:00",
+    "status": "passed",
+    "completedAt": "2026-03-19T14:16:29-07:00"
+  },
+  "completedAt": "2026-03-19T14:16:29-07:00",
+  "attempts": 1
 }

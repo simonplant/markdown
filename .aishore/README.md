@@ -7,7 +7,8 @@ Full docs: https://github.com/simonplant/aishore
 ## Setup
 
 ```bash
-.aishore/aishore init       # Detects project, scaffolds backlog/, configures validation
+.aishore/aishore init           # Interactive setup wizard
+.aishore/aishore init --yes     # Non-interactive (accept detected defaults)
 ```
 
 **Set your validation command** in `.aishore/config.yaml` — sprints won't verify without it:
@@ -32,6 +33,9 @@ The developer agent follows intent when the spec is ambiguous or steps seem wron
 ## Create Backlog Items
 
 ```bash
+# AI-populate from PRODUCT.md (non-interactive)
+.aishore/aishore backlog populate
+
 # Interactive
 .aishore/aishore backlog add
 

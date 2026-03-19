@@ -977,6 +977,80 @@ The \`intent\` field in sprint.json is a non-negotiable directive. Verify the im
         validate_hint="
 ## Commander's Intent
 Every item should have an \`intent\` field — a non-negotiable directive stating what must be true when done. Use \`--intent \"...\"\` when adding/editing items. Write it like an order, not a description."
+        if [[ "$agent_name" == "product-owner" && "$mode" == "populate" ]]; then
+            validate_hint="$validate_hint
+
+## Populate Mode — Intent-Driven Development
+
+You have been given a product requirements document. Your job is to populate the backlog with high-quality, sprint-ready items.
+
+**This is the most important step in the entire pipeline.** Everything downstream depends on what you create here. The developer agent follows intent when the spec is ambiguous. The validator agent checks intent was fulfilled, not just that AC passed mechanically. Retries and refinement are guided by intent. A vague backlog means every sprint fails — the developer guesses wrong, the validator can't judge, retries spin in circles. A precise backlog means sprints succeed autonomously.
+
+### Intent Is Everything
+
+Commander's intent is the single most important field on every item. It is a non-negotiable directive — what must be true when this work is done. It answers: \"If the developer could only remember one thing, what should it be?\"
+
+**Write intent like a commanding officer's order:**
+- ✅ \"Users authenticate securely or are told exactly why they cannot. Never a blank screen or silent failure.\"
+- ✅ \"Ops must know instantly if the service is alive or dead. No false positives. No silent degradation.\"
+- ✅ \"Large uploads must complete or give clear progress. Users must never stare at a frozen screen.\"
+- ❌ \"Add login\" — implementation, not outcome
+- ❌ \"Improve auth\" — vague, no definition of success
+- ❌ \"Make it faster\" — no specific bar to meet
+
+Intent must be ≥20 characters. But length is not the goal — clarity is. A short, sharp directive beats a padded sentence. The developer reads this when the spec is confusing and needs to decide what matters.
+
+### What Makes a Great Backlog Item
+
+Each item needs ALL of these to succeed in an automated sprint:
+
+1. **Title** — concise, specific, scannable (\"Add rate limiting to API endpoints\" not \"Backend stuff\")
+2. **Intent** — the non-negotiable outcome directive (see above)
+3. **Description** — enough context that a developer who has never seen the product doc can implement it. Include: what to build, why it matters, relevant constraints, and boundary conditions.
+4. **Priority** — must (MVP/blocking), should (important), could (nice-to-have), future (later)
+5. **Acceptance Criteria** — 3-5 specific, verifiable statements about user-visible outcomes. Each AC should be independently testable. Bad: \"it works\". Good: \"Unauthenticated requests to /api/* return 401 with a JSON error body\".
+
+### Right-Sizing Items
+
+Each item must be completable in a single sprint — one focused change. If you find yourself writing more than 5-6 AC or the description exceeds a paragraph, the item is too large. Split it.
+
+**Split by user value, not by technical layer.** \"Add user registration\" → \"User can create account with email\" + \"User can verify email address\" + \"User can reset forgotten password\" — each delivers independent value.
+
+### Process
+1. Read the product requirements document thoroughly — understand the vision, not just the feature list
+2. Check the existing backlog (\`.aishore/aishore backlog list\`) to avoid duplicates
+3. Decompose the product vision into concrete, right-sized items
+4. Add each item using the CLI (see example below)
+5. Do NOT edit JSON files directly — use only CLI commands
+
+### Example — Gold Standard Item
+\`\`\`bash
+.aishore/aishore backlog add \\\\
+  --type feat \\\\
+  --title \"OAuth2 login with Google\" \\\\
+  --intent \"Users authenticate securely or are told exactly why they cannot. Never a blank screen or silent failure.\" \\\\
+  --desc \"Implement OAuth2 authorization code flow with Google as the initial provider. Handle token refresh transparently, store tokens securely (httpOnly cookies, not localStorage), and provide clear error messages for network failures, denied permissions, and expired sessions. Must work with the existing session middleware.\" \\\\
+  --priority must \\\\
+  --ac \"User can click Sign In, complete Google OAuth flow, and land on their dashboard\" \\\\
+  --ac \"Invalid or expired tokens trigger automatic refresh without user action\" \\\\
+  --ac \"Auth errors display a specific, actionable message — not a generic error page\" \\\\
+  --ac \"Signed-out users hitting protected routes are redirected to login with a return URL\" \\\\
+  --ac \"Tokens are stored in httpOnly cookies, never exposed to client-side JavaScript\"
+\`\`\`
+
+Notice: intent states the outcome bar (\"securely or told why\"), description gives implementation context the developer needs, AC are independently verifiable user-visible behaviors.
+
+### What Bad Looks Like (Never Do This)
+| Field | Bad | Why It Fails |
+|-------|-----|--------------|
+| Title | \"Auth stuff\" | Developer doesn't know what to build |
+| Intent | \"Add login\" | Too short, states implementation not outcome |
+| Intent | \"We should probably have authentication\" | Hedge words, no bar to meet |
+| Desc | (empty) | Developer has no context |
+| AC | \"It works\" | Validator can't verify this |
+| AC | \"Code is clean\" | Subjective, not testable |
+| Scope | Entire backend | Must be split into focused items |"
+        fi
     fi
 
     local prompt
@@ -2423,6 +2497,8 @@ _init_check_prereqs() {
 # Detect project name, validation command, and existing docs.
 # Sets outer-scope locals: project_name, validate_cmd, prd_found, claude_md
 _init_detect_project() {
+    local auto_yes="${1:-false}"
+
     # ── Project info ──
     log_subheader "Step 2/6 — Project"
 
@@ -2435,8 +2511,13 @@ _init_detect_project() {
     fi
     [[ -z "$detected_name" ]] && detected_name=$(basename "$PROJECT_ROOT")
 
-    read -r -p "  Project name [$detected_name]: " project_name
-    project_name="${project_name:-$detected_name}"
+    if [[ "$auto_yes" == "true" ]]; then
+        project_name="$detected_name"
+        log_info "Project name: $project_name"
+    else
+        read -r -p "  Project name [$detected_name]: " project_name
+        project_name="${project_name:-$detected_name}"
+    fi
 
     echo ""
 
@@ -2473,7 +2554,14 @@ _init_detect_project() {
         detected_validate="go test ./..."
     fi
 
-    if [[ -n "$detected_validate" ]]; then
+    if [[ "$auto_yes" == "true" ]]; then
+        validate_cmd="${detected_validate:-}"
+        if [[ -n "$validate_cmd" ]]; then
+            log_info "Validation command: $validate_cmd"
+        else
+            log_info "No validation command detected — skipping"
+        fi
+    elif [[ -n "$detected_validate" ]]; then
         read -r -p "  Validation command [$detected_validate]: " validate_cmd
         validate_cmd="${validate_cmd:-$detected_validate}"
     else
@@ -2800,18 +2888,35 @@ AEOF
 }
 
 cmd_init() {
+    local auto_yes=false
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -y|--yes) auto_yes=true; shift ;;
+            *) log_error "Unknown option: $1"; return 1 ;;
+        esac
+    done
+
     log_header "aishore setup wizard"
     echo ""
-    echo "  This will walk you through setting up aishore for your project."
-    echo "  Press Enter to accept defaults shown in [brackets]."
+    if [[ "$auto_yes" == "true" ]]; then
+        echo "  Running non-interactively — accepting all detected defaults."
+    else
+        echo "  This will walk you through setting up aishore for your project."
+        echo "  Press Enter to accept defaults shown in [brackets]."
+    fi
     echo ""
 
     local reinit=false
     if [[ -f "$BACKLOG_DIR/backlog.json" ]]; then
         log_warning "aishore already initialized (backlog.json exists)"
-        read -r -p "  Reinitialize? This preserves existing backlogs. [y/N] " c
-        [[ $c != [yY] ]] && exit 0
-        reinit=true
+        if [[ "$auto_yes" == "true" ]]; then
+            reinit=true
+        else
+            read -r -p "  Reinitialize? This preserves existing backlogs. [y/N] " c
+            [[ $c != [yY] ]] && exit 0
+            reinit=true
+        fi
         echo ""
     fi
 
@@ -2820,7 +2925,7 @@ cmd_init() {
     local product_found=false arch_found=false
 
     _init_check_prereqs
-    _init_detect_project
+    _init_detect_project "$auto_yes"
     _init_scaffold_files
 
     # ── Summary & next steps ──
@@ -2830,11 +2935,18 @@ cmd_init() {
     echo ""
 
     local docs_dir="$PROJECT_ROOT/docs"
+    local found_product="" found_arch=""
+    for _p in "$docs_dir/PRODUCT.md" "$PROJECT_ROOT/PRODUCT.md"; do
+        [[ -f "$_p" ]] && { found_product="$_p"; break; }
+    done
+    for _p in "$docs_dir/ARCHITECTURE.md" "$PROJECT_ROOT/ARCHITECTURE.md"; do
+        [[ -f "$_p" ]] && { found_arch="$_p"; break; }
+    done
     echo "  Project:       $project_name"
     echo "  Validation:    ${validate_cmd:-<none>}"
     echo "  CLAUDE.md:     ${claude_md:-<not found>}"
-    echo "  PRODUCT.md:    $(ls "$docs_dir/PRODUCT.md" "$PROJECT_ROOT/PRODUCT.md" 2>/dev/null | head -1 || echo '<not found>')"
-    echo "  ARCHITECTURE:  $(ls "$docs_dir/ARCHITECTURE.md" "$PROJECT_ROOT/ARCHITECTURE.md" 2>/dev/null | head -1 || echo '<not found>')"
+    echo "  PRODUCT.md:    ${found_product:-<not found>}"
+    echo "  ARCHITECTURE:  ${found_arch:-<not found>}"
     echo "  Definitions:   $BACKLOG_DIR/DEFINITIONS.md"
     echo ""
 
@@ -3001,7 +3113,7 @@ cmd_update() {
         expected=$(get_expected_checksum "$checksum_key") || true
         if [[ -n "$expected" ]]; then
             if verify_checksum "$file" "$expected"; then
-                log_success "Checksum verified: $label"
+                : # verified — shown after install
             else
                 log_error "Checksum mismatch for $label — file may be corrupted or tampered"
                 return 1
@@ -3023,7 +3135,6 @@ cmd_update() {
     _fetch_and_stage() {
         local remote_path="$1" local_path="$2" label="$3" checksum_key="$4"
         local required="${5:-false}"
-        log_info "Fetching $label..."
         if ! $fetch_cmd "$repo_url/$remote_path" > "$local_path" 2>/dev/null; then
             if [[ "$required" == "true" ]]; then
                 log_error "Failed to fetch $label"
@@ -3042,14 +3153,15 @@ cmd_update() {
     local staging_dir
     staging_dir="$(ensure_tmpdir)/update_staging"
     local all_verified=true
-    local file_count=0
+    local file_count=${#update_files[@]}
 
     # Create staging subdirectories for all files
     for f in "${update_files[@]}"; do
         mkdir -p "$staging_dir/$(dirname "$f")"
     done
 
-    # Fetch and verify each file
+    # Fetch and verify each file (quiet — results shown after install)
+    local fetched=0
     for f in "${update_files[@]}"; do
         local basename_f
         basename_f=$(basename "$f")
@@ -3057,8 +3169,10 @@ cmd_update() {
         # VERSION and aishore CLI are required
         [[ "$f" == ".aishore/VERSION" || "$f" == ".aishore/aishore" ]] && required=true
         _fetch_and_stage "$f" "$staging_dir/$f" "$basename_f" "$f" "$required"
-        ((file_count++))
+        ((fetched++)) || true
+        printf "\r  Downloading... [%d/%d]" "$fetched" "$file_count"
     done
+    printf "\r%40s\r" ""  # clear progress line
 
     # ── Phase 2: Install (only if all verified) ──
     if [[ "$all_verified" != "true" ]]; then
@@ -3066,16 +3180,18 @@ cmd_update() {
         exit 1
     fi
 
-    log_info "All files verified — installing..."
+    # Install and show each file
+    echo "Installed:"
     for f in "${update_files[@]}"; do
         local dest="$PROJECT_ROOT/$f"
         mkdir -p "$(dirname "$dest")"
         mv "$staging_dir/$f" "$dest"
+        log_success "$f"
     done
     chmod +x "$AISHORE_ROOT/aishore"
 
     echo ""
-    log_success "Updated to $remote_version ($file_count files installed)"
+    log_success "Updated to $remote_version ($file_count files)"
 }
 
 cmd_checksums() {
@@ -3135,9 +3251,10 @@ cmd_backlog() {
         edit)       cmd_backlog_edit "$@" ;;
         rm|remove)  cmd_backlog_rm "$@" ;;
         check)      cmd_backlog_check "$@" ;;
+        populate)   cmd_backlog_populate "$@" ;;
         *)
             log_error "Unknown backlog command: $subcmd"
-            echo "Usage: backlog {list|add|show|edit|check|rm}" >&2
+            echo "Usage: backlog {list|add|show|edit|check|rm|populate}" >&2
             return 1
             ;;
     esac
@@ -3155,6 +3272,72 @@ cmd_backlog_check() {
     else
         log_warning "$id has readiness warnings:"
         echo -e "$CHECK_GATES_WARNINGS"
+    fi
+}
+
+cmd_backlog_populate() {
+    if [[ ! -f "$BACKLOG_DIR/backlog.json" ]]; then
+        log_error "aishore not initialized — run '.aishore/aishore init' first"
+        return 1
+    fi
+
+    acquire_lock
+    load_config
+    cd "$PROJECT_ROOT"
+
+    log_header "Product Owner: Populate Backlog"
+
+    # Find product requirements doc
+    local prd_file=""
+    for candidate in \
+        "$PROJECT_ROOT/PRODUCT.md" "$PROJECT_ROOT/product.md" \
+        "$PROJECT_ROOT/PRD.md" "$PROJECT_ROOT/prd.md" \
+        "$PROJECT_ROOT/docs/PRODUCT.md" "$PROJECT_ROOT/docs/product.md" \
+        "$PROJECT_ROOT/docs/PRD.md" "$PROJECT_ROOT/docs/prd.md" \
+        "$PROJECT_ROOT/docs/WEBSITE_BRIEF.md" \
+        "$PROJECT_ROOT/README.md"; do
+        if [[ -f "$candidate" ]]; then
+            prd_file="$candidate"
+            break
+        fi
+    done
+
+    if [[ -z "$prd_file" ]]; then
+        log_error "No product requirements doc found (PRODUCT.md, PRD.md, README.md, etc.)"
+        echo "  Create a PRODUCT.md or docs/PRODUCT.md describing what you're building."
+        return 1
+    fi
+
+    # Guard against empty scaffold templates
+    local content_lines
+    content_lines=$(grep -cvE '^\s*$|^\s*#|^\s*<!--|^\s*-->|^\s*- \[ \]' "$prd_file" 2>/dev/null || echo 0)
+    if [[ "$content_lines" -lt 3 ]]; then
+        log_error "Product doc appears to be an empty template: $prd_file"
+        echo "  Fill in your product vision, target users, and core features before populating."
+        echo "  The backlog quality depends entirely on the quality of this document."
+        return 1
+    fi
+
+    log_info "Using requirements from: $prd_file"
+
+    local context_args="@$prd_file @$BACKLOG_DIR/backlog.json @$BACKLOG_DIR/bugs.json"
+    # Include definitions doc for quality examples if available
+    [[ -f "$BACKLOG_DIR/DEFINITIONS.md" ]] && context_args="$context_args @$BACKLOG_DIR/DEFINITIONS.md"
+
+    # Snapshot backlog state for progress tracking
+    local snap_before
+    snap_before=$(snapshot_backlogs)
+
+    log_info "Running product-owner agent to populate backlog..."
+    echo ""
+
+    GROOM_MONITOR=true run_agent "product-owner" "populate" "$MODEL_FAST" "$context_args"
+
+    # --- Post-populate diff ---
+    print_groom_diff "$snap_before"
+
+    if ! check_result; then
+        exit 1
     fi
 }
 
@@ -3617,6 +3800,7 @@ cmd_clean() {
 cmd_usage() {
     cat << EOF
 aishore - AI Sprint Runner (v$AISHORE_VERSION)
+Copyright (C) 2026 Simon Plant. Licensed under AGPL-3.0. See LICENSE.
 
 Usage: .aishore/aishore <command> [options]
        .aishore/aishore auto <scope> [--retries N] [--max-failures N] [--no-merge] [--refine] [--quick] [--dry-run]
@@ -3635,13 +3819,14 @@ Backlog:
   backlog edit <ID>  Update an item
   backlog check <ID> Check readiness gates
   backlog rm <ID>    Remove an item
+  backlog populate   Populate backlog from PRODUCT.md
 
 Info:
   status             Backlog overview and sprint readiness
   metrics            Sprint metrics
 
 Maintenance:
-  init               Setup wizard
+  init               Setup wizard (-y to accept defaults)
   update             Update from upstream
   clean              Remove done items
   checksums          Regenerate checksums
@@ -3658,6 +3843,7 @@ EOF
 cmd_help() {
     cat << EOF
 aishore - AI Sprint Runner (v$AISHORE_VERSION)
+Copyright (C) 2026 Simon Plant. Licensed under AGPL-3.0. See LICENSE.
 
 Usage: .aishore/aishore <command> [options]
        .aishore/aishore auto <scope> [--retries N] [--max-failures N] [--no-merge] [--refine] [--quick] [--dry-run]
@@ -3687,6 +3873,7 @@ Commands:
   backlog check <ID> Check readiness gates (title, intent, steps, AC, step length)
   backlog rm <ID>   Remove an item (with confirmation)
     --force         Skip confirmation
+  backlog populate  Use AI to populate backlog from PRODUCT.md (non-interactive)
 
   auto <scope>      Autonomous mode — drive backlog to completion
     done            Drain entire backlog
@@ -3721,6 +3908,7 @@ Commands:
   clean             Remove done items (--dry-run to preview)
   checksums         Regenerate checksums.sha256 for update verification
   init              Setup wizard — checks prerequisites, configures project
+    -y, --yes       Accept all detected defaults (non-interactive)
   version, -v, --version   Show version
   help, -h, --help         Show this help
 
