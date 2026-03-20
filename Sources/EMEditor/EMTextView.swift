@@ -26,6 +26,10 @@ public final class EMTextView: UITextView {
     /// The editor state this view reports changes to.
     public weak var editorState: EditorState?
 
+    /// Handler for Shift-Tab key. Returns true if the event was consumed.
+    /// Set by TextViewCoordinator for list outdent per FEAT-004.
+    public var onShiftTab: (() -> Bool)?
+
     /// Current layout metrics for device-aware spacing per FEAT-010.
     public var layoutMetrics: LayoutMetrics = .current {
         didSet { applyLayoutMetrics() }
@@ -106,6 +110,28 @@ public final class EMTextView: UITextView {
         editorState?.undoManager ?? super.undoManager
     }
 
+    // MARK: - Key Commands per [A-060]
+
+    /// Shift-Tab key command for list outdent per FEAT-004.
+    public override var keyCommands: [UIKeyCommand]? {
+        let shiftTab = UIKeyCommand(
+            input: "\t",
+            modifierFlags: .shift,
+            action: #selector(handleShiftTab)
+        )
+        shiftTab.discoverabilityTitle = NSLocalizedString(
+            "Outdent List Item",
+            comment: "Shift-Tab keyboard shortcut description"
+        )
+        return (super.keyCommands ?? []) + [shiftTab]
+    }
+
+    @objc private func handleShiftTab() {
+        if onShiftTab?() != true {
+            // Not consumed — do nothing (no default Shift-Tab behavior)
+        }
+    }
+
     // MARK: - Theme
 
     /// Updates the text view's background color to match the current theme per FEAT-007.
@@ -176,6 +202,10 @@ public final class EMTextView: NSTextView {
     /// The editor state this view reports changes to.
     public weak var editorState: EditorState?
 
+    /// Handler for Shift-Tab key. Returns true if the event was consumed.
+    /// Set by TextViewCoordinator for list outdent per FEAT-004.
+    public var onShiftTab: (() -> Bool)?
+
     /// Current layout metrics for device-aware spacing per FEAT-010.
     public var layoutMetrics: LayoutMetrics = .current {
         didSet { applyLayoutMetrics() }
@@ -238,6 +268,15 @@ public final class EMTextView: NSTextView {
     /// Applies current layout metrics to text container inset per FEAT-010.
     private func applyLayoutMetrics() {
         textContainerInset = layoutMetrics.textContainerInset
+    }
+
+    // MARK: - Key Commands per [A-060]
+
+    /// Override backtab (Shift-Tab) for list outdent per FEAT-004.
+    public override func insertBacktab(_ sender: Any?) {
+        if onShiftTab?() != true {
+            super.insertBacktab(sender)
+        }
     }
 
     // MARK: - Theme

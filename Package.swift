@@ -11,6 +11,7 @@ let package = Package(
     products: [
         .library(name: "EMCore", targets: ["EMCore"]),
         .library(name: "EMParser", targets: ["EMParser"]),
+        .library(name: "EMFormatter", targets: ["EMFormatter"]),
         .library(name: "EMEditor", targets: ["EMEditor"]),
         .library(name: "EMFile", targets: ["EMFile"]),
         .library(name: "EMSettings", targets: ["EMSettings"]),
@@ -34,10 +35,18 @@ let package = Package(
             ]
         ),
         .target(
+            name: "EMFormatter",
+            dependencies: [
+                "EMCore",
+                "EMParser",
+            ]
+        ),
+        .target(
             name: "EMEditor",
             dependencies: [
                 "EMCore",
                 "EMParser",
+                "EMFormatter",
             ]
         ),
         .target(name: "EMFile", dependencies: ["EMCore"]),
@@ -46,6 +55,7 @@ let package = Package(
         .testTarget(name: "EMCoreTests", dependencies: ["EMCore"]),
         .testTarget(name: "EMParserTests", dependencies: ["EMParser", "EMCore"]),
         .testTarget(name: "EMFileTests", dependencies: ["EMFile", "EMCore"]),
+        .testTarget(name: "EMFormatterTests", dependencies: ["EMFormatter", "EMParser", "EMCore"]),
         .testTarget(name: "EMEditorTests", dependencies: ["EMEditor", "EMParser", "EMCore"]),
         .testTarget(name: "EMSettingsTests", dependencies: ["EMSettings", "EMCore"]),
         .testTarget(name: "EMAppTests", dependencies: ["EMApp", "EMSettings", "EMCore"]),
