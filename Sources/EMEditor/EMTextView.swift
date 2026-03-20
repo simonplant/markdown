@@ -38,6 +38,11 @@ public final class EMTextView: UITextView {
     /// Called with the link URL when a link is tapped in rich view.
     public var onLinkTap: ((URL) -> Void)?
 
+    /// Handler for link long-press per FEAT-049 AC-4.
+    /// Called with the link URL when a link is long-pressed.
+    /// The view shows the URL and a copy option.
+    public var onLinkLongPress: ((URL) -> Void)?
+
     /// Current layout metrics for device-aware spacing per FEAT-010.
     public var layoutMetrics: LayoutMetrics = .current {
         didSet { applyLayoutMetrics() }
@@ -114,13 +119,22 @@ public final class EMTextView: UITextView {
 
     // MARK: - Interactive Elements (FEAT-049)
 
-    /// Sets up tap gesture for interactive elements (checkboxes and links).
+    /// Sets up tap and long-press gestures for interactive elements (checkboxes and links).
     /// Uses a custom gesture recognizer that only fires when the tap lands
     /// on a checkbox or link, avoiding interference with normal editing.
     private func setupInteractiveGestures() {
         let tap = InteractiveTapGesture(target: self, action: #selector(handleInteractiveTap(_:)))
         tap.targetTextView = self
         addGestureRecognizer(tap)
+
+        // Long-press gesture for link preview per FEAT-049 AC-4
+        let longPress = InteractiveLongPressGesture(
+            target: self,
+            action: #selector(handleInteractiveLongPress(_:))
+        )
+        longPress.targetTextView = self
+        longPress.minimumPressDuration = 0.5
+        addGestureRecognizer(longPress)
     }
 
     /// Returns the interactive element (checkbox or link) at the given point, if any.
@@ -154,6 +168,60 @@ public final class EMTextView: UITextView {
         case .link(let url):
             onLinkTap?(url)
         }
+    }
+
+    /// Shows a URL preview alert with a copy option on long-press per FEAT-049 AC-4.
+    @objc private func handleInteractiveLongPress(_ recognizer: UILongPressGestureRecognizer) {
+        guard recognizer.state == .began else { return }
+        let point = recognizer.location(in: self)
+        guard let element = interactiveElement(at: point),
+              case .link(let url) = element else { return }
+
+        let urlString = url.absoluteString
+        let alert = UIAlertController(
+            title: urlString,
+            message: nil,
+            preferredStyle: .actionSheet
+        )
+        alert.addAction(UIAlertAction(
+            title: NSLocalizedString("Copy URL", comment: "Copy link URL action"),
+            style: .default
+        ) { _ in
+            UIPasteboard.general.string = urlString
+        })
+        alert.addAction(UIAlertAction(
+            title: NSLocalizedString("Open Link", comment: "Open link in browser action"),
+            style: .default
+        ) { [weak self] _ in
+            self?.onLinkTap?(url)
+        })
+        alert.addAction(UIAlertAction(
+            title: NSLocalizedString("Cancel", comment: "Cancel action"),
+            style: .cancel
+        ))
+
+        // Configure popover for iPad
+        if let popover = alert.popoverPresentationController {
+            popover.sourceView = self
+            popover.sourceRect = CGRect(origin: point, size: .zero)
+        }
+
+        // Present from the nearest view controller
+        if let viewController = self.findViewController() {
+            viewController.present(alert, animated: true)
+        }
+    }
+
+    /// Walks the responder chain to find the nearest UIViewController.
+    private func findViewController() -> UIViewController? {
+        var responder: UIResponder? = self
+        while let next = responder?.next {
+            if let vc = next as? UIViewController {
+                return vc
+            }
+            responder = next
+        }
+        return nil
     }
 
     // MARK: - Undo Manager
@@ -264,6 +332,26 @@ class InteractiveTapGesture: UITapGestureRecognizer {
     }
 }
 
+/// Custom long-press gesture recognizer that only fires on links per FEAT-049 AC-4.
+/// Fails immediately if the touch is not on a link, preserving normal editing gestures.
+class InteractiveLongPressGesture: UILongPressGestureRecognizer {
+    weak var targetTextView: EMTextView?
+
+    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent) {
+        guard let touch = touches.first, let tv = targetTextView else {
+            state = .failed
+            return
+        }
+
+        let point = touch.location(in: tv)
+        if let element = tv.interactiveElement(at: point), case .link = element {
+            super.touchesBegan(touches, with: event)
+        } else {
+            state = .failed
+        }
+    }
+}
+
 // MARK: - macOS
 
 #elseif canImport(AppKit)
@@ -288,6 +376,9 @@ public final class EMTextView: NSTextView {
     /// Handler for link click per FEAT-049.
     /// Called with the link URL when a link is clicked in rich view.
     public var onLinkTap: ((URL) -> Void)?
+
+    /// Handler for link long-press per FEAT-049 AC-4 (unused on macOS, right-click menu used instead).
+    public var onLinkLongPress: ((URL) -> Void)?
 
     /// Current layout metrics for device-aware spacing per FEAT-010.
     public var layoutMetrics: LayoutMetrics = .current {
@@ -418,6 +509,54 @@ public final class EMTextView: NSTextView {
             }
         }
         super.mouseDown(with: event)
+    }
+
+    /// Shows a context menu with URL preview and copy option on right-click per FEAT-049 AC-4.
+    public override func menu(for event: NSEvent) -> NSMenu? {
+        let point = convert(event.locationInWindow, from: nil)
+        if let element = interactiveElement(at: point), case .link(let url) = element {
+            let menu = NSMenu()
+
+            // Show URL as disabled title item
+            let titleItem = NSMenuItem(title: url.absoluteString, action: nil, keyEquivalent: "")
+            titleItem.isEnabled = false
+            menu.addItem(titleItem)
+            menu.addItem(NSMenuItem.separator())
+
+            // Copy URL action
+            let copyItem = NSMenuItem(
+                title: NSLocalizedString("Copy URL", comment: "Copy link URL action"),
+                action: #selector(copyLinkURL(_:)),
+                keyEquivalent: ""
+            )
+            copyItem.representedObject = url.absoluteString
+            copyItem.target = self
+            menu.addItem(copyItem)
+
+            // Open Link action
+            let openItem = NSMenuItem(
+                title: NSLocalizedString("Open Link", comment: "Open link in browser action"),
+                action: #selector(openLinkURL(_:)),
+                keyEquivalent: ""
+            )
+            openItem.representedObject = url
+            openItem.target = self
+            menu.addItem(openItem)
+
+            return menu
+        }
+        return super.menu(for: event)
+    }
+
+    @objc private func copyLinkURL(_ sender: NSMenuItem) {
+        guard let urlString = sender.representedObject as? String else { return }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(urlString, forType: .string)
+    }
+
+    @objc private func openLinkURL(_ sender: NSMenuItem) {
+        guard let url = sender.representedObject as? URL else { return }
+        onLinkTap?(url)
     }
 
     // MARK: - Spell Check Suppression per [A-054]
