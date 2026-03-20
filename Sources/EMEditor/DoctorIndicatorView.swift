@@ -35,6 +35,9 @@ public struct DoctorIndicatorBar: View {
                 .background(.ultraThinMaterial, in: Capsule())
             }
             .buttonStyle(.plain)
+            #if os(iOS)
+            .hoverEffect(.highlight)
+            #endif
             .accessibilityLabel("Document Doctor: \(diagnostics.count) issue\(diagnostics.count == 1 ? "" : "s") found")
             .accessibilityHint("Tap to review issues")
         }
@@ -102,11 +105,17 @@ struct DoctorIssueRow: View {
                         .buttonStyle(.borderedProminent)
                         .controlSize(.small)
                         .accessibilityLabel("Fix: \(diagnostic.fix?.label ?? "Apply fix")")
+                        #if os(iOS)
+                        .hoverEffect(.highlight)
+                        #endif
                 }
                 Button("Dismiss", action: onDismiss)
                     .buttonStyle(.bordered)
                     .controlSize(.small)
                     .accessibilityLabel("Dismiss this issue")
+                    #if os(iOS)
+                    .hoverEffect(.highlight)
+                    #endif
             }
         }
         .padding(.vertical, 4)

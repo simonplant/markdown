@@ -46,6 +46,9 @@ struct StatusBar: View {
             .accessibilityHint(isExpanded
                 ? "Tap to hide detailed statistics"
                 : "Tap to show detailed statistics")
+            #if os(iOS)
+            .hoverEffect(.highlight)
+            #endif
 
             Spacer()
 

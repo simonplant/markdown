@@ -5,7 +5,9 @@ import EMAI
 
 /// Root view with NavigationStack routing per [A-058].
 /// Error banners and modal alerts are attached here so they cover all navigation destinations.
-/// Handles state restoration on launch per [A-061] and first-run experience per FEAT-044.
+/// Handles per-scene state restoration via NSUserActivity per [A-034] and [A-061].
+/// Each window scene owns its own AppRouter, FileOpenCoordinator, and FileCreateCoordinator.
+/// First-run experience per FEAT-044.
 public struct RootView: View {
     @State private var router = AppRouter()
     @Environment(ErrorPresenter.self) private var errorPresenter
@@ -65,6 +67,17 @@ public struct RootView: View {
         .animation(.easeInOut(duration: 0.25), value: firstRunCoordinator?.showModelDownloadBanner)
         .errorAlert()
         .environment(router)
+        // Per-scene state advertisement via NSUserActivity per [A-034] and [A-061].
+        // Each window scene encodes its open file as an activity so the system can
+        // restore windows individually after termination.
+        // isActive is true when a file is open, ensuring the activity is updated
+        // when the scene has a document to restore.
+        .userActivity(sceneActivityType, isActive: fileOpenCoordinator.currentFileURL != nil) { activity in
+            encodeSceneState(into: activity)
+        }
+        .onContinueUserActivity(sceneActivityType) { activity in
+            restoreSceneState(from: activity)
+        }
         .task {
             guard !hasAttemptedRestore else { return }
             hasAttemptedRestore = true
@@ -81,6 +94,8 @@ public struct RootView: View {
             await coordinator.evaluateFirstRunPrompt()
         }
     }
+
+    // MARK: - State Restoration per [A-061]
 
     /// Attempts to restore the last open file on launch per [A-061] and AC-5.
     ///
@@ -99,6 +114,54 @@ public struct RootView: View {
         case .failed:
             // Bookmark stale or file gone — clear state, show home/recents
             settings.clearStateRestoration()
+        }
+    }
+
+    // MARK: - Per-Scene NSUserActivity per [A-034]
+
+    /// Encodes the current scene's open file into the NSUserActivity for restoration.
+    /// Called by SwiftUI's `userActivity` modifier whenever scene state changes.
+    private func encodeSceneState(into activity: NSUserActivity) {
+        activity.title = "Edit Document"
+        activity.needsSave = true
+
+        guard let url = fileOpenCoordinator.currentFileURL else {
+            // No file open — clear activity payload
+            activity.userInfo = nil
+            return
+        }
+
+        // Encode the file's security-scoped bookmark for restoration
+        do {
+            let bookmarkData = try url.bookmarkData(
+                options: [],
+                includingResourceValuesForKeys: nil,
+                relativeTo: nil
+            )
+            activity.userInfo = [
+                "bookmarkData": bookmarkData,
+                "filename": url.lastPathComponent
+            ]
+        } catch {
+            // Bookmark creation failed — activity won't restore this file
+            activity.userInfo = nil
+        }
+    }
+
+    /// Restores scene state from an NSUserActivity when the system restores a window.
+    /// Per [A-034]: each scene restores its own file independently.
+    private func restoreSceneState(from activity: NSUserActivity) {
+        guard let userInfo = activity.userInfo,
+              let bookmarkData = userInfo["bookmarkData"] as? Data else {
+            return
+        }
+
+        let attempt = fileOpenCoordinator.openFile(fromBookmark: bookmarkData)
+        switch attempt {
+        case .opened, .alreadyOpen:
+            router.openEditor()
+        case .failed:
+            break // Stay on home screen
         }
     }
 }

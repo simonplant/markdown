@@ -15,6 +15,8 @@ import EMAI
 /// Uses EMEditor's TextViewBridge for the text editing area (TextKit 2).
 /// Monitors for external file changes per FEAT-045 and [A-027].
 /// Loads file content from FileOpenCoordinator per FEAT-001.
+/// Per-scene instance — each window has its own editor per [A-028] and [A-034].
+/// Responsive to Split View widths (1/3, 1/2, 2/3) via horizontalSizeClass per FEAT-015 AC-3.
 struct EditorShellView: View {
     @Environment(AppRouter.self) private var router
     @Environment(SettingsManager.self) private var settings
@@ -209,15 +211,21 @@ struct EditorShellView: View {
             setupImproveWriting()
         }
         .onDisappear {
-            Task {
-                await autoSaveManager?.saveNow()
-                autoSaveManager?.stop()
-            }
             conflictManager?.stopMonitoring()
             // Cancel any active AI improve session on file close
             improveCoordinator?.cancel()
             // Clear doctor state on file close per FEAT-005 AC-3
             editorState.clearDiagnostics()
+            // Save, then release per-scene file coordination resources per [A-028].
+            // closeCurrentFile() is idempotent — safe if closeFile() already ran.
+            // This handles window-close in Stage Manager per FEAT-015 AC-7.
+            let saveManager = autoSaveManager
+            let openCoordinator = fileOpenCoordinator
+            Task { @MainActor in
+                await saveManager?.saveNow()
+                saveManager?.stop()
+                openCoordinator.closeCurrentFile()
+            }
         }
         .onChange(of: autoSaveManager?.savedWhileInBackground) { _, newValue in
             if newValue == true {

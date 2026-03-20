@@ -2,6 +2,7 @@ import SwiftUI
 
 /// Top toolbar for the editor view per FEAT-037.
 /// Source toggle and settings gear in the navigation bar.
+/// Trackpad hover states per FEAT-015 AC-4.
 struct EditorToolbar: ToolbarContent {
     let isSourceView: Bool
     let onToggleSource: () -> Void
@@ -15,11 +16,17 @@ struct EditorToolbar: ToolbarContent {
             .keyboardShortcut("p", modifiers: [.command, .shift])
             .accessibilityLabel(isSourceView ? "Switch to rich text view" : "Switch to source view")
             .accessibilityHint("Toggles between formatted and raw markdown views")
+            #if os(iOS)
+            .hoverEffect(.highlight)
+            #endif
 
             Button(action: onSettings) {
                 Image(systemName: "gearshape")
             }
             .accessibilityLabel("Settings")
+            #if os(iOS)
+            .hoverEffect(.highlight)
+            #endif
         }
     }
 }

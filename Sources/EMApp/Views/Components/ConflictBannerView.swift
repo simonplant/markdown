@@ -31,6 +31,9 @@ struct ConflictBannerView: View {
                 .font(.subheadline.weight(.medium))
                 .buttonStyle(.borderless)
                 .accessibilityHint("Discard your version and load the external changes")
+                #if os(iOS)
+                .hoverEffect(.highlight)
+                #endif
 
                 Button("Keep Mine") {
                     onKeepMine()
@@ -38,6 +41,9 @@ struct ConflictBannerView: View {
                 .font(.subheadline.weight(.medium))
                 .buttonStyle(.borderless)
                 .accessibilityHint("Keep your version; next save overwrites external changes")
+                #if os(iOS)
+                .hoverEffect(.highlight)
+                #endif
             } else if conflictState == .externallyDeleted {
                 Button("Save Elsewhere") {
                     onSaveElsewhere()
@@ -45,6 +51,9 @@ struct ConflictBannerView: View {
                 .font(.subheadline.weight(.medium))
                 .buttonStyle(.borderless)
                 .accessibilityHint("Save your document to a new location")
+                #if os(iOS)
+                .hoverEffect(.highlight)
+                #endif
 
                 Button("Dismiss") {
                     onKeepMine()
@@ -52,6 +61,9 @@ struct ConflictBannerView: View {
                 .font(.subheadline.weight(.medium))
                 .buttonStyle(.borderless)
                 .accessibilityHint("Dismiss this notification")
+                #if os(iOS)
+                .hoverEffect(.highlight)
+                #endif
             }
         }
         .padding(.horizontal, 16)
