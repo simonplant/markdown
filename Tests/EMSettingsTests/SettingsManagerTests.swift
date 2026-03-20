@@ -29,6 +29,8 @@ struct SettingsManagerTests {
         #expect(m.isAutoFormatHeadingSpacing == true)
         #expect(m.trailingWhitespaceBehavior == .strip)
         #expect(m.isGhostTextEnabled == true)
+        #expect(m.modelDownloadState == .notDownloaded)
+        #expect(m.hasSeenModelDownloadPrompt == false)
     }
 
     // MARK: - Persistence
@@ -99,6 +101,22 @@ struct SettingsManagerTests {
         #expect(d.bool(forKey: "em_ghostText") == false)
     }
 
+    @Test("Model download state persists")
+    func modelDownloadStatePersists() {
+        let (m, d) = makeManager()
+        m.modelDownloadState = .downloading
+        #expect(d.string(forKey: "em_modelDownloadState") == "downloading")
+        m.modelDownloadState = .downloaded
+        #expect(d.string(forKey: "em_modelDownloadState") == "downloaded")
+    }
+
+    @Test("Model download prompt seen flag persists")
+    func modelDownloadPromptPersists() {
+        let (m, d) = makeManager()
+        m.hasSeenModelDownloadPrompt = true
+        #expect(d.bool(forKey: "em_hasSeenModelDownloadPrompt") == true)
+    }
+
     // MARK: - Restoration
 
     @Test("Settings restore from UserDefaults on init")
@@ -118,6 +136,8 @@ struct SettingsManagerTests {
         defaults.set(false, forKey: "em_autoFormatHeadingSpacing")
         defaults.set("keep", forKey: "em_trailingWhitespace")
         defaults.set(false, forKey: "em_ghostText")
+        defaults.set("downloaded", forKey: "em_modelDownloadState")
+        defaults.set(true, forKey: "em_hasSeenModelDownloadPrompt")
 
         let m = SettingsManager(defaults: defaults)
 
@@ -132,5 +152,7 @@ struct SettingsManagerTests {
         #expect(m.isAutoFormatHeadingSpacing == false)
         #expect(m.trailingWhitespaceBehavior == .keep)
         #expect(m.isGhostTextEnabled == false)
+        #expect(m.modelDownloadState == .downloaded)
+        #expect(m.hasSeenModelDownloadPrompt == true)
     }
 }
