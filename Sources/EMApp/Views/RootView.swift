@@ -4,9 +4,12 @@ import EMSettings
 
 /// Root view with NavigationStack routing per [A-058].
 /// Error banners and modal alerts are attached here so they cover all navigation destinations.
+/// Handles state restoration on launch per [A-061].
 public struct RootView: View {
     @State private var router = AppRouter()
     @Environment(ErrorPresenter.self) private var errorPresenter
+    @Environment(RecentsManager.self) private var recentsManager
+    @State private var hasAttemptedRestore = false
 
     public init() {}
 
@@ -45,5 +48,26 @@ public struct RootView: View {
         .animation(.easeInOut(duration: 0.25), value: errorPresenter.currentBanner?.id)
         .errorAlert()
         .environment(router)
+        .task {
+            guard !hasAttemptedRestore else { return }
+            hasAttemptedRestore = true
+            attemptStateRestoration()
+        }
+    }
+
+    /// Attempts to restore the last open file on launch per [A-061].
+    ///
+    /// If the last file's bookmark resolves successfully, navigates directly to the editor.
+    /// If it fails (file deleted/moved), stays on home screen with recents list.
+    private func attemptStateRestoration() {
+        guard let restored = recentsManager.restoreLastFile() else {
+            // No saved state or bookmark stale — show home screen with recents (AC-2)
+            return
+        }
+
+        // Successfully resolved — navigate to editor (AC-1)
+        // The restored state (cursor position, view mode, scroll) will be applied
+        // by EditorShellView when full file coordination is wired (FEAT-001/FEAT-040).
+        router.openEditor()
     }
 }

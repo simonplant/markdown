@@ -850,9 +850,10 @@
         "Recents entry for a deleted/moved file is removed gracefully (no crash, no stale entry)",
         "Recents list shows filename, parent folder, and last opened date"
       ],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
+      "completedAt": "2026-03-19T17:45:06-07:00"
     },
     {
       "id": "FEAT-044",
