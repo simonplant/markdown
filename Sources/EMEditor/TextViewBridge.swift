@@ -129,6 +129,10 @@ public struct TextViewBridge: NSViewRepresentable {
         ))
 
         context.coordinator.onTextChange = onTextChange
+
+        // Observe scroll position changes
+        context.coordinator.observeScrollView(scrollView)
+
         return scrollView
     }
 

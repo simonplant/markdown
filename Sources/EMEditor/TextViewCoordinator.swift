@@ -138,6 +138,12 @@ public struct ValueBinding<Value> {
 @MainActor
 public final class TextViewCoordinator: NSObject, NSTextViewDelegate {
 
+    /// Signpost log for measuring keystroke-to-render per [D-PERF-2].
+    private let signpost = OSSignpost(
+        subsystem: "com.easymarkdown.emeditor",
+        category: "keystroke"
+    )
+
     var text: ValueBinding<String>
     var editorState: EditorState
     var onTextChange: ((String) -> Void)?
@@ -149,7 +155,31 @@ public final class TextViewCoordinator: NSObject, NSTextViewDelegate {
         super.init()
     }
 
+    // MARK: - NSTextViewDelegate
+
+    public func textView(
+        _ textView: NSTextView,
+        shouldChangeTextIn affectedCharRange: NSRange,
+        replacementString: String?
+    ) -> Bool {
+        // Start keystroke performance signpost per [A-037].
+        signpost.begin("keystroke")
+
+        // CJK IME: if the text view has marked text (composing),
+        // let the input system handle it without interference per AC-3.
+        if textView.hasMarkedText() {
+            return true
+        }
+
+        // Future: auto-format keystroke interception per [A-051]
+        // will go here — query AST context, invoke EMFormatter rules.
+
+        return true
+    }
+
     public func textDidChange(_ notification: Notification) {
+        signpost.end("keystroke")
+
         guard !isUpdatingFromBinding else { return }
         guard let textView = notification.object as? NSTextView else { return }
         let newText = textView.string
@@ -166,9 +196,7 @@ public final class TextViewCoordinator: NSObject, NSTextViewDelegate {
             let text = textView.string
             if let swiftRange = Range(range, in: text) {
                 let selectedText = String(text[swiftRange])
-                let count = selectedText.split(omittingEmptySubsequences: true) {
-                    $0.isWhitespace || $0.isNewline
-                }.count
+                let count = wordCount(in: selectedText)
                 editorState.updateSelectionWordCount(count)
             }
         } else {
@@ -176,11 +204,39 @@ public final class TextViewCoordinator: NSObject, NSTextViewDelegate {
         }
     }
 
+    // MARK: - Scroll tracking
+
+    /// Registers for scroll notifications from the enclosing NSScrollView.
+    func observeScrollView(_ scrollView: NSScrollView) {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(scrollViewDidScroll(_:)),
+            name: NSScrollView.didLiveScrollNotification,
+            object: scrollView
+        )
+    }
+
+    @objc private func scrollViewDidScroll(_ notification: Notification) {
+        guard let scrollView = notification.object as? NSScrollView else { return }
+        let offset = scrollView.contentView.bounds.origin.y
+        editorState.updateScrollOffset(offset)
+    }
+
+    // MARK: - Programmatic text updates
+
     func updateTextView(_ textView: EMTextView, with newText: String) {
         guard textView.string != newText else { return }
         isUpdatingFromBinding = true
         textView.string = newText
         isUpdatingFromBinding = false
+    }
+
+    // MARK: - Word counting
+
+    /// Simple word count for selection stats.
+    /// Full document word count uses NLTokenizer (in EditorShellView for now).
+    private func wordCount(in text: String) -> Int {
+        text.split(omittingEmptySubsequences: true) { $0.isWhitespace || $0.isNewline }.count
     }
 }
 
