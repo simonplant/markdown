@@ -30,6 +30,14 @@ public final class EMTextView: UITextView {
     /// Set by TextViewCoordinator for list outdent per FEAT-004.
     public var onShiftTab: (() -> Bool)?
 
+    /// Handler for task list checkbox tap per FEAT-049.
+    /// Called with the NSRange of the `[ ]` or `[x]` marker in the text storage.
+    public var onCheckboxTap: ((NSRange) -> Void)?
+
+    /// Handler for link tap per FEAT-049.
+    /// Called with the link URL when a link is tapped in rich view.
+    public var onLinkTap: ((URL) -> Void)?
+
     /// Current layout metrics for device-aware spacing per FEAT-010.
     public var layoutMetrics: LayoutMetrics = .current {
         didSet { applyLayoutMetrics() }
@@ -55,6 +63,7 @@ public final class EMTextView: UITextView {
         super.init(frame: .zero, textContainer: container)
 
         configureTextView()
+        setupInteractiveGestures()
         logger.debug("EMTextView initialized with TextKit 2")
     }
 
@@ -101,6 +110,50 @@ public final class EMTextView: UITextView {
 
         // Keyboard
         keyboardDismissMode = .interactive
+    }
+
+    // MARK: - Interactive Elements (FEAT-049)
+
+    /// Sets up tap gesture for interactive elements (checkboxes and links).
+    /// Uses a custom gesture recognizer that only fires when the tap lands
+    /// on a checkbox or link, avoiding interference with normal editing.
+    private func setupInteractiveGestures() {
+        let tap = InteractiveTapGesture(target: self, action: #selector(handleInteractiveTap(_:)))
+        tap.targetTextView = self
+        addGestureRecognizer(tap)
+    }
+
+    /// Returns the interactive element (checkbox or link) at the given point, if any.
+    func interactiveElement(at point: CGPoint) -> InteractiveElement? {
+        guard let position = closestPosition(to: point) else { return nil }
+        let index = offset(from: beginningOfDocument, to: position)
+        guard index >= 0, index < textStorage.length else { return nil }
+
+        // Check for checkbox first (higher priority — smaller target)
+        if let state = textStorage.attribute(.taskListCheckbox, at: index, effectiveRange: nil) as? String {
+            var range = NSRange()
+            textStorage.attribute(.taskListCheckbox, at: index, effectiveRange: &range)
+            return .checkbox(range: range, isChecked: state == "checked")
+        }
+
+        // Check for link
+        if let url = textStorage.attribute(.link, at: index, effectiveRange: nil) as? URL {
+            return .link(url: url)
+        }
+
+        return nil
+    }
+
+    @objc private func handleInteractiveTap(_ recognizer: UITapGestureRecognizer) {
+        let point = recognizer.location(in: self)
+        guard let element = interactiveElement(at: point) else { return }
+
+        switch element {
+        case .checkbox(let range, _):
+            onCheckboxTap?(range)
+        case .link(let url):
+            onLinkTap?(url)
+        }
     }
 
     // MARK: - Undo Manager
@@ -189,6 +242,28 @@ public final class EMTextView: UITextView {
     }
 }
 
+/// Custom tap gesture recognizer that only fires when the tap lands
+/// on an interactive element (checkbox or link) per FEAT-049.
+/// When the tap is not on an interactive element, the gesture fails
+/// immediately, allowing the text view's editing gestures to proceed.
+class InteractiveTapGesture: UITapGestureRecognizer {
+    weak var targetTextView: EMTextView?
+
+    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent) {
+        guard let touch = touches.first, let tv = targetTextView else {
+            state = .failed
+            return
+        }
+
+        let point = touch.location(in: tv)
+        if tv.interactiveElement(at: point) != nil {
+            super.touchesBegan(touches, with: event)
+        } else {
+            state = .failed
+        }
+    }
+}
+
 // MARK: - macOS
 
 #elseif canImport(AppKit)
@@ -205,6 +280,14 @@ public final class EMTextView: NSTextView {
     /// Handler for Shift-Tab key. Returns true if the event was consumed.
     /// Set by TextViewCoordinator for list outdent per FEAT-004.
     public var onShiftTab: (() -> Bool)?
+
+    /// Handler for task list checkbox click per FEAT-049.
+    /// Called with the NSRange of the `[ ]` or `[x]` marker in the text storage.
+    public var onCheckboxTap: ((NSRange) -> Void)?
+
+    /// Handler for link click per FEAT-049.
+    /// Called with the link URL when a link is clicked in rich view.
+    public var onLinkTap: ((URL) -> Void)?
 
     /// Current layout metrics for device-aware spacing per FEAT-010.
     public var layoutMetrics: LayoutMetrics = .current {
@@ -299,6 +382,44 @@ public final class EMTextView: NSTextView {
         editorState?.undoManager ?? super.undoManager
     }
 
+    // MARK: - Interactive Elements (FEAT-049)
+
+    /// Returns the interactive element at the given point, if any.
+    func interactiveElement(at point: CGPoint) -> InteractiveElement? {
+        guard let textStorage else { return nil }
+        let index = characterIndexForInsertion(at: point)
+        guard index >= 0, index < textStorage.length else { return nil }
+
+        if let state = textStorage.attribute(.taskListCheckbox, at: index, effectiveRange: nil) as? String {
+            var range = NSRange()
+            textStorage.attribute(.taskListCheckbox, at: index, effectiveRange: &range)
+            return .checkbox(range: range, isChecked: state == "checked")
+        }
+
+        if let url = textStorage.attribute(.link, at: index, effectiveRange: nil) as? URL {
+            return .link(url: url)
+        }
+
+        return nil
+    }
+
+    /// Intercepts mouse clicks on interactive elements (checkboxes and links).
+    /// For non-interactive areas, passes through to normal text editing.
+    public override func mouseDown(with event: NSEvent) {
+        let point = convert(event.locationInWindow, from: nil)
+        if let element = interactiveElement(at: point) {
+            switch element {
+            case .checkbox(let range, _):
+                onCheckboxTap?(range)
+                return
+            case .link(let url):
+                onLinkTap?(url)
+                return
+            }
+        }
+        super.mouseDown(with: event)
+    }
+
     // MARK: - Spell Check Suppression per [A-054]
 
     /// Overrides the system spell check indicator to skip ranges marked
@@ -329,6 +450,16 @@ public final class EMTextView: NSTextView {
 }
 
 #endif
+
+// MARK: - Interactive Element Types
+
+/// An interactive element detected at a tap/click location per FEAT-049.
+enum InteractiveElement {
+    /// A task list checkbox with its range and current state.
+    case checkbox(range: NSRange, isChecked: Bool)
+    /// A tappable link with its destination URL.
+    case link(url: URL)
+}
 
 // MARK: - os_signpost helper
 
