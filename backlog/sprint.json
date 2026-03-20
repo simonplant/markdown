@@ -1,26 +1,26 @@
 {
-  "sprintId": "sprint-1774036737",
-  "startedAt": "2026-03-20T12:58:57-07:00",
+  "sprintId": "sprint-1774038317",
+  "startedAt": "2026-03-20T13:25:17-07:00",
   "status": "completed",
   "item": {
-    "id": "FEAT-048",
-    "title": "F-003c: Image Rendering",
-    "intent": "Images referenced in markdown must render inline in rich view — broken paths must show a clear placeholder, not a blank space",
-    "description": "Depends on: FEAT-038 (Parser), FEAT-003 (Core Rendering). Render images from relative and absolute paths inline in rich view. Images scale to fit content width with aspect ratio preserved. Broken/missing image paths show a placeholder icon with the alt text. Supports common formats: PNG, JPEG, GIF, WebP, SVG (render as bitmap).",
+    "id": "FEAT-051",
+    "title": "F-003f: i18n Text Support (CJK, RTL, Emoji)",
+    "intent": "The editor must handle every writing system correctly — CJK, Arabic, Hebrew, Devanagari, emoji. A global editor that breaks on non-Latin text is not the best in the world.",
+    "description": "Depends on: FEAT-039 (Text Engine). CJK text: correct rendering, line breaking at character boundaries (not mid-character), IME composition display. RTL text: correct bidirectional layout, cursor moves right-to-left, mixed LTR/RTL in same line. Emoji: correct grapheme cluster handling (cursor treats multi-codepoint emoji as single unit). Accented characters: correct rendering and cursor behavior. All writing systems work in both rich and source view.",
     "sourceBacklog": "backlog.json",
     "steps": [],
     "acceptanceCriteria": [
-      "Image with valid relative path renders inline at appropriate size",
-      "Image scales to content width and preserves aspect ratio",
-      "Broken image path shows placeholder icon with alt text displayed",
-      "Very large image (5000x5000px) does not cause memory spike or lag",
-      "GIF renders as static first frame (animated GIF support is P2)"
+      "Chinese/Japanese/Korean text renders correctly and line-breaks at character boundaries",
+      "Arabic and Hebrew text displays right-to-left with correct cursor direction",
+      "Mixed LTR and RTL text in the same line renders with correct bidirectional ordering",
+      "Multi-codepoint emoji (flags, skin tones, ZWJ sequences) treated as single cursor unit",
+      "IME composition for CJK shows partial input correctly before commit"
     ],
     "scope": [],
-    "startedAt": "2026-03-20T12:58:57-07:00",
+    "startedAt": "2026-03-20T13:25:17-07:00",
     "status": "passed",
-    "completedAt": "2026-03-20T13:25:16-07:00"
+    "completedAt": "2026-03-20T13:39:01-07:00"
   },
-  "completedAt": "2026-03-20T13:25:16-07:00",
-  "attempts": 3
+  "completedAt": "2026-03-20T13:39:01-07:00",
+  "attempts": 1
 }
