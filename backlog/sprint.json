@@ -1,7 +1,7 @@
 {
   "sprintId": "sprint-1773975886",
   "startedAt": "2026-03-19T20:04:46-07:00",
-  "status": "in_progress",
+  "status": "completed",
   "item": {
     "id": "FEAT-012",
     "title": "F-033: Word Count and Document Stats",
@@ -19,6 +19,10 @@
       "Tapping the status bar expands to show paragraph count, sentence count, and Flesch-Kincaid readability score"
     ],
     "scope": [],
-    "startedAt": "2026-03-19T20:04:46-07:00"
-  }
+    "startedAt": "2026-03-19T20:04:46-07:00",
+    "status": "passed",
+    "completedAt": "2026-03-19T20:15:22-07:00"
+  },
+  "completedAt": "2026-03-19T20:15:22-07:00",
+  "attempts": 2
 }
