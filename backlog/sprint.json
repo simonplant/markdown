@@ -1,7 +1,7 @@
 {
   "sprintId": "sprint-1774030299",
   "startedAt": "2026-03-20T11:11:39-07:00",
-  "status": "in_progress",
+  "status": "completed",
   "item": {
     "id": "FEAT-011",
     "title": "F-025a: AI Improve Writing",
@@ -20,6 +20,10 @@
       "AI output streams token-by-token into the diff preview"
     ],
     "scope": [],
-    "startedAt": "2026-03-20T11:11:39-07:00"
-  }
+    "startedAt": "2026-03-20T11:11:39-07:00",
+    "status": "passed",
+    "completedAt": "2026-03-20T11:41:35-07:00"
+  },
+  "completedAt": "2026-03-20T11:41:35-07:00",
+  "attempts": 2
 }
