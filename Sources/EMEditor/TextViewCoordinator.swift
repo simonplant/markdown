@@ -11,6 +11,7 @@ import UIKit
 import AppKit
 #endif
 import EMCore
+import EMFormatter
 import EMParser
 
 private let logger = Logger(subsystem: "com.easymarkdown.emeditor", category: "coordinator")
@@ -35,6 +36,9 @@ public final class TextViewCoordinator: NSObject, UITextViewDelegate, UIScrollVi
 
     /// Current rendering configuration. Updated from the bridge.
     var renderConfig: RenderConfiguration?
+
+    /// Formatting engine for list auto-formatting per FEAT-004 and [A-051].
+    private let formattingEngine = FormattingEngine.listFormattingEngine()
 
     /// Prevents feedback loops when programmatically updating text.
     private var isUpdatingFromBinding = false
@@ -72,7 +76,9 @@ public final class TextViewCoordinator: NSObject, UITextViewDelegate, UIScrollVi
         onTextChange?(newText)
 
         // Schedule debounced re-parse and render per [A-017]
-        scheduleRender(for: textView)
+        if let emTextView = textView as? EMTextView {
+            scheduleRender(for: emTextView)
+        }
     }
 
     public func textViewDidChangeSelection(_ textView: UITextView) {
@@ -104,9 +110,118 @@ public final class TextViewCoordinator: NSObject, UITextViewDelegate, UIScrollVi
             return true
         }
 
-        // Future: auto-format keystroke interception per [A-051]
-        // will go here — query AST context, invoke EMFormatter rules.
+        // Auto-format keystroke interception per [A-051] and FEAT-004.
+        if let trigger = formattingTrigger(for: text) {
+            let fullText = textView.text ?? ""
+            if let cursorStart = Range(range, in: fullText)?.lowerBound {
+                let context = FormattingContext(
+                    text: fullText,
+                    cursorPosition: cursorStart,
+                    trigger: trigger,
+                    ast: currentAST
+                )
+                if let mutation = formattingEngine.evaluate(context) {
+                    applyMutation(mutation, to: textView)
+                    return false
+                }
+            }
+        }
 
+        return true
+    }
+
+    /// Maps replacement text to a formatting trigger.
+    private func formattingTrigger(for replacementText: String) -> FormattingTrigger? {
+        switch replacementText {
+        case "\n": return .enter
+        case "\t": return .tab
+        default: return nil
+        }
+    }
+
+    /// Applies a TextMutation to the text view as a discrete undo group per [A-022].
+    private func applyMutation(_ mutation: TextMutation, to textView: UITextView) {
+        let fullText = textView.text ?? ""
+
+        // Convert String.Index range to NSRange for UITextView
+        let nsRange = NSRange(mutation.range, in: fullText)
+
+        // Build the result text to resolve cursorAfter index
+        let resultText = String(fullText[..<mutation.range.lowerBound])
+            + mutation.replacement
+            + String(fullText[mutation.range.upperBound...])
+        let cursorUTF16Offset = resultText.utf16.distance(
+            from: resultText.startIndex,
+            to: mutation.cursorAfter
+        )
+
+        // Register undo — each auto-format is a discrete undo step per [A-022]
+        let undoManager = editorState.undoManager
+        let oldText = String(fullText[mutation.range])
+        let replacementNSRange = NSRange(
+            location: nsRange.location,
+            length: (mutation.replacement as NSString).length
+        )
+
+        undoManager.beginUndoGrouping()
+        undoManager.registerUndo(withTarget: textView) { [weak self] tv in
+            if let textRange = Range(replacementNSRange, in: tv.text ?? "") {
+                let revert = TextMutation(
+                    range: textRange,
+                    replacement: oldText,
+                    cursorAfter: textRange.lowerBound
+                )
+                self?.applyMutation(revert, to: tv)
+            }
+        }
+        undoManager.endUndoGrouping()
+
+        // Apply the text change
+        textView.textStorage.beginEditing()
+        textView.textStorage.replaceCharacters(in: nsRange, with: mutation.replacement)
+        textView.textStorage.endEditing()
+
+        // Update cursor position
+        textView.selectedRange = NSRange(location: cursorUTF16Offset, length: 0)
+
+        // Update binding and trigger re-render
+        let newText = textView.text ?? ""
+        text.wrappedValue = newText
+        onTextChange?(newText)
+        if let emTextView = textView as? EMTextView {
+            scheduleRender(for: emTextView)
+        }
+
+        // Haptic feedback per [A-062]
+        if let haptic = mutation.hapticStyle {
+            HapticFeedback.trigger(haptic)
+        }
+
+        signpost.end("keystroke")
+    }
+
+    /// Handles Shift-Tab for list outdent per FEAT-004.
+    /// Called from EMTextView's key command handler.
+    /// Returns true if the event was consumed by a formatting rule.
+    func handleShiftTab(in textView: UITextView) -> Bool {
+        signpost.begin("keystroke")
+        let fullText = textView.text ?? ""
+        let range = textView.selectedRange
+        guard let cursorStart = Range(range, in: fullText)?.lowerBound else {
+            signpost.end("keystroke")
+            return false
+        }
+        let context = FormattingContext(
+            text: fullText,
+            cursorPosition: cursorStart,
+            trigger: .shiftTab,
+            ast: currentAST
+        )
+        guard let mutation = formattingEngine.evaluate(context) else {
+            signpost.end("keystroke")
+            return false
+        }
+        applyMutation(mutation, to: textView)
         return true
     }
 
@@ -237,6 +352,9 @@ public final class TextViewCoordinator: NSObject, NSTextViewDelegate {
     /// Current rendering configuration. Updated from the bridge.
     var renderConfig: RenderConfiguration?
 
+    /// Formatting engine for list auto-formatting per FEAT-004 and [A-051].
+    private let formattingEngine = FormattingEngine.listFormattingEngine()
+
     private var isUpdatingFromBinding = false
 
     /// Parser for markdown text per [A-003].
@@ -276,9 +394,116 @@ public final class TextViewCoordinator: NSObject, NSTextViewDelegate {
             return true
         }
 
-        // Future: auto-format keystroke interception per [A-051]
-        // will go here — query AST context, invoke EMFormatter rules.
+        // Auto-format keystroke interception per [A-051] and FEAT-004.
+        if let replacement = replacementString,
+           let trigger = formattingTrigger(for: replacement) {
+            let fullText = textView.string
+            if let cursorStart = Range(affectedCharRange, in: fullText)?.lowerBound {
+                let context = FormattingContext(
+                    text: fullText,
+                    cursorPosition: cursorStart,
+                    trigger: trigger,
+                    ast: currentAST
+                )
+                if let mutation = formattingEngine.evaluate(context) {
+                    applyMutation(mutation, to: textView)
+                    return false
+                }
+            }
+        }
 
+        return true
+    }
+
+    /// Maps replacement text to a formatting trigger.
+    private func formattingTrigger(for replacementText: String) -> FormattingTrigger? {
+        switch replacementText {
+        case "\n": return .enter
+        case "\t": return .tab
+        default: return nil
+        }
+    }
+
+    /// Applies a TextMutation to the text view as a discrete undo group per [A-022].
+    private func applyMutation(_ mutation: TextMutation, to textView: NSTextView) {
+        let fullText = textView.string
+
+        // Convert String.Index range to NSRange for NSTextView
+        let nsRange = NSRange(mutation.range, in: fullText)
+
+        // Build the result text to resolve cursorAfter index
+        let resultText = String(fullText[..<mutation.range.lowerBound])
+            + mutation.replacement
+            + String(fullText[mutation.range.upperBound...])
+        let cursorUTF16Offset = resultText.utf16.distance(
+            from: resultText.startIndex,
+            to: mutation.cursorAfter
+        )
+
+        // Register undo — each auto-format is a discrete undo step per [A-022]
+        if let undoManager = textView.undoManager {
+            let oldText = String(fullText[mutation.range])
+            let replacementNSRange = NSRange(
+                location: nsRange.location,
+                length: (mutation.replacement as NSString).length
+            )
+
+            undoManager.beginUndoGrouping()
+            undoManager.registerUndo(withTarget: textView) { [weak self] tv in
+                if let textRange = Range(replacementNSRange, in: tv.string) {
+                    let revert = TextMutation(
+                        range: textRange,
+                        replacement: oldText,
+                        cursorAfter: textRange.lowerBound
+                    )
+                    self?.applyMutation(revert, to: tv)
+                }
+            }
+            undoManager.endUndoGrouping()
+        }
+
+        // Apply the text change
+        guard let textStorage = textView.textStorage else { return }
+        textStorage.beginEditing()
+        textStorage.replaceCharacters(in: nsRange, with: mutation.replacement)
+        textStorage.endEditing()
+
+        // Update cursor position
+        textView.setSelectedRange(NSRange(location: cursorUTF16Offset, length: 0))
+
+        // Update binding and trigger re-render
+        let updatedText = textView.string
+        text.wrappedValue = updatedText
+        onTextChange?(updatedText)
+        if let emTextView = textView as? EMTextView {
+            scheduleRender(for: emTextView)
+        }
+
+        signpost.end("keystroke")
+    }
+
+    /// Handles Shift-Tab for list outdent per FEAT-004.
+    /// Called from EMTextView's insertBacktab override.
+    /// Returns true if the event was consumed by a formatting rule.
+    func handleShiftTab(in textView: NSTextView) -> Bool {
+        signpost.begin("keystroke")
+        let fullText = textView.string
+        let range = textView.selectedRange()
+        guard let cursorStart = Range(range, in: fullText)?.lowerBound else {
+            signpost.end("keystroke")
+            return false
+        }
+        let context = FormattingContext(
+            text: fullText,
+            cursorPosition: cursorStart,
+            trigger: .shiftTab,
+            ast: currentAST
+        )
+        guard let mutation = formattingEngine.evaluate(context) else {
+            signpost.end("keystroke")
+            return false
+        }
+        applyMutation(mutation, to: textView)
         return true
     }
 

@@ -62,6 +62,12 @@ public struct TextViewBridge: UIViewRepresentable {
         context.coordinator.onTextChange = onTextChange
         context.coordinator.renderConfig = renderConfig
 
+        // Wire Shift-Tab handler for list outdent per FEAT-004
+        textView.onShiftTab = { [weak coordinator = context.coordinator, weak textView] in
+            guard let coordinator, let textView else { return false }
+            return coordinator.handleShiftTab(in: textView)
+        }
+
         // Apply initial layout metrics per FEAT-010
         if let config = renderConfig {
             textView.layoutMetrics = config.layoutMetrics
@@ -179,6 +185,12 @@ public struct TextViewBridge: NSViewRepresentable {
 
         context.coordinator.onTextChange = onTextChange
         context.coordinator.renderConfig = renderConfig
+
+        // Wire Shift-Tab handler for list outdent per FEAT-004
+        textView.onShiftTab = { [weak coordinator = context.coordinator, weak textView] in
+            guard let coordinator, let textView else { return false }
+            return coordinator.handleShiftTab(in: textView)
+        }
 
         // Apply initial layout metrics per FEAT-010
         if let config = renderConfig {

@@ -1,1 +1,25 @@
-{"sprintId": null, "status": "idle", "item": null}
+{
+  "sprintId": "sprint-1774023621",
+  "startedAt": "2026-03-20T09:20:21-07:00",
+  "status": "in_progress",
+  "item": {
+    "id": "FEAT-004",
+    "title": "F-004a: Auto-Format Lists",
+    "intent": "List auto-formatting is the first-keystroke wow moment — Enter continues the list, renumbering just works, indentation is always correct.",
+    "description": "Depends on: FEAT-039 (Text Engine), FEAT-038 (Parser). Enter in list item continues with correct marker and indentation. Enter on empty list item ends the list. Ordered lists auto-renumber on add/remove/reorder. Nested lists auto-correct to 2 or 4 spaces (configurable in settings). Tab/Shift-Tab indent/outdent list items. Haptic feedback on continuation. Each operation is discrete undo step. Does NOT fire inside code blocks.",
+    "sourceBacklog": "backlog.json",
+    "steps": [],
+    "acceptanceCriteria": [
+      "User types a list item and presses Enter — list continues with correct marker and indentation",
+      "Ordered lists auto-renumber when items added/removed/reordered",
+      "Each auto-format action is independently undoable with Cmd+Z",
+      "Haptic feedback confirms list auto-continuation",
+      "Enter on empty list item ends the list and removes the empty marker",
+      "Auto-format does NOT fire inside fenced code blocks",
+      "Tab indents a list item one level, Shift-Tab outdents",
+      "Performance: auto-format completes within same frame as keystroke on a 500-item list"
+    ],
+    "scope": [],
+    "startedAt": "2026-03-20T09:20:21-07:00"
+  }
+}
