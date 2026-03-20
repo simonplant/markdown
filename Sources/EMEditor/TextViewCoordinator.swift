@@ -143,6 +143,30 @@ public final class TextViewCoordinator: NSObject, UITextViewDelegate, UIScrollVi
         } else {
             editorState.updateSelectionWordCount(nil)
         }
+
+        // Update selection rect for floating action bar positioning per FEAT-054.
+        updateSelectionRect(for: textView)
+    }
+
+    /// Computes the rect of the first line of the selection in the text view's
+    /// coordinate space and updates EditorState for floating bar positioning.
+    private func updateSelectionRect(for textView: UITextView) {
+        guard textView.selectedRange.length > 0,
+              let start = textView.selectedTextRange?.start,
+              let end = textView.selectedTextRange?.end,
+              let selRange = textView.textRange(from: start, to: end) else {
+            editorState.updateSelectionRect(nil)
+            return
+        }
+        // Use first rect of the selection range for positioning above.
+        let firstRect = textView.firstRect(for: selRange)
+        guard !firstRect.isNull, !firstRect.isInfinite else {
+            editorState.updateSelectionRect(nil)
+            return
+        }
+        // Convert to the text view's superview coordinates for overlay alignment.
+        let converted = textView.convert(firstRect, to: textView.superview)
+        editorState.updateSelectionRect(converted)
     }
 
     public func textView(
@@ -899,6 +923,33 @@ public final class TextViewCoordinator: NSObject, NSTextViewDelegate {
         } else {
             editorState.updateSelectionWordCount(nil)
         }
+
+        // Update selection rect for floating action bar positioning per FEAT-054.
+        updateSelectionRect(for: textView)
+    }
+
+    /// Computes the rect of the first line of the selection in the text view's
+    /// coordinate space and updates EditorState for floating bar positioning.
+    private func updateSelectionRect(for textView: NSTextView) {
+        let range = textView.selectedRange()
+        guard range.length > 0 else {
+            editorState.updateSelectionRect(nil)
+            return
+        }
+        // NSTextView provides a convenient firstRect(forCharacterRange:actualRange:)
+        // that returns the rect in screen coordinates. Convert to view coords.
+        var actualRange = NSRange()
+        let screenRect = textView.firstRect(forCharacterRange: range, actualRange: &actualRange)
+        guard !screenRect.isNull, !screenRect.isInfinite,
+              let window = textView.window else {
+            editorState.updateSelectionRect(nil)
+            return
+        }
+        // Convert screen rect → window → view → superview
+        let windowRect = window.convertFromScreen(screenRect)
+        let viewRect = textView.convert(windowRect, from: nil)
+        let converted = textView.convert(viewRect, to: textView.superview)
+        editorState.updateSelectionRect(converted)
     }
 
     // MARK: - Scroll tracking

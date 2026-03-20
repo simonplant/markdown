@@ -28,6 +28,11 @@ public final class EditorState {
     /// Word count for the current selection, nil when no selection.
     public private(set) var selectionWordCount: Int?
 
+    /// Rect of the first line of the selection in the text view's coordinate space.
+    /// Used by the floating action bar to position above the selection per FEAT-054.
+    /// Nil when there is no selection.
+    public private(set) var selectionRect: CGRect?
+
     /// Full document statistics per [A-055]. Updated on text changes.
     public private(set) var documentStats: DocumentStats = .zero
 
@@ -51,6 +56,12 @@ public final class EditorState {
     /// Update selection word count. Pass nil to clear.
     public func updateSelectionWordCount(_ count: Int?) {
         selectionWordCount = count
+    }
+
+    /// Update selection rect for floating action bar positioning per FEAT-054.
+    /// Pass nil to clear when selection is empty.
+    public func updateSelectionRect(_ rect: CGRect?) {
+        selectionRect = rect
     }
 
     /// Update full document statistics.
