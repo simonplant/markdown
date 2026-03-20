@@ -1,7 +1,7 @@
 {
   "sprintId": "sprint-1773969352",
   "startedAt": "2026-03-19T18:15:52-07:00",
-  "status": "in_progress",
+  "status": "completed",
   "item": {
     "id": "FEAT-001",
     "title": "F-001: Open File",
@@ -19,6 +19,10 @@
       "File provider going offline mid-session preserves in-memory content and shows non-modal error"
     ],
     "scope": [],
-    "startedAt": "2026-03-19T18:15:52-07:00"
-  }
+    "startedAt": "2026-03-19T18:15:52-07:00",
+    "status": "passed",
+    "completedAt": "2026-03-19T18:31:20-07:00"
+  },
+  "completedAt": "2026-03-19T18:31:20-07:00",
+  "attempts": 1
 }

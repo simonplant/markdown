@@ -18,9 +18,10 @@
         "Opening a file already open in another editor window shows that window instead of duplicating",
         "File provider going offline mid-session preserves in-memory content and shows non-modal error"
       ],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
+      "completedAt": "2026-03-19T18:31:20-07:00"
     },
     {
       "id": "FEAT-002",
