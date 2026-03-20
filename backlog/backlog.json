@@ -1069,9 +1069,10 @@
         "File always ends with exactly one newline on save",
         "All whitespace rules can be individually toggled off in settings"
       ],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
+      "completedAt": "2026-03-20T15:26:39-07:00"
     },
     {
       "id": "FEAT-054",
