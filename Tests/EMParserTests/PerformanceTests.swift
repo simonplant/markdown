@@ -16,7 +16,7 @@ struct PerformanceTests {
             lines.append("## Section \(section)\n")
             lines.append("")
             // Paragraphs with inline formatting
-            for para in 0..<20 {
+            for para in 0..<30 {
                 lines.append(
                     "This is paragraph \(para) with **bold**, *italic*, "
                     + "and `code` in section \(section). "
