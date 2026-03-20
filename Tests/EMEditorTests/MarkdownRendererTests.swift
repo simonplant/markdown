@@ -431,4 +431,222 @@ struct MarkdownRendererTests {
         _ = lightColors.foreground
         _ = darkColors.foreground
     }
+
+    // MARK: - Table Rendering (FEAT-047)
+
+    @Test("GFM table renders with monospace font and background in rich view")
+    func tableRendersWithCodeFont() {
+        let source = "| A | B |\n|---|---|\n| 1 | 2 |"
+        let parseResult = parser.parse(source)
+        let attrStr = NSMutableAttributedString(string: source)
+
+        renderer.render(
+            into: attrStr,
+            ast: parseResult.ast,
+            sourceText: source,
+            config: richConfig
+        )
+
+        // Table content should have code (monospace) font for column alignment
+        let cellStart = source.distance(from: source.startIndex, to: source.range(of: "1")!.lowerBound)
+        let font = attrStr.attribute(.font, at: cellStart, effectiveRange: nil) as? PlatformFont
+        #expect(font != nil, "Table cell should have a font")
+        #expect(font!.pointSize == richConfig.typeScale.code.pointSize, "Table should use monospace code font")
+
+        // Table should have background color
+        let bg = attrStr.attribute(.backgroundColor, at: cellStart, effectiveRange: nil) as? PlatformColor
+        #expect(bg != nil, "Table should have background color")
+
+        // Text content must be preserved
+        #expect(attrStr.string == source, "Table rendering must preserve text content")
+    }
+
+    @Test("Table header row is visually distinct with bold font")
+    func tableHeaderIsBold() {
+        let source = "| Header 1 | Header 2 |\n|----------|----------|\n| Cell 1   | Cell 2   |"
+        let parseResult = parser.parse(source)
+        let attrStr = NSMutableAttributedString(string: source)
+
+        renderer.render(
+            into: attrStr,
+            ast: parseResult.ast,
+            sourceText: source,
+            config: richConfig
+        )
+
+        // Header text should have bold trait
+        let headerStart = source.distance(from: source.startIndex, to: source.range(of: "Header 1")!.lowerBound)
+        if let font = attrStr.attribute(.font, at: headerStart, effectiveRange: nil) as? PlatformFont {
+            #if canImport(UIKit)
+            #expect(font.fontDescriptor.symbolicTraits.contains(.traitBold), "Header should be bold")
+            #elseif canImport(AppKit)
+            #expect(font.fontDescriptor.symbolicTraits.contains(.bold), "Header should be bold")
+            #endif
+        }
+
+        // Header should have tableHeader attribute
+        let headerAttr = attrStr.attribute(.tableHeader, at: headerStart, effectiveRange: nil)
+        #expect(headerAttr != nil, "Header should have tableHeader attribute")
+
+        // Body cell should NOT be bold
+        let cellStart = source.distance(from: source.startIndex, to: source.range(of: "Cell 1")!.lowerBound)
+        if let bodyFont = attrStr.attribute(.font, at: cellStart, effectiveRange: nil) as? PlatformFont {
+            #if canImport(UIKit)
+            #expect(!bodyFont.fontDescriptor.symbolicTraits.contains(.traitBold), "Body cells should not be bold")
+            #elseif canImport(AppKit)
+            #expect(!bodyFont.fontDescriptor.symbolicTraits.contains(.bold), "Body cells should not be bold")
+            #endif
+        }
+    }
+
+    @Test("Table separator row is hidden in rich view")
+    func tableSeparatorIsHidden() {
+        let source = "| A | B |\n|---|---|\n| 1 | 2 |"
+        let parseResult = parser.parse(source)
+        let attrStr = NSMutableAttributedString(string: source)
+
+        renderer.render(
+            into: attrStr,
+            ast: parseResult.ast,
+            sourceText: source,
+            config: richConfig
+        )
+
+        // The separator row "|---|---|" should be hidden (zero-width font)
+        let separatorStart = source.distance(from: source.startIndex, to: source.range(of: "|---|")!.lowerBound)
+        let font = attrStr.attribute(.font, at: separatorStart, effectiveRange: nil) as? PlatformFont
+        #expect(font != nil)
+        #expect(font!.pointSize < 1, "Separator row should be hidden with tiny font")
+    }
+
+    @Test("Empty table cells render as space, not collapsed")
+    func emptyTableCells() {
+        let source = "| A |   | C |\n|---|---|---|\n| 1 |   | 3 |"
+        let parseResult = parser.parse(source)
+        let attrStr = NSMutableAttributedString(string: source)
+
+        renderer.render(
+            into: attrStr,
+            ast: parseResult.ast,
+            sourceText: source,
+            config: richConfig
+        )
+
+        // Text must be preserved — empty cells remain as whitespace
+        #expect(attrStr.string == source, "Empty cells must preserve whitespace")
+
+        // The empty cell region should still have the table font (not collapsed)
+        let emptyRegion = source.distance(from: source.startIndex, to: source.range(of: "|   |", range: source.range(of: "| 1 |   | 3 |")!)!.lowerBound) + 1
+        let font = attrStr.attribute(.font, at: emptyRegion, effectiveRange: nil) as? PlatformFont
+        #expect(font != nil, "Empty cell region should have a font applied")
+    }
+
+    @Test("Table with many columns renders without crash")
+    func tableWithManyColumns() {
+        // 12-column table
+        let header = "| " + (1...12).map { "Col\($0)" }.joined(separator: " | ") + " |"
+        let separator = "|" + String(repeating: "---|", count: 12)
+        let row = "| " + (1...12).map { "V\($0)" }.joined(separator: " | ") + " |"
+        let source = "\(header)\n\(separator)\n\(row)"
+
+        let parseResult = parser.parse(source)
+        let attrStr = NSMutableAttributedString(string: source)
+
+        // Should not crash and should preserve text
+        renderer.render(
+            into: attrStr,
+            ast: parseResult.ast,
+            sourceText: source,
+            config: richConfig
+        )
+        #expect(attrStr.string == source)
+    }
+
+    @Test("Table with many rows renders without crash")
+    func tableWithManyRows() {
+        var lines = ["| A | B |", "|---|---|"]
+        for i in 1...120 {
+            lines.append("| \(i) | \(i * 2) |")
+        }
+        let source = lines.joined(separator: "\n")
+
+        let parseResult = parser.parse(source)
+        let attrStr = NSMutableAttributedString(string: source)
+
+        renderer.render(
+            into: attrStr,
+            ast: parseResult.ast,
+            sourceText: source,
+            config: richConfig
+        )
+        #expect(attrStr.string == source, "Large table must preserve content")
+    }
+
+    @Test("Table in source view gets code font and background")
+    func tableSourceView() {
+        let source = "| A | B |\n|---|---|\n| 1 | 2 |"
+        let parseResult = parser.parse(source)
+        let attrStr = NSMutableAttributedString(string: source)
+
+        renderer.render(
+            into: attrStr,
+            ast: parseResult.ast,
+            sourceText: source,
+            config: sourceConfig
+        )
+
+        // Source view: separator should NOT be hidden
+        let separatorStart = source.distance(from: source.startIndex, to: source.range(of: "|---|")!.lowerBound)
+        let font = attrStr.attribute(.font, at: separatorStart, effectiveRange: nil) as? PlatformFont
+        #expect(font != nil)
+        #expect(font!.pointSize > 1, "Source view should not hide separator")
+
+        // Should have code background
+        let bg = attrStr.attribute(.backgroundColor, at: 0, effectiveRange: nil) as? PlatformColor
+        #expect(bg != nil, "Source view table should have background")
+    }
+
+    @Test("Table with inline formatting renders correctly")
+    func tableWithInlineFormatting() {
+        let source = "| **Bold** | *Italic* |\n|----------|----------|\n| `code`   | Normal   |"
+        let parseResult = parser.parse(source)
+        let attrStr = NSMutableAttributedString(string: source)
+
+        renderer.render(
+            into: attrStr,
+            ast: parseResult.ast,
+            sourceText: source,
+            config: richConfig
+        )
+
+        // Text should be preserved
+        #expect(attrStr.string == source)
+
+        // Bold text in header should exist (header is already bold, so bold+bold)
+        let boldStart = source.distance(from: source.startIndex, to: source.range(of: "Bold")!.lowerBound)
+        let font = attrStr.attribute(.font, at: boldStart, effectiveRange: nil) as? PlatformFont
+        #expect(font != nil)
+    }
+
+    @Test("Table with alignment separators hides them correctly")
+    func tableWithAlignmentSeparators() {
+        let source = "| Left | Center | Right |\n|:-----|:------:|------:|\n| L    | C      | R     |"
+        let parseResult = parser.parse(source)
+        let attrStr = NSMutableAttributedString(string: source)
+
+        renderer.render(
+            into: attrStr,
+            ast: parseResult.ast,
+            sourceText: source,
+            config: richConfig
+        )
+
+        // The separator row with alignment markers should be hidden
+        let separatorStart = source.distance(from: source.startIndex, to: source.range(of: ":-----")!.lowerBound)
+        let font = attrStr.attribute(.font, at: separatorStart, effectiveRange: nil) as? PlatformFont
+        #expect(font != nil)
+        #expect(font!.pointSize < 1, "Alignment separator should be hidden")
+
+        #expect(attrStr.string == source)
+    }
 }

@@ -60,6 +60,9 @@ extension NSAttributedString.Key {
     /// Marks a range with its markdown node type for accessibility.
     static let markdownNodeType = NSAttributedString.Key("em.markdownNodeType")
 
+    /// Marks a range as a table header row for distinct styling per FEAT-047.
+    static let tableHeader = NSAttributedString.Key("em.tableHeader")
+
     /// Marks a range as excluded from spell checking per [A-054].
     static let spellCheckExcluded = NSAttributedString.Key("em.spellCheckExcluded")
 
@@ -279,6 +282,16 @@ public struct MarkdownRenderer {
                 nsRange: nsRange,
                 into: attrStr,
                 config: config
+            )
+
+        case .table:
+            renderTable(
+                node,
+                nsRange: nsRange,
+                into: attrStr,
+                sourceText: sourceText,
+                config: config,
+                lineOffsets: lineOffsets
             )
 
         default:
@@ -655,6 +668,182 @@ public struct MarkdownRenderer {
         ], range: nsRange)
     }
 
+    // MARK: - Tables (FEAT-047)
+
+    /// Renders a GFM table with column alignment, header styling, and cell padding.
+    ///
+    /// Strategy: monospace font for natural column alignment, bold header row,
+    /// hidden separator row, pipe characters styled as visual dividers, and
+    /// subtle background to distinguish the table region.
+    private func renderTable(
+        _ node: MarkdownNode,
+        nsRange: NSRange,
+        into attrStr: NSMutableAttributedString,
+        sourceText: String,
+        config: RenderConfiguration,
+        lineOffsets: [Int]
+    ) {
+        let codeFont = config.typeScale.code
+        let codeSize = codeFont.pointSize
+        let metrics = config.layoutMetrics
+
+        // Compact paragraph style for table rows — tighter than body text
+        let paragraphStyle = NSMutableParagraphStyle()
+        paragraphStyle.lineSpacing = metrics.lineSpacing(forFontSize: codeSize) * 0.5
+        paragraphStyle.paragraphSpacing = 0
+        paragraphStyle.paragraphSpacingBefore = 0
+        paragraphStyle.alignment = .natural
+
+        // Base table attributes: monospace font + subtle background
+        attrStr.addAttributes([
+            .font: codeFont,
+            .foregroundColor: config.colors.foreground,
+            .backgroundColor: config.colors.codeBackground,
+            .paragraphStyle: paragraphStyle,
+            .markdownNodeType: "table",
+        ], range: nsRange)
+
+        // Style header and body from AST structure
+        for child in node.children {
+            switch child.type {
+            case .tableHead:
+                renderTableHead(
+                    child,
+                    into: attrStr,
+                    sourceText: sourceText,
+                    config: config,
+                    lineOffsets: lineOffsets
+                )
+            case .tableBody:
+                renderTableBody(
+                    child,
+                    into: attrStr,
+                    sourceText: sourceText,
+                    config: config,
+                    lineOffsets: lineOffsets
+                )
+            default:
+                break
+            }
+        }
+
+        // Hide the separator row (e.g., |---|---|) — purely syntactic
+        hideTableSeparatorRow(in: nsRange, attrStr: attrStr, sourceText: sourceText)
+
+        // Style pipe characters as visual dividers
+        styleTablePipes(in: nsRange, attrStr: attrStr, colors: config.colors)
+    }
+
+    /// Renders the table header row with bold font for visual distinction.
+    private func renderTableHead(
+        _ node: MarkdownNode,
+        into attrStr: NSMutableAttributedString,
+        sourceText: String,
+        config: RenderConfiguration,
+        lineOffsets: [Int]
+    ) {
+        guard let range = node.range,
+              let nsRange = nsRange(from: range, in: sourceText, lineOffsets: lineOffsets) else {
+            return
+        }
+
+        let boldCodeFont = fontWithTrait(config.typeScale.code, trait: .traitBold)
+        attrStr.addAttributes([
+            .font: boldCodeFont,
+            .foregroundColor: config.colors.heading,
+            .tableHeader: true,
+        ], range: nsRange)
+
+        // Render inline formatting within header cells
+        for row in node.children {
+            for cell in row.children {
+                renderInlineChildren(
+                    of: cell,
+                    into: attrStr,
+                    sourceText: sourceText,
+                    config: config,
+                    lineOffsets: lineOffsets
+                )
+            }
+        }
+    }
+
+    /// Renders inline formatting within table body cells.
+    private func renderTableBody(
+        _ node: MarkdownNode,
+        into attrStr: NSMutableAttributedString,
+        sourceText: String,
+        config: RenderConfiguration,
+        lineOffsets: [Int]
+    ) {
+        for row in node.children {
+            for cell in row.children {
+                renderInlineChildren(
+                    of: cell,
+                    into: attrStr,
+                    sourceText: sourceText,
+                    config: config,
+                    lineOffsets: lineOffsets
+                )
+            }
+        }
+    }
+
+    /// Hides the GFM separator row (e.g., `|---|:---:|---:`) with zero-width font.
+    private func hideTableSeparatorRow(
+        in nsRange: NSRange,
+        attrStr: NSMutableAttributedString,
+        sourceText: String
+    ) {
+        guard let swiftRange = Range(nsRange, in: sourceText) else { return }
+        let tableText = sourceText[swiftRange]
+
+        var lineStart = tableText.startIndex
+        while lineStart < tableText.endIndex {
+            let lineEnd = tableText[lineStart...].firstIndex(of: "\n") ?? tableText.endIndex
+            let line = tableText[lineStart..<lineEnd]
+
+            if isTableSeparatorRow(line) {
+                let hideRange = NSRange(lineStart..<lineEnd, in: sourceText)
+                applySyntaxHiding(to: hideRange, in: attrStr)
+            }
+
+            lineStart = lineEnd < tableText.endIndex
+                ? tableText.index(after: lineEnd)
+                : tableText.endIndex
+        }
+    }
+
+    /// Checks if a line is a GFM table separator row (only `|`, `-`, `:`, and whitespace).
+    private func isTableSeparatorRow(_ line: Substring) -> Bool {
+        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty, trimmed.contains("-") else { return false }
+        return trimmed.allSatisfy { "|:- ".contains($0) }
+    }
+
+    /// Colors pipe characters as visual dividers within visible table rows.
+    private func styleTablePipes(
+        in nsRange: NSRange,
+        attrStr: NSMutableAttributedString,
+        colors: ThemeColors
+    ) {
+        let text = attrStr.string
+        guard let swiftRange = Range(nsRange, in: text) else { return }
+
+        var index = swiftRange.lowerBound
+        while index < swiftRange.upperBound {
+            if text[index] == "|" {
+                let charNSRange = NSRange(index...index, in: text)
+                // Skip pipes in the hidden separator row (font < 0.1pt)
+                if let font = attrStr.attribute(.font, at: charNSRange.location, effectiveRange: nil) as? PlatformFont,
+                   font.pointSize > 0.1 {
+                    attrStr.addAttribute(.foregroundColor, value: colors.divider, range: charNSRange)
+                }
+            }
+            index = text.index(after: index)
+        }
+    }
+
     // MARK: - Inline Rendering
 
     private func renderInlineChildren(
@@ -966,6 +1155,14 @@ public struct MarkdownRenderer {
                 value: config.colors.blockquoteForeground,
                 range: nsRange
             )
+
+        case .table:
+            // Source view: monospace font with code background, like code blocks
+            attrStr.addAttributes([
+                .font: config.typeScale.code,
+                .foregroundColor: config.colors.codeForeground,
+                .backgroundColor: config.colors.codeBackground,
+            ], range: nsRange)
 
         default:
             break
