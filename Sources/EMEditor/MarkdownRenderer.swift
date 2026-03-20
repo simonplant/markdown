@@ -514,6 +514,8 @@ public struct MarkdownRenderer {
 
     // MARK: - Code Blocks
 
+    private let syntaxHighlighter = SyntaxHighlighter()
+
     private func renderCodeBlock(
         _ node: MarkdownNode,
         nsRange: NSRange,
@@ -537,8 +539,62 @@ public struct MarkdownRenderer {
             .markdownNodeType: "codeBlock",
         ], range: nsRange)
 
+        // Apply syntax highlighting to the code content per FEAT-006
+        let language = node.codeBlockLanguage
+        if let contentRange = codeContentRange(in: nsRange, sourceText: attrStr.string) {
+            syntaxHighlighter.highlight(
+                in: attrStr,
+                contentRange: contentRange,
+                language: language,
+                colors: config.colors,
+                codeFont: config.typeScale.code
+            )
+        }
+
         // Hide fence markers (``` lines) in rich view
         hideFenceMarkers(in: nsRange, attrStr: attrStr, sourceText: attrStr.string)
+    }
+
+    /// Extracts the NSRange of code content between opening and closing fence lines.
+    /// Returns nil for empty code blocks or blocks without fences.
+    private func codeContentRange(in nsRange: NSRange, sourceText: String) -> NSRange? {
+        guard let swiftRange = Range(nsRange, in: sourceText) else { return nil }
+        let substring = sourceText[swiftRange]
+        let lines = substring.split(separator: "\n", omittingEmptySubsequences: false)
+
+        guard lines.count >= 2 else { return nil }
+
+        // Opening fence is first line, closing fence is last line
+        guard let firstLine = lines.first, firstLine.hasPrefix("```") else { return nil }
+
+        // Content starts after the first line (+ 1 for the newline)
+        let contentStart = substring.index(substring.startIndex, offsetBy: firstLine.count + 1,
+                                           limitedBy: substring.endIndex) ?? substring.endIndex
+
+        // Content ends before the last line
+        let lastLine = lines.last ?? Substring("")
+        let closingFenceLength = lastLine.hasPrefix("```") ? lastLine.count : 0
+        // Subtract closing fence length and the preceding newline (if present)
+        let contentEnd: String.Index
+        if closingFenceLength > 0 && substring.endIndex > substring.startIndex {
+            let beforeClosing = substring.index(substring.endIndex, offsetBy: -closingFenceLength,
+                                                 limitedBy: substring.startIndex) ?? substring.startIndex
+            // Also skip the newline before closing fence
+            if beforeClosing > contentStart && beforeClosing > substring.startIndex,
+               sourceText[sourceText.index(before: beforeClosing)] == "\n" {
+                contentEnd = sourceText.index(before: beforeClosing)
+            } else {
+                contentEnd = beforeClosing
+            }
+        } else {
+            contentEnd = substring.endIndex
+        }
+
+        guard contentStart <= contentEnd else { return nil }
+
+        let contentNSRange = NSRange(contentStart..<contentEnd, in: sourceText)
+        guard contentNSRange.length > 0 else { return nil }
+        return contentNSRange
     }
 
     private func hideFenceMarkers(
@@ -892,6 +948,18 @@ public struct MarkdownRenderer {
                 .backgroundColor: config.colors.codeBackground,
             ], range: nsRange)
 
+            // Apply syntax highlighting in source view per FEAT-006
+            let language = node.codeBlockLanguage
+            if let contentRange = codeContentRange(in: nsRange, sourceText: sourceText) {
+                syntaxHighlighter.highlight(
+                    in: attrStr,
+                    contentRange: contentRange,
+                    language: language,
+                    colors: config.colors,
+                    codeFont: config.typeScale.code
+                )
+            }
+
         case .blockQuote:
             attrStr.addAttribute(
                 .foregroundColor,
@@ -1104,6 +1172,18 @@ public struct MarkdownRenderer {
     func nsRange(from sourceRange: SourceRange, in text: String) -> NSRange? {
         let lineOffsets = computeLineOffsets(in: text)
         return nsRange(from: sourceRange, in: text, lineOffsets: lineOffsets)
+    }
+}
+
+// MARK: - MarkdownNode Convenience
+
+extension MarkdownNode {
+    /// Extracts the language identifier from a code block node type.
+    var codeBlockLanguage: String? {
+        if case .codeBlock(let language) = type {
+            return language
+        }
+        return nil
     }
 }
 
