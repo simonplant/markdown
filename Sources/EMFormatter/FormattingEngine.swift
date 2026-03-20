@@ -41,6 +41,7 @@ public struct FormattingEngine: Sendable {
         FormattingEngine(rules: [
             TableNavigationRule(),
             TableContinuationRule(),
+            TableAlignmentRule(),
             ListContinuationRule(),
             ListIndentRule(),
         ])

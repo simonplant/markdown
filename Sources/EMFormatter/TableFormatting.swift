@@ -246,6 +246,37 @@ func cursorOffsetInAlignedTable(alignedText: String, row: Int, cellIndex: Int) -
     return alignedText.distance(from: alignedText.startIndex, to: lineStart) + cellOffset
 }
 
+// MARK: - Cell Content Cursor Mapping
+
+/// Computes the cursor's offset within the trimmed cell content.
+///
+/// Given a raw table row and the cursor's character offset within that row,
+/// determines how many characters of the cell content precede the cursor.
+/// Accounts for leading whitespace between the pipe and the content start.
+func cellContentCursorOffset(in row: String, cellIndex: Int, cursorInRow: Int) -> Int {
+    // Find pipe positions
+    var pipes: [Int] = []
+    for (i, ch) in row.enumerated() {
+        if ch == "|" { pipes.append(i) }
+    }
+
+    guard cellIndex < pipes.count else { return 0 }
+
+    // Cell area is between pipe[cellIndex] and pipe[cellIndex + 1]
+    let areaStart = pipes[cellIndex] + 1
+    let areaEnd = cellIndex + 1 < pipes.count ? pipes[cellIndex + 1] : row.count
+
+    // Find where content starts (skip leading spaces)
+    var contentStart = areaStart
+    while contentStart < areaEnd {
+        let idx = row.index(row.startIndex, offsetBy: contentStart)
+        if row[idx] != " " && row[idx] != "\t" { break }
+        contentStart += 1
+    }
+
+    return max(0, cursorInRow - contentStart)
+}
+
 // MARK: - Row Normalization
 
 /// Normalizes all rows to the given column count (pads with empty cells or truncates).

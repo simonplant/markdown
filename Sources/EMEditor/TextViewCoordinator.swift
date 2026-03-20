@@ -134,15 +134,16 @@ public final class TextViewCoordinator: NSObject, UITextViewDelegate, UIScrollVi
             return true
         }
 
-        // Auto-format keystroke interception per [A-051] and FEAT-004.
-        if let trigger = formattingTrigger(for: text) {
+        // Auto-format keystroke interception per [A-051], FEAT-004, and FEAT-052.
+        if let trigger = formattingTrigger(for: text, rangeLength: range.length) {
             let fullText = textView.text ?? ""
-            if let cursorStart = Range(range, in: fullText)?.lowerBound {
+            if let swiftRange = Range(range, in: fullText) {
                 let context = FormattingContext(
                     text: fullText,
-                    cursorPosition: cursorStart,
+                    cursorPosition: swiftRange.lowerBound,
                     trigger: trigger,
-                    ast: currentAST
+                    ast: currentAST,
+                    replacementRange: swiftRange
                 )
                 if let mutation = formattingEngine.evaluate(context) {
                     applyMutation(mutation, to: textView)
@@ -154,12 +155,19 @@ public final class TextViewCoordinator: NSObject, UITextViewDelegate, UIScrollVi
         return true
     }
 
-    /// Maps replacement text to a formatting trigger.
-    private func formattingTrigger(for replacementText: String) -> FormattingTrigger? {
+    /// Maps replacement text and range to a formatting trigger.
+    private func formattingTrigger(for replacementText: String, rangeLength: Int) -> FormattingTrigger? {
         switch replacementText {
         case "\n": return .enter
         case "\t": return .tab
-        default: return nil
+        default:
+            if replacementText.isEmpty && rangeLength > 0 {
+                return .delete
+            }
+            if !replacementText.isEmpty {
+                return .characterInput(replacementText)
+            }
+            return nil
         }
     }
 
@@ -620,16 +628,17 @@ public final class TextViewCoordinator: NSObject, NSTextViewDelegate {
             return true
         }
 
-        // Auto-format keystroke interception per [A-051] and FEAT-004.
+        // Auto-format keystroke interception per [A-051], FEAT-004, and FEAT-052.
         if let replacement = replacementString,
-           let trigger = formattingTrigger(for: replacement) {
+           let trigger = formattingTrigger(for: replacement, rangeLength: affectedCharRange.length) {
             let fullText = textView.string
-            if let cursorStart = Range(affectedCharRange, in: fullText)?.lowerBound {
+            if let swiftRange = Range(affectedCharRange, in: fullText) {
                 let context = FormattingContext(
                     text: fullText,
-                    cursorPosition: cursorStart,
+                    cursorPosition: swiftRange.lowerBound,
                     trigger: trigger,
-                    ast: currentAST
+                    ast: currentAST,
+                    replacementRange: swiftRange
                 )
                 if let mutation = formattingEngine.evaluate(context) {
                     applyMutation(mutation, to: textView)
@@ -641,12 +650,19 @@ public final class TextViewCoordinator: NSObject, NSTextViewDelegate {
         return true
     }
 
-    /// Maps replacement text to a formatting trigger.
-    private func formattingTrigger(for replacementText: String) -> FormattingTrigger? {
+    /// Maps replacement text and range to a formatting trigger.
+    private func formattingTrigger(for replacementText: String, rangeLength: Int) -> FormattingTrigger? {
         switch replacementText {
         case "\n": return .enter
         case "\t": return .tab
-        default: return nil
+        default:
+            if replacementText.isEmpty && rangeLength > 0 {
+                return .delete
+            }
+            if !replacementText.isEmpty {
+                return .characterInput(replacementText)
+            }
+            return nil
         }
     }
 

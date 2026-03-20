@@ -9,6 +9,10 @@ public enum FormattingTrigger: Sendable, Equatable {
     case tab
     /// Shift-Tab key pressed.
     case shiftTab
+    /// Regular character input (letters, digits, punctuation, space, paste).
+    case characterInput(String)
+    /// Deletion (backspace/delete removing characters).
+    case delete
 }
 
 /// Context passed to formatting rules for evaluation per [A-051].
@@ -24,17 +28,23 @@ public struct FormattingContext: Sendable {
     public let trigger: FormattingTrigger
     /// The current AST, if available. May be nil between parses.
     public let ast: MarkdownAST?
+    /// The range in the original text being replaced by this edit.
+    /// For insertions this is a zero-width range at cursorPosition.
+    /// For deletions this covers the characters being removed.
+    public let replacementRange: Range<String.Index>
 
     public init(
         text: String,
         cursorPosition: String.Index,
         trigger: FormattingTrigger,
-        ast: MarkdownAST? = nil
+        ast: MarkdownAST? = nil,
+        replacementRange: Range<String.Index>? = nil
     ) {
         self.text = text
         self.cursorPosition = cursorPosition
         self.trigger = trigger
         self.ast = ast
+        self.replacementRange = replacementRange ?? cursorPosition..<cursorPosition
     }
 }
 
