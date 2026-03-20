@@ -1,27 +1,28 @@
 {
-  "sprintId": "sprint-1774043212",
-  "startedAt": "2026-03-20T14:46:52-07:00",
+  "sprintId": "sprint-1774045600",
+  "startedAt": "2026-03-20T15:26:40-07:00",
   "status": "completed",
   "item": {
-    "id": "FEAT-053",
-    "title": "F-004c: Auto-Format Headings and Whitespace",
-    "intent": "Heading and whitespace formatting keeps documents structurally clean without the user thinking about it",
-    "description": "Depends on: FEAT-039 (Text Engine), FEAT-038 (Parser). Headings: auto-add space after # markers if missing, normalize ATX style (remove trailing #). Whitespace: trim trailing whitespace when user presses Enter, ensure single blank line between block elements, ensure file ends with newline. Each operation is discrete undo step. Configurable: individual rules toggleable in settings. Does NOT fire inside code blocks.",
+    "id": "FEAT-054",
+    "title": "F-025b: AI Floating Action Bar",
+    "intent": "The AI action bar is the interaction hub — it must feel like a native extension of text selection, not a separate AI mode",
+    "description": "Depends on: FEAT-039 (Text Engine). When user selects text, a floating action bar appears above the selection. Contains: standard format actions (Bold, Italic, Link) AND AI actions (Improve, Summarize). Pro AI actions (Translate, Tone) appear with Pro badge for subscribers or as discoverable options for non-subscribers. Bar follows selection, dismisses on deselect. Keyboard shortcut Cmd+J focuses the AI section of the bar. Bar adapts to available width. VoiceOver announces all actions.",
     "sourceBacklog": "backlog.json",
     "steps": [],
     "acceptanceCriteria": [
-      "Typing ##Heading auto-corrects to ## Heading",
-      "Trailing # markers on headings are auto-removed",
-      "Pressing Enter trims trailing whitespace from the completed line",
-      "Block elements without blank lines between them get a blank line auto-inserted",
-      "File always ends with exactly one newline on save",
-      "All whitespace rules can be individually toggled off in settings"
+      "Floating bar appears within 200ms of text selection",
+      "Bar contains both formatting (Bold, Italic) and AI (Improve, Summarize) actions",
+      "Pro AI actions show subtle Pro badge for subscribers",
+      "Non-subscriber tapping a Pro action sees a non-intrusive upgrade explanation",
+      "Bar dismisses cleanly on deselect with no ghost UI",
+      "Cmd+J invokes AI assist when text is selected",
+      "VoiceOver can navigate and activate all bar actions"
     ],
     "scope": [],
-    "startedAt": "2026-03-20T14:46:52-07:00",
+    "startedAt": "2026-03-20T15:26:40-07:00",
     "status": "passed",
-    "completedAt": "2026-03-20T15:26:39-07:00"
+    "completedAt": "2026-03-20T16:00:17-07:00"
   },
-  "completedAt": "2026-03-20T15:26:39-07:00",
+  "completedAt": "2026-03-20T16:00:17-07:00",
   "attempts": 2
 }
