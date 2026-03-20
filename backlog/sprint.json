@@ -1,27 +1,27 @@
 {
-  "sprintId": "sprint-1774039142",
-  "startedAt": "2026-03-20T13:39:02-07:00",
+  "sprintId": "sprint-1774043212",
+  "startedAt": "2026-03-20T14:46:52-07:00",
   "status": "completed",
   "item": {
-    "id": "FEAT-052",
-    "title": "F-004b: Auto-Format Tables",
-    "intent": "Tables should format themselves — columns align as you type, Tab moves between cells, new rows appear automatically",
-    "description": "Depends on: FEAT-039 (Text Engine), FEAT-047 (Table Rendering). Auto-align table columns with space padding as user types. Tab key moves to next cell (or creates new column). Enter in last cell of last row adds a new row. Auto-add missing header separator row when user types a second row. Each operation is discrete undo step. Does NOT fire inside code blocks.",
+    "id": "FEAT-053",
+    "title": "F-004c: Auto-Format Headings and Whitespace",
+    "intent": "Heading and whitespace formatting keeps documents structurally clean without the user thinking about it",
+    "description": "Depends on: FEAT-039 (Text Engine), FEAT-038 (Parser). Headings: auto-add space after # markers if missing, normalize ATX style (remove trailing #). Whitespace: trim trailing whitespace when user presses Enter, ensure single blank line between block elements, ensure file ends with newline. Each operation is discrete undo step. Configurable: individual rules toggleable in settings. Does NOT fire inside code blocks.",
     "sourceBacklog": "backlog.json",
     "steps": [],
     "acceptanceCriteria": [
-      "Table columns auto-align with space padding as user types in any cell",
-      "Tab moves cursor to next cell, Shift-Tab to previous cell",
-      "Enter in last cell of last row creates a new row with correct column count",
-      "Missing header separator row is auto-inserted when second row is typed",
-      "Each auto-format is independently undoable",
-      "Table with 20 columns auto-aligns without perceptible lag"
+      "Typing ##Heading auto-corrects to ## Heading",
+      "Trailing # markers on headings are auto-removed",
+      "Pressing Enter trims trailing whitespace from the completed line",
+      "Block elements without blank lines between them get a blank line auto-inserted",
+      "File always ends with exactly one newline on save",
+      "All whitespace rules can be individually toggled off in settings"
     ],
     "scope": [],
-    "startedAt": "2026-03-20T13:39:02-07:00",
+    "startedAt": "2026-03-20T14:46:52-07:00",
     "status": "passed",
-    "completedAt": "2026-03-20T14:24:14-07:00"
+    "completedAt": "2026-03-20T15:26:39-07:00"
   },
-  "completedAt": "2026-03-20T14:24:14-07:00",
+  "completedAt": "2026-03-20T15:26:39-07:00",
   "attempts": 2
 }

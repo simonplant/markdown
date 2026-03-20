@@ -35,15 +35,35 @@ public struct FormattingEngine: Sendable {
         ])
     }
 
-    /// Creates an engine with all auto-formatting rules (tables + lists) per FEAT-004, FEAT-052.
+    /// Creates an engine with all auto-formatting rules per FEAT-004, FEAT-052, FEAT-053.
     /// Table rules are evaluated first so they take priority when the cursor is in a table.
-    public static func defaultFormattingEngine() -> FormattingEngine {
-        FormattingEngine(rules: [
+    /// Heading and whitespace rules are placed after list rules so list/table Enter
+    /// handling takes priority; WhitespaceCleanupRule only fires on non-list, non-table lines.
+    ///
+    /// Settings parameters control which FEAT-053 rules are active. When a setting is false,
+    /// the corresponding rule is omitted or configured to skip that behavior.
+    public static func defaultFormattingEngine(
+        isHeadingSpacingEnabled: Bool = true,
+        isBlankLineSeparationEnabled: Bool = true,
+        isTrailingWhitespaceTrimEnabled: Bool = true
+    ) -> FormattingEngine {
+        var rules: [any FormattingRule] = [
             TableNavigationRule(),
             TableContinuationRule(),
             TableAlignmentRule(),
+        ]
+        if isHeadingSpacingEnabled {
+            rules.append(HeadingSpacingRule())
+        }
+        rules.append(contentsOf: [
             ListContinuationRule(),
             ListIndentRule(),
         ])
+        rules.append(WhitespaceCleanupRule(
+            trimTrailingWhitespace: isTrailingWhitespaceTrimEnabled,
+            removeTrailingHashes: isHeadingSpacingEnabled,
+            insertBlankLineBetweenBlocks: isBlankLineSeparationEnabled
+        ))
+        return FormattingEngine(rules: rules)
     }
 }
