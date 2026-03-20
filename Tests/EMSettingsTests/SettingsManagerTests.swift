@@ -27,6 +27,8 @@ struct SettingsManagerTests {
         #expect(m.isAutoFormatListRenumber == true)
         #expect(m.isAutoFormatTableAlignment == true)
         #expect(m.isAutoFormatHeadingSpacing == true)
+        #expect(m.isAutoFormatBlankLineSeparation == true)
+        #expect(m.isAutoFormatEnsureTrailingNewline == true)
         #expect(m.trailingWhitespaceBehavior == .strip)
         #expect(m.isGhostTextEnabled == true)
         #expect(m.modelDownloadState == .notDownloaded)
@@ -85,6 +87,12 @@ struct SettingsManagerTests {
 
         m.isAutoFormatHeadingSpacing = false
         #expect(d.bool(forKey: "em_autoFormatHeadingSpacing") == false)
+
+        m.isAutoFormatBlankLineSeparation = false
+        #expect(d.bool(forKey: "em_autoFormatBlankLineSeparation") == false)
+
+        m.isAutoFormatEnsureTrailingNewline = false
+        #expect(d.bool(forKey: "em_autoFormatEnsureTrailingNewline") == false)
     }
 
     @Test("Trailing whitespace behavior persists")
@@ -134,6 +142,8 @@ struct SettingsManagerTests {
         defaults.set(false, forKey: "em_autoFormatListRenumber")
         defaults.set(false, forKey: "em_autoFormatTableAlignment")
         defaults.set(false, forKey: "em_autoFormatHeadingSpacing")
+        defaults.set(false, forKey: "em_autoFormatBlankLineSeparation")
+        defaults.set(false, forKey: "em_autoFormatEnsureTrailingNewline")
         defaults.set("keep", forKey: "em_trailingWhitespace")
         defaults.set(false, forKey: "em_ghostText")
         defaults.set("downloaded", forKey: "em_modelDownloadState")
@@ -150,6 +160,8 @@ struct SettingsManagerTests {
         #expect(m.isAutoFormatListRenumber == false)
         #expect(m.isAutoFormatTableAlignment == false)
         #expect(m.isAutoFormatHeadingSpacing == false)
+        #expect(m.isAutoFormatBlankLineSeparation == false)
+        #expect(m.isAutoFormatEnsureTrailingNewline == false)
         #expect(m.trailingWhitespaceBehavior == .keep)
         #expect(m.isGhostTextEnabled == false)
         #expect(m.modelDownloadState == .downloaded)

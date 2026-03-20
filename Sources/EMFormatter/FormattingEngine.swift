@@ -35,15 +35,19 @@ public struct FormattingEngine: Sendable {
         ])
     }
 
-    /// Creates an engine with all auto-formatting rules (tables + lists) per FEAT-004, FEAT-052.
+    /// Creates an engine with all auto-formatting rules per FEAT-004, FEAT-052, FEAT-053.
     /// Table rules are evaluated first so they take priority when the cursor is in a table.
+    /// Heading and whitespace rules are placed after list rules so list/table Enter
+    /// handling takes priority; WhitespaceCleanupRule only fires on non-list, non-table lines.
     public static func defaultFormattingEngine() -> FormattingEngine {
         FormattingEngine(rules: [
             TableNavigationRule(),
             TableContinuationRule(),
             TableAlignmentRule(),
+            HeadingSpacingRule(),
             ListContinuationRule(),
             ListIndentRule(),
+            WhitespaceCleanupRule(),
         ])
     }
 }

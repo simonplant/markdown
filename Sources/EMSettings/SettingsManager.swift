@@ -54,9 +54,19 @@ public final class SettingsManager {
         didSet { defaults.set(isAutoFormatTableAlignment, forKey: Keys.autoFormatTableAlignment) }
     }
 
-    /// Normalize heading spacing.
+    /// Normalize heading spacing (add space after #, remove trailing #).
     public var isAutoFormatHeadingSpacing: Bool {
         didSet { defaults.set(isAutoFormatHeadingSpacing, forKey: Keys.autoFormatHeadingSpacing) }
+    }
+
+    /// Auto-insert blank line between block elements (headings, horizontal rules).
+    public var isAutoFormatBlankLineSeparation: Bool {
+        didSet { defaults.set(isAutoFormatBlankLineSeparation, forKey: Keys.autoFormatBlankLineSeparation) }
+    }
+
+    /// Ensure file ends with exactly one newline on save.
+    public var isAutoFormatEnsureTrailingNewline: Bool {
+        didSet { defaults.set(isAutoFormatEnsureTrailingNewline, forKey: Keys.autoFormatEnsureTrailingNewline) }
     }
 
     /// How trailing whitespace is handled.
@@ -200,6 +210,8 @@ public final class SettingsManager {
         self.isAutoFormatListRenumber = defaults.object(forKey: Keys.autoFormatListRenumber) as? Bool ?? true
         self.isAutoFormatTableAlignment = defaults.object(forKey: Keys.autoFormatTableAlignment) as? Bool ?? true
         self.isAutoFormatHeadingSpacing = defaults.object(forKey: Keys.autoFormatHeadingSpacing) as? Bool ?? true
+        self.isAutoFormatBlankLineSeparation = defaults.object(forKey: Keys.autoFormatBlankLineSeparation) as? Bool ?? true
+        self.isAutoFormatEnsureTrailingNewline = defaults.object(forKey: Keys.autoFormatEnsureTrailingNewline) as? Bool ?? true
         self.trailingWhitespaceBehavior = TrailingWhitespaceBehavior(
             rawValue: defaults.string(forKey: Keys.trailingWhitespace) ?? ""
         ) ?? .strip
@@ -236,6 +248,8 @@ public final class SettingsManager {
         static let autoFormatListRenumber = "em_autoFormatListRenumber"
         static let autoFormatTableAlignment = "em_autoFormatTableAlignment"
         static let autoFormatHeadingSpacing = "em_autoFormatHeadingSpacing"
+        static let autoFormatBlankLineSeparation = "em_autoFormatBlankLineSeparation"
+        static let autoFormatEnsureTrailingNewline = "em_autoFormatEnsureTrailingNewline"
         static let trailingWhitespace = "em_trailingWhitespace"
         static let ghostText = "em_ghostText"
         static let modelDownloadState = "em_modelDownloadState"
