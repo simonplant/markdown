@@ -1027,9 +1027,10 @@
         "Multi-codepoint emoji (flags, skin tones, ZWJ sequences) treated as single cursor unit",
         "IME composition for CJK shows partial input correctly before commit"
       ],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
+      "completedAt": "2026-03-20T13:39:01-07:00"
     },
     {
       "id": "FEAT-052",
