@@ -945,9 +945,10 @@
         "Table with 100+ rows scrolls smoothly at 60fps minimum",
         "Empty cells render as empty space, not collapsed"
       ],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
+      "completedAt": "2026-03-20T11:54:14-07:00"
     },
     {
       "id": "FEAT-048",

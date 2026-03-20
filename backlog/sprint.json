@@ -1,7 +1,7 @@
 {
   "sprintId": "sprint-1774032103",
   "startedAt": "2026-03-20T11:41:43-07:00",
-  "status": "in_progress",
+  "status": "completed",
   "item": {
     "id": "FEAT-047",
     "title": "F-003b: Table Rendering",
@@ -17,6 +17,10 @@
       "Empty cells render as empty space, not collapsed"
     ],
     "scope": [],
-    "startedAt": "2026-03-20T11:41:43-07:00"
-  }
+    "startedAt": "2026-03-20T11:41:43-07:00",
+    "status": "passed",
+    "completedAt": "2026-03-20T11:54:14-07:00"
+  },
+  "completedAt": "2026-03-20T11:54:14-07:00",
+  "attempts": 1
 }
