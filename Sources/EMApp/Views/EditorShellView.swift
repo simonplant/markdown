@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 #if canImport(UIKit)
 import UIKit
 #endif
@@ -19,6 +20,7 @@ struct EditorShellView: View {
     @State private var wordCount = 0
     @State private var diagnosticCount = 0
     @State private var conflictManager: FileConflictManager?
+    @State private var showingSaveElsewherePanel = false
 
     /// The file URL to monitor. Set by the caller when opening a file.
     var fileURL: URL?
@@ -70,6 +72,23 @@ struct EditorShellView: View {
                 onSettings: { router.showSettings() }
             )
         }
+        .fileExporter(
+            isPresented: $showingSaveElsewherePanel,
+            document: TextFileDocument(text: text),
+            contentType: .plainText,
+            defaultFilename: fileURL?.lastPathComponent ?? "Untitled.md"
+        ) { result in
+            switch result {
+            case .success:
+                // File saved successfully by fileExporter — clear conflict state.
+                conflictManager?.keepMine()
+            case .failure(let error):
+                // User cancelled the save panel — not an error. Banner stays visible
+                // so they can try again or dismiss.
+                if (error as? CocoaError)?.code == .userCancelled { return }
+                errorPresenter.present(.unexpected(underlying: error))
+            }
+        }
         .onAppear {
             startConflictMonitoring()
         }
@@ -110,17 +129,34 @@ struct EditorShellView: View {
     }
 
     private func handleSaveElsewhere() {
-        // File was deleted — present error with data-loss-risk severity
-        // so the user gets a modal alert. Full save-to-new-location flow
-        // will be wired when FEAT-002 (Create File) is implemented.
-        guard let url = fileURL, let manager = conflictManager else { return }
-        errorPresenter.present(
-            EMError.file(.externallyDeleted(url: url)),
-            recoveryActions: [
-                RecoveryAction(label: "OK") { [weak manager] in
-                    manager?.keepMine()
-                }
-            ]
-        )
+        showingSaveElsewherePanel = true
+    }
+}
+
+/// Lightweight FileDocument wrapper for exporting editor content via `.fileExporter`.
+/// Used by the file deletion conflict flow to save content to a new location.
+private struct TextFileDocument: FileDocument {
+    static var readableContentTypes: [UTType] { [.plainText] }
+
+    let text: String
+
+    init(text: String) {
+        self.text = text
+    }
+
+    init(configuration: ReadConfiguration) throws {
+        if let data = configuration.file.regularFileContents,
+           let string = String(data: data, encoding: .utf8) {
+            text = string
+        } else {
+            text = ""
+        }
+    }
+
+    func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
+        guard let data = text.data(using: .utf8) else {
+            throw CocoaError(.fileWriteInapplicableStringEncoding)
+        }
+        return FileWrapper(regularFileWithContents: data)
     }
 }
