@@ -233,7 +233,7 @@ struct EditorShellView: View {
         HapticFeedback.trigger(.doctorFixApplied)
         #endif
 
-        settings.doctorFixAcceptCount += 1
+        settings.recordDoctorFixAccept()
     }
 
     /// Recomputes document stats using NLTokenizer-based calculator per [A-055].
