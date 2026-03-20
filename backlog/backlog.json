@@ -173,9 +173,10 @@
         "Disk full during save shows non-modal error and retains in-memory content",
         "Subtle haptic pulse confirms background save when app is foregrounded"
       ],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
+      "completedAt": "2026-03-19T18:55:41-07:00"
     },
     {
       "id": "FEAT-009",

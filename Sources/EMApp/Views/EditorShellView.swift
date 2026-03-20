@@ -22,6 +22,7 @@ struct EditorShellView: View {
     @State private var wordCount = 0
     @State private var diagnosticCount = 0
     @State private var conflictManager: FileConflictManager?
+    @State private var autoSaveManager: AutoSaveManager?
     @State private var showingSaveElsewherePanel = false
     @State private var currentLineEnding: LineEnding = .lf
 
@@ -35,6 +36,7 @@ struct EditorShellView: View {
                 isSpellCheckEnabled: settings.isSpellCheckEnabled,
                 onTextChange: { newText in
                     updateWordCount(newText)
+                    autoSaveManager?.contentDidChange()
                 }
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -92,12 +94,22 @@ struct EditorShellView: View {
         .onAppear {
             loadFileContent()
             startConflictMonitoring()
+            startAutoSave()
         }
         .onDisappear {
+            Task {
+                await autoSaveManager?.saveNow()
+                autoSaveManager?.stop()
+            }
             conflictManager?.stopMonitoring()
-            // Save in-place on disappear (AC-1): auto-save wired here,
-            // full debounced auto-save will come with FEAT-008.
-            saveCurrentFile()
+        }
+        .onChange(of: autoSaveManager?.savedWhileInBackground) { _, newValue in
+            if newValue == true {
+                #if canImport(UIKit)
+                HapticFeedback.trigger(.autoSaveConfirm)
+                #endif
+                autoSaveManager?.clearBackgroundSaveFlag()
+            }
         }
     }
 
@@ -116,23 +128,25 @@ struct EditorShellView: View {
         updateWordCount(content.text)
     }
 
-    /// Saves current editor text back to the open file (AC-1).
-    private func saveCurrentFile() {
-        guard let url = fileOpenCoordinator.currentFileURL else { return }
-        do {
-            // Pause conflict detection during our own save
-            conflictManager?.pauseDetection()
-            try CoordinatedFileAccess.write(
-                text: text,
-                to: url,
-                lineEnding: currentLineEnding
-            )
-            conflictManager?.resumeDetection()
-        } catch {
-            conflictManager?.resumeDetection()
-            let emError = (error as? EMError) ?? .unexpected(underlying: error)
-            errorPresenter.present(emError)
+    /// Sets up the auto-save manager for the current file per FEAT-008 and [A-026].
+    private func startAutoSave() {
+        guard let url = fileOpenCoordinator.currentFileURL,
+              let manager = conflictManager else { return }
+        let autoSave = AutoSaveManager(
+            url: url,
+            lineEnding: currentLineEnding,
+            conflictManager: manager,
+            initialContent: text
+        )
+        autoSave.contentProvider = { [self] in text }
+        autoSave.onSaveError = { [weak autoSave] error in
+            errorPresenter.present(error, recoveryActions: [
+                RecoveryAction(label: "Try Again") {
+                    await autoSave?.saveNow()
+                }
+            ])
         }
+        autoSaveManager = autoSave
     }
 
     private func toggleSourceView() {
