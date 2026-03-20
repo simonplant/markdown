@@ -1,7 +1,7 @@
 {
   "sprintId": "sprint-1774029203",
   "startedAt": "2026-03-20T10:53:23-07:00",
-  "status": "in_progress",
+  "status": "completed",
   "item": {
     "id": "FEAT-050",
     "title": "F-003e: Source Toggle with Cursor Mapping",
@@ -17,6 +17,10 @@
       "Toggle works correctly on an empty document"
     ],
     "scope": [],
-    "startedAt": "2026-03-20T10:53:23-07:00"
-  }
+    "startedAt": "2026-03-20T10:53:23-07:00",
+    "status": "passed",
+    "completedAt": "2026-03-20T11:02:37-07:00"
+  },
+  "completedAt": "2026-03-20T11:02:37-07:00",
+  "attempts": 1
 }
