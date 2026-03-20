@@ -62,6 +62,11 @@ public struct TypeScale: Sendable {
         default: return body
         }
     }
+
+    /// Returns the body font's point size for use in spacing calculations.
+    public var bodyFontSize: CGFloat {
+        body.pointSize
+    }
 }
 
 // MARK: - Default Type Scale
