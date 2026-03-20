@@ -4,12 +4,14 @@ import EMSettings
 
 /// Root view with NavigationStack routing per [A-058].
 /// Error banners and modal alerts are attached here so they cover all navigation destinations.
-/// Handles state restoration on launch per [A-061].
+/// Handles state restoration on launch per [A-061] and first-run experience per FEAT-044.
 public struct RootView: View {
     @State private var router = AppRouter()
     @Environment(ErrorPresenter.self) private var errorPresenter
     @Environment(RecentsManager.self) private var recentsManager
+    @Environment(SettingsManager.self) private var settings
     @State private var hasAttemptedRestore = false
+    @State private var firstRunCoordinator: FirstRunCoordinator?
 
     public init() {}
 
@@ -36,22 +38,38 @@ public struct RootView: View {
             }
         }
         .overlay(alignment: .top) {
-            if let banner = errorPresenter.currentBanner {
-                ErrorBannerView(error: banner) {
-                    errorPresenter.dismissBanner()
+            VStack(spacing: 8) {
+                if let banner = errorPresenter.currentBanner {
+                    ErrorBannerView(error: banner) {
+                        errorPresenter.dismissBanner()
+                    }
+                    .transition(.move(edge: .top).combined(with: .opacity))
                 }
-                .transition(.move(edge: .top).combined(with: .opacity))
-                .padding(.top, 8)
-                .zIndex(1)
+
+                if let coordinator = firstRunCoordinator,
+                   coordinator.showModelDownloadBanner {
+                    ModelDownloadBannerView(
+                        onDownload: { coordinator.acceptDownload() },
+                        onDismiss: { coordinator.dismissDownload() }
+                    )
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                }
             }
+            .padding(.top, 8)
+            .zIndex(1)
         }
         .animation(.easeInOut(duration: 0.25), value: errorPresenter.currentBanner?.id)
+        .animation(.easeInOut(duration: 0.25), value: firstRunCoordinator?.showModelDownloadBanner)
         .errorAlert()
         .environment(router)
         .task {
             guard !hasAttemptedRestore else { return }
             hasAttemptedRestore = true
             attemptStateRestoration()
+
+            let coordinator = FirstRunCoordinator(settings: settings)
+            firstRunCoordinator = coordinator
+            await coordinator.evaluateFirstRunPrompt()
         }
     }
 

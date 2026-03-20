@@ -71,6 +71,19 @@ public final class SettingsManager {
         didSet { defaults.set(isGhostTextEnabled, forKey: Keys.ghostText) }
     }
 
+    // MARK: - Model Download per [D-AI-9]
+
+    /// Current state of the on-device AI model download.
+    public var modelDownloadState: ModelDownloadState {
+        didSet { defaults.set(modelDownloadState.rawValue, forKey: Keys.modelDownloadState) }
+    }
+
+    /// Whether the user has been shown the model download prompt.
+    /// When dismissed, the prompt reappears on next launch per spec.
+    public var hasSeenModelDownloadPrompt: Bool {
+        didSet { defaults.set(hasSeenModelDownloadPrompt, forKey: Keys.hasSeenModelDownloadPrompt) }
+    }
+
     // MARK: - State Restoration per [A-061]
 
     /// Security-scoped bookmark data for the last open file.
@@ -124,6 +137,11 @@ public final class SettingsManager {
         ) ?? .strip
         self.isGhostTextEnabled = defaults.object(forKey: Keys.ghostText) as? Bool ?? true
 
+        self.modelDownloadState = ModelDownloadState(
+            rawValue: defaults.string(forKey: Keys.modelDownloadState) ?? ""
+        ) ?? .notDownloaded
+        self.hasSeenModelDownloadPrompt = defaults.object(forKey: Keys.hasSeenModelDownloadPrompt) as? Bool ?? false
+
         // State restoration
         self.lastOpenFileBookmark = defaults.data(forKey: Keys.lastOpenFileBookmark)
         self.lastCursorPosition = defaults.object(forKey: Keys.lastCursorPosition) as? Int ?? 0
@@ -143,6 +161,8 @@ public final class SettingsManager {
         static let autoFormatHeadingSpacing = "em_autoFormatHeadingSpacing"
         static let trailingWhitespace = "em_trailingWhitespace"
         static let ghostText = "em_ghostText"
+        static let modelDownloadState = "em_modelDownloadState"
+        static let hasSeenModelDownloadPrompt = "em_hasSeenModelDownloadPrompt"
         static let lastOpenFileBookmark = "em_lastOpenFileBookmark"
         static let lastCursorPosition = "em_lastCursorPosition"
         static let lastViewModeIsSource = "em_lastViewModeIsSource"
@@ -163,6 +183,16 @@ public enum TrailingWhitespaceBehavior: String, Sendable, CaseIterable {
     case strip
     /// Leave trailing whitespace as-is.
     case keep
+}
+
+/// State of the on-device AI model download per [D-AI-9].
+public enum ModelDownloadState: String, Sendable, CaseIterable {
+    /// Model has not been downloaded yet.
+    case notDownloaded
+    /// Model is currently downloading.
+    case downloading
+    /// Model has been downloaded and is ready.
+    case downloaded
 }
 
 /// Known font name constants.
