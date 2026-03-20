@@ -4,8 +4,13 @@ import EMFile
 import EMSettings
 import EMAI
 
+/// NSUserActivity type for per-scene state restoration per [A-034] and [A-061].
+/// Each window scene advertises its open document via this activity type.
+public let sceneActivityType = "com.easymarkdown.scene.editDocument"
+
 /// Composition root per [A-059].
 /// Creates and wires all shared singletons, provides the app scene.
+/// Per-scene coordinators are created fresh per window per [A-028] and [A-034].
 ///
 /// Usage in the Xcode app target:
 /// ```swift
@@ -25,15 +30,23 @@ import EMAI
 /// ```
 @MainActor
 public final class AppShell {
+    // MARK: - Shared singletons (across all scenes)
+
     private let settings: SettingsManager
     private let errorPresenter: ErrorPresenter
     private let recentsManager: RecentsManager
-    private let fileOpenCoordinator: FileOpenCoordinator
-    private let fileCreateCoordinator: FileCreateCoordinator
 
     /// AI provider manager — shared singleton per [A-059].
     /// Gates AI UI visibility via `shouldShowAIUI` per AC-6.
     private let aiProviderManager: AIProviderManager
+
+    // MARK: - Shared file services (used by per-scene coordinators)
+
+    private let fileOpenService: FileOpenService
+    private let fileCreateService: FileCreateService
+
+    /// Shared open file registry for cross-window duplicate detection per [A-028].
+    private let openFileRegistry: OpenFileRegistry
 
     public init() {
         // Register custom bundled typefaces before any UI is created per [A-052].
@@ -44,33 +57,19 @@ public final class AppShell {
         let recentsManager = RecentsManager(settings: settings)
         let bookmarkManager = BookmarkManager()
         let scopedAccessManager = ScopedAccessManager()
-        let fileOpenService = FileOpenService(
-            bookmarkManager: bookmarkManager,
-            scopedAccessManager: scopedAccessManager
-        )
-        let fileCreateService = FileCreateService(
-            bookmarkManager: bookmarkManager,
-            scopedAccessManager: scopedAccessManager
-        )
-        let openFileRegistry = OpenFileRegistry()
 
         self.settings = settings
         self.errorPresenter = errorPresenter
         self.recentsManager = recentsManager
-        self.fileOpenCoordinator = FileOpenCoordinator(
-            fileOpenService: fileOpenService,
-            openFileRegistry: openFileRegistry,
-            recentsManager: recentsManager,
-            errorPresenter: errorPresenter,
-            settings: settings
+        self.fileOpenService = FileOpenService(
+            bookmarkManager: bookmarkManager,
+            scopedAccessManager: scopedAccessManager
         )
-        self.fileCreateCoordinator = FileCreateCoordinator(
-            fileCreateService: fileCreateService,
-            openFileRegistry: openFileRegistry,
-            recentsManager: recentsManager,
-            errorPresenter: errorPresenter,
-            settings: settings
+        self.fileCreateService = FileCreateService(
+            bookmarkManager: bookmarkManager,
+            scopedAccessManager: scopedAccessManager
         )
+        self.openFileRegistry = OpenFileRegistry()
 
         // Wire EMAI per [A-057] and [A-059].
         // SubscriptionStatusProviding bridge: use a placeholder until EMCloud is implemented.
@@ -80,9 +79,26 @@ public final class AppShell {
         )
     }
 
-    /// Returns the configured root view with all environment dependencies injected.
+    /// Returns the configured root view with per-scene coordinators per [A-028].
+    /// Each call creates fresh FileOpenCoordinator and FileCreateCoordinator instances
+    /// so each window scene owns its own file state independently.
     public func rootView() -> some View {
-        AppRootWrapper(
+        let fileOpenCoordinator = FileOpenCoordinator(
+            fileOpenService: fileOpenService,
+            openFileRegistry: openFileRegistry,
+            recentsManager: recentsManager,
+            errorPresenter: errorPresenter,
+            settings: settings
+        )
+        let fileCreateCoordinator = FileCreateCoordinator(
+            fileCreateService: fileCreateService,
+            openFileRegistry: openFileRegistry,
+            recentsManager: recentsManager,
+            errorPresenter: errorPresenter,
+            settings: settings
+        )
+
+        return AppRootWrapper(
             settings: settings,
             errorPresenter: errorPresenter,
             recentsManager: recentsManager,
@@ -102,6 +118,7 @@ private struct PlaceholderSubscriptionStatus: SubscriptionStatusProviding {
 
 /// Internal wrapper that reactively applies color scheme preference per FEAT-007.
 /// Theme changes animate with a 200ms crossfade; Reduced Motion triggers instant switch.
+/// Per-scene coordinators are owned per window instance per [A-028] and [A-034].
 struct AppRootWrapper: View {
     @State var settings: SettingsManager
     @State var errorPresenter: ErrorPresenter

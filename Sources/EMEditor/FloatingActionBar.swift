@@ -82,6 +82,9 @@ public struct FloatingActionBar: View {
                 }
                 .accessibilityLabel("Improve writing")
                 .accessibilityHint("Uses AI to improve the selected text")
+                #if os(iOS)
+                .hoverEffect(.highlight)
+                #endif
 
                 Divider()
                     .frame(height: 20)
@@ -118,6 +121,9 @@ public struct FloatingActionBar: View {
                 }
                 .accessibilityLabel("Accept suggestion")
                 .accessibilityHint("Replaces original text with the AI suggestion")
+                #if os(iOS)
+                .hoverEffect(.highlight)
+                #endif
             }
 
             Button(action: actions.onDismiss) {
@@ -127,11 +133,15 @@ public struct FloatingActionBar: View {
             }
             .accessibilityLabel("Dismiss suggestion")
             .accessibilityHint("Returns to the original text with no changes")
+            #if os(iOS)
+            .hoverEffect(.highlight)
+            #endif
         }
     }
 }
 
 /// Stub formatting button — formatting integration ships with FEAT-003/FEAT-037.
+/// Trackpad hover state per FEAT-015 AC-4.
 private struct FormatActionButton: View {
     let icon: String
     let label: String
@@ -142,5 +152,8 @@ private struct FormatActionButton: View {
                 .imageScale(.medium)
         }
         .accessibilityLabel(label)
+        #if os(iOS)
+        .hoverEffect(.highlight)
+        #endif
     }
 }

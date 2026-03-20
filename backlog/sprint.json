@@ -1,26 +1,28 @@
 {
-  "sprintId": "sprint-1774034942",
-  "startedAt": "2026-03-20T12:29:02-07:00",
+  "sprintId": "sprint-1774035962",
+  "startedAt": "2026-03-20T12:46:02-07:00",
   "status": "completed",
   "item": {
-    "id": "FEAT-009",
-    "title": "F-009: Keyboard Support",
-    "intent": "iPad with external keyboard must be a first-class writing experience — every action reachable without touching the screen",
-    "description": "Text editing: Cmd+B/I/K, Cmd+Shift+K. Navigation: Cmd+Up/Down, Option+arrows, Cmd+arrows. App: Cmd+O/N/W, Cmd+Shift+P (source toggle). AI: Cmd+J. Cmd-hold shows shortcut overlay.",
+    "id": "FEAT-015",
+    "title": "F-036a: iPad Multi-Window and Stage Manager",
+    "intent": "iPad multi-window is what makes easy-markdown a serious writing tool — two documents side by side, or easy-markdown next to Safari for research",
+    "description": "Depends on: FEAT-037 (App Shell). Full Stage Manager support: resizable windows, multiple instances. UIScene-based lifecycle. Each window is an independent editor with its own file. Memory managed across windows. Minimum iPad: iPad Air 4th gen (M1 for Stage Manager, but basic multi-window on older iPads via Split View).",
     "sourceBacklog": "backlog.json",
     "steps": [],
     "acceptanceCriteria": [
-      "User with external keyboard performs all common editing, navigation, and AI tasks without touching the screen",
-      "Cmd-hold shows keyboard shortcut overlay",
-      "All 15+ documented shortcuts (Cmd+B/I/K, Cmd+O/N/W, Cmd+J, Cmd+Shift+P, etc.) work in both rich and source view",
-      "No shortcuts conflict with iOS system shortcuts",
-      "Cmd-hold overlay lists ALL registered shortcuts organized by category"
+      "iPad Pro user with Magic Keyboard and external display uses easy-markdown as primary writing environment for a full day",
+      "Stage Manager multi-window works with two easy-markdown documents side by side",
+      "Split View at 1/3, 1/2, and 2/3 widths reflows content gracefully",
+      "Trackpad hover states appear on doctor indicators, AI action bar, and toolbar buttons",
+      "Two easy-markdown windows open side by side in Stage Manager with independent files",
+      "No crashes or memory warnings during 2-hour session with 2 windows open",
+      "Closing one window does not affect the other"
     ],
     "scope": [],
-    "startedAt": "2026-03-20T12:29:02-07:00",
+    "startedAt": "2026-03-20T12:46:02-07:00",
     "status": "passed",
-    "completedAt": "2026-03-20T12:46:01-07:00"
+    "completedAt": "2026-03-20T12:58:55-07:00"
   },
-  "completedAt": "2026-03-20T12:46:01-07:00",
+  "completedAt": "2026-03-20T12:58:55-07:00",
   "attempts": 1
 }

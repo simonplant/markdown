@@ -33,6 +33,9 @@ struct HomeView: View {
                     .controlSize(.large)
                     .keyboardShortcut("o", modifiers: .command)
                     .accessibilityHint("Opens the file picker to choose a markdown file")
+                    #if os(iOS)
+                    .hoverEffect(.highlight)
+                    #endif
 
                     Button(action: newFile) {
                         Label("New File", systemImage: "doc.badge.plus")
@@ -42,6 +45,9 @@ struct HomeView: View {
                     .controlSize(.large)
                     .keyboardShortcut("n", modifiers: .command)
                     .accessibilityHint("Creates a new empty markdown document")
+                    #if os(iOS)
+                    .hoverEffect(.highlight)
+                    #endif
                 }
 
                 Spacer()
@@ -62,6 +68,9 @@ struct HomeView: View {
                     Image(systemName: "gearshape")
                 }
                 .accessibilityLabel("Settings")
+                #if os(iOS)
+                .hoverEffect(.highlight)
+                #endif
             }
         }
         .task {
