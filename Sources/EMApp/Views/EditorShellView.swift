@@ -36,6 +36,8 @@ struct EditorShellView: View {
     @State private var improveService: ImproveWritingService?
     @State private var showingOpenFilePicker = false
     @State private var showingNewFilePicker = false
+    @State private var isProSubscriber = false
+    @State private var showingProUpgrade = false
     @Environment(\.colorScheme) private var colorScheme
     #if os(iOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -82,7 +84,7 @@ struct EditorShellView: View {
                 isAutoFormatHeadingSpacing: settings.isAutoFormatHeadingSpacing,
                 isAutoFormatBlankLineSeparation: settings.isAutoFormatBlankLineSeparation,
                 isAutoFormatTrailingWhitespaceTrim: settings.trailingWhitespaceBehavior == .strip,
-                onAIAssist: { startImprove() },
+                onAIAssist: { editorState.focusAISection = true },
                 onToggleSourceView: { toggleSourceView() },
                 onOpenFile: { openFileFromEditor() },
                 onNewFile: { newFileFromEditor() },
@@ -91,24 +93,11 @@ struct EditorShellView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .accessibilityLabel("Document editor")
             .accessibilityHint("Edit your markdown document here")
-
-            // Floating action bar per FEAT-054 and [A-023]
-            // Shows on text selection, provides Improve button (FEAT-011 entry point).
-            // Accept/dismiss controls appear during active inline diff.
-            if let coordinator = improveCoordinator,
-               (editorState.selectedRange.length > 0 || coordinator.diffState.isActive),
-               aiProviderManager.shouldShowAIUI {
-                FloatingActionBar(
-                    diffPhase: coordinator.diffState.phase,
-                    actions: FloatingActionBarActions(
-                        onImprove: { startImprove() },
-                        onAccept: { coordinator.accept() },
-                        onDismiss: { coordinator.dismiss() }
-                    ),
-                    showAIActions: aiProviderManager.shouldShowAIUI
-                )
-                .transition(.scale.combined(with: .opacity))
-                .padding(.bottom, 4)
+            .overlay(alignment: .top) {
+                // Floating action bar per FEAT-054 and [A-023].
+                // Positioned above the selection via GeometryReader + selectionRect.
+                // Falls back to top-center when selection rect is unavailable.
+                floatingActionBarOverlay
             }
 
             // Doctor indicator bar per FEAT-005 — non-blocking overlay
@@ -208,11 +197,26 @@ struct EditorShellView: View {
             )
         }
         #endif
+        .alert(
+            "Pro AI Feature",
+            isPresented: $showingProUpgrade
+        ) {
+            Button("Learn More") {
+                router.showSubscriptionOffer()
+            }
+            Button("Not Now", role: .cancel) {}
+        } message: {
+            Text("Translate and Tone adjustment are Pro AI features powered by cloud models. Subscribe to unlock them.")
+        }
         .onAppear {
             loadFileContent()
             startConflictMonitoring()
             startAutoSave()
             setupImproveWriting()
+        }
+        .task {
+            // Check Pro subscription status for floating bar badge per FEAT-054 AC-3.
+            isProSubscriber = await aiProviderManager.checkProSubscription()
         }
         .onDisappear {
             conflictManager?.stopMonitoring()
@@ -442,6 +446,76 @@ struct EditorShellView: View {
         let selectedText = String(text[swiftRange])
         let stream = service.startImproving(selectedText: selectedText)
         coordinator.startImprove(updateStream: stream)
+    }
+
+    // MARK: - Floating Action Bar per FEAT-054
+
+    /// Whether the floating action bar should be visible.
+    private var shouldShowFloatingBar: Bool {
+        guard aiProviderManager.shouldShowAIUI else { return false }
+        if let coordinator = improveCoordinator, coordinator.diffState.isActive {
+            return true
+        }
+        return editorState.selectedRange.length > 0
+    }
+
+    /// Whether to use compact layout (icon-only) for the floating bar.
+    private var isFloatingBarCompact: Bool {
+        #if os(iOS)
+        return horizontalSizeClass == .compact
+        #else
+        return false
+        #endif
+    }
+
+    /// Floating action bar overlay positioned above the text selection.
+    @ViewBuilder
+    private var floatingActionBarOverlay: some View {
+        if shouldShowFloatingBar, let coordinator = improveCoordinator {
+            FloatingActionBar(
+                diffPhase: coordinator.diffState.phase,
+                actions: FloatingActionBarActions(
+                    onImprove: { startImprove() },
+                    onSummarize: { startSummarize() },
+                    onTranslate: { /* Pro action — wired in future FEAT-024 */ },
+                    onTone: { /* Pro action — wired in future FEAT-023 */ },
+                    onProUpgrade: { showingProUpgrade = true },
+                    onAccept: { coordinator.accept() },
+                    onDismiss: { coordinator.dismiss() },
+                    onBold: { editorState.performBold?() },
+                    onItalic: { editorState.performItalic?() },
+                    onLink: { editorState.performLink?() }
+                ),
+                showAIActions: aiProviderManager.shouldShowAIUI,
+                isProSubscriber: isProSubscriber,
+                isCompact: isFloatingBarCompact,
+                focusAISection: Binding(
+                    get: { editorState.focusAISection },
+                    set: { editorState.focusAISection = $0 }
+                )
+            )
+            .fixedSize()
+            .transition(.scale.combined(with: .opacity))
+            .offset(y: floatingBarYOffset)
+            .padding(.top, 8)
+        }
+    }
+
+    /// Vertical offset for the floating action bar.
+    /// Uses selectionRect when available to position above the selection;
+    /// otherwise stays at the default overlay top position.
+    private var floatingBarYOffset: CGFloat {
+        guard let selRect = editorState.selectionRect else { return 0 }
+        // Place the bar above the selection. selectionRect.minY is relative
+        // to the text view's superview, which is the overlay's coordinate space.
+        let targetY = max(selRect.minY - 52, 0)
+        return targetY
+    }
+
+    /// Starts the AI summarize flow (stub — full implementation in FEAT-055).
+    private func startSummarize() {
+        // FEAT-055 will implement the full summarize pipeline.
+        // For now, this validates the action bar wiring.
     }
 
     // MARK: - Link Handling per FEAT-049 AC-3, AC-5

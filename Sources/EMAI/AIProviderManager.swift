@@ -142,6 +142,12 @@ public final class AIProviderManager {
         deviceCapability == .fullAI
     }
 
+    /// Whether the user has an active Pro AI subscription.
+    /// Used by the floating action bar to show Pro badge vs upgrade prompt per FEAT-054.
+    public func checkProSubscription() async -> Bool {
+        await subscriptionStatus.isProSubscriptionActive
+    }
+
     /// Creates an AIContext from current state.
     public func makeContext() -> AIContext {
         AIContext(

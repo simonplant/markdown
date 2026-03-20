@@ -28,6 +28,23 @@ public final class EditorState {
     /// Word count for the current selection, nil when no selection.
     public private(set) var selectionWordCount: Int?
 
+    /// Rect of the first line of the selection in the text view's coordinate space.
+    /// Used by the floating action bar to position above the selection per FEAT-054.
+    /// Nil when there is no selection.
+    public private(set) var selectionRect: CGRect?
+
+    // MARK: - Floating Action Bar actions per FEAT-054
+
+    /// Formatting action closures wired by TextViewBridge so the floating bar
+    /// can dispatch Bold/Italic/Link without direct access to the text view.
+    public var performBold: (() -> Void)?
+    public var performItalic: (() -> Void)?
+    public var performLink: (() -> Void)?
+
+    /// When set to true, the floating action bar should move focus to its AI section.
+    /// Reset to false after the bar consumes the request.
+    public var focusAISection: Bool = false
+
     /// Full document statistics per [A-055]. Updated on text changes.
     public private(set) var documentStats: DocumentStats = .zero
 
@@ -51,6 +68,12 @@ public final class EditorState {
     /// Update selection word count. Pass nil to clear.
     public func updateSelectionWordCount(_ count: Int?) {
         selectionWordCount = count
+    }
+
+    /// Update selection rect for floating action bar positioning per FEAT-054.
+    /// Pass nil to clear when selection is empty.
+    public func updateSelectionRect(_ rect: CGRect?) {
+        selectionRect = rect
     }
 
     /// Update full document statistics.

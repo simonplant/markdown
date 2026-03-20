@@ -14,8 +14,15 @@ struct FloatingActionBarTests {
         let actions = FloatingActionBarActions()
         // Should not crash
         actions.onImprove()
+        actions.onSummarize()
+        actions.onTranslate()
+        actions.onTone()
+        actions.onProUpgrade()
         actions.onAccept()
         actions.onDismiss()
+        actions.onBold()
+        actions.onItalic()
+        actions.onLink()
     }
 
     @Test("custom actions are called")
@@ -38,6 +45,55 @@ struct FloatingActionBarTests {
 
         actions.onDismiss()
         #expect(dismissCalled)
+    }
+
+    @Test("new AI actions are dispatched")
+    func newAIActions() {
+        var summarizeCalled = false
+        var translateCalled = false
+        var toneCalled = false
+        var proUpgradeCalled = false
+
+        let actions = FloatingActionBarActions(
+            onSummarize: { summarizeCalled = true },
+            onTranslate: { translateCalled = true },
+            onTone: { toneCalled = true },
+            onProUpgrade: { proUpgradeCalled = true }
+        )
+
+        actions.onSummarize()
+        #expect(summarizeCalled)
+
+        actions.onTranslate()
+        #expect(translateCalled)
+
+        actions.onTone()
+        #expect(toneCalled)
+
+        actions.onProUpgrade()
+        #expect(proUpgradeCalled)
+    }
+
+    @Test("formatting actions are dispatched")
+    func formattingActions() {
+        var boldCalled = false
+        var italicCalled = false
+        var linkCalled = false
+
+        let actions = FloatingActionBarActions(
+            onBold: { boldCalled = true },
+            onItalic: { italicCalled = true },
+            onLink: { linkCalled = true }
+        )
+
+        actions.onBold()
+        #expect(boldCalled)
+
+        actions.onItalic()
+        #expect(italicCalled)
+
+        actions.onLink()
+        #expect(linkCalled)
     }
 
     // MARK: - View Construction
@@ -82,5 +138,89 @@ struct FloatingActionBarTests {
             showAIActions: false
         )
         #expect(!bar.showAIActions)
+    }
+
+    @Test("bar stores Pro subscriber status")
+    func proSubscriberStatus() {
+        let proBar = FloatingActionBar(
+            diffPhase: .inactive,
+            actions: FloatingActionBarActions(),
+            showAIActions: true,
+            isProSubscriber: true
+        )
+        #expect(proBar.isProSubscriber)
+
+        let freeBar = FloatingActionBar(
+            diffPhase: .inactive,
+            actions: FloatingActionBarActions(),
+            showAIActions: true,
+            isProSubscriber: false
+        )
+        #expect(!freeBar.isProSubscriber)
+    }
+
+    @Test("bar stores compact mode")
+    func compactMode() {
+        let compactBar = FloatingActionBar(
+            diffPhase: .inactive,
+            actions: FloatingActionBarActions(),
+            showAIActions: true,
+            isCompact: true
+        )
+        #expect(compactBar.isCompact)
+    }
+
+    // MARK: - EditorState Selection Rect per FEAT-054
+
+    @Test("selection rect updates and clears")
+    func selectionRect() {
+        let state = EditorState()
+
+        #expect(state.selectionRect == nil)
+
+        let rect = CGRect(x: 10, y: 20, width: 200, height: 16)
+        state.updateSelectionRect(rect)
+        #expect(state.selectionRect == rect)
+
+        state.updateSelectionRect(nil)
+        #expect(state.selectionRect == nil)
+    }
+
+    // MARK: - EditorState Formatting Actions per FEAT-054
+
+    @Test("formatting actions dispatch through EditorState")
+    func formattingActionsViaEditorState() {
+        let state = EditorState()
+        var boldCalled = false
+        var italicCalled = false
+        var linkCalled = false
+
+        state.performBold = { boldCalled = true }
+        state.performItalic = { italicCalled = true }
+        state.performLink = { linkCalled = true }
+
+        state.performBold?()
+        #expect(boldCalled)
+
+        state.performItalic?()
+        #expect(italicCalled)
+
+        state.performLink?()
+        #expect(linkCalled)
+    }
+
+    @Test("focusAISection defaults to false")
+    func focusAISectionDefault() {
+        let state = EditorState()
+        #expect(!state.focusAISection)
+    }
+
+    @Test("focusAISection can be toggled")
+    func focusAISectionToggle() {
+        let state = EditorState()
+        state.focusAISection = true
+        #expect(state.focusAISection)
+        state.focusAISection = false
+        #expect(!state.focusAISection)
     }
 }
