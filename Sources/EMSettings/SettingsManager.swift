@@ -71,6 +71,36 @@ public final class SettingsManager {
         didSet { defaults.set(isGhostTextEnabled, forKey: Keys.ghostText) }
     }
 
+    // MARK: - State Restoration per [A-061]
+
+    /// Security-scoped bookmark data for the last open file.
+    public var lastOpenFileBookmark: Data? {
+        didSet { defaults.set(lastOpenFileBookmark, forKey: Keys.lastOpenFileBookmark) }
+    }
+
+    /// Cursor position (character offset) in the last open file.
+    public var lastCursorPosition: Int {
+        didSet { defaults.set(lastCursorPosition, forKey: Keys.lastCursorPosition) }
+    }
+
+    /// Whether the editor was in source view mode.
+    public var lastViewModeIsSource: Bool {
+        didSet { defaults.set(lastViewModeIsSource, forKey: Keys.lastViewModeIsSource) }
+    }
+
+    /// Scroll offset as a fractional position (0.0–1.0 of document height).
+    public var lastScrollFraction: Double {
+        didSet { defaults.set(lastScrollFraction, forKey: Keys.lastScrollFraction) }
+    }
+
+    /// Clears all state restoration data (e.g., when file is closed or bookmark becomes stale).
+    public func clearStateRestoration() {
+        lastOpenFileBookmark = nil
+        lastCursorPosition = 0
+        lastViewModeIsSource = false
+        lastScrollFraction = 0.0
+    }
+
     // MARK: - Init
 
     public init(defaults: UserDefaults = .standard) {
@@ -93,6 +123,12 @@ public final class SettingsManager {
             rawValue: defaults.string(forKey: Keys.trailingWhitespace) ?? ""
         ) ?? .strip
         self.isGhostTextEnabled = defaults.object(forKey: Keys.ghostText) as? Bool ?? true
+
+        // State restoration
+        self.lastOpenFileBookmark = defaults.data(forKey: Keys.lastOpenFileBookmark)
+        self.lastCursorPosition = defaults.object(forKey: Keys.lastCursorPosition) as? Int ?? 0
+        self.lastViewModeIsSource = defaults.object(forKey: Keys.lastViewModeIsSource) as? Bool ?? false
+        self.lastScrollFraction = defaults.object(forKey: Keys.lastScrollFraction) as? Double ?? 0.0
     }
 
     private enum Keys {
@@ -107,6 +143,10 @@ public final class SettingsManager {
         static let autoFormatHeadingSpacing = "em_autoFormatHeadingSpacing"
         static let trailingWhitespace = "em_trailingWhitespace"
         static let ghostText = "em_ghostText"
+        static let lastOpenFileBookmark = "em_lastOpenFileBookmark"
+        static let lastCursorPosition = "em_lastCursorPosition"
+        static let lastViewModeIsSource = "em_lastViewModeIsSource"
+        static let lastScrollFraction = "em_lastScrollFraction"
     }
 }
 

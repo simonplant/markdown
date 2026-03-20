@@ -1,5 +1,6 @@
 import SwiftUI
 import EMCore
+import EMFile
 import EMSettings
 
 /// Composition root per [A-059].
@@ -25,15 +26,22 @@ import EMSettings
 public final class AppShell {
     private let settings: SettingsManager
     private let errorPresenter: ErrorPresenter
+    private let recentsManager: RecentsManager
 
     public init() {
-        self.settings = SettingsManager()
+        let settings = SettingsManager()
+        self.settings = settings
         self.errorPresenter = ErrorPresenter()
+        self.recentsManager = RecentsManager(settings: settings)
     }
 
     /// Returns the configured root view with all environment dependencies injected.
     public func rootView() -> some View {
-        AppRootWrapper(settings: settings, errorPresenter: errorPresenter)
+        AppRootWrapper(
+            settings: settings,
+            errorPresenter: errorPresenter,
+            recentsManager: recentsManager
+        )
     }
 }
 
@@ -42,11 +50,13 @@ public final class AppShell {
 struct AppRootWrapper: View {
     @State var settings: SettingsManager
     @State var errorPresenter: ErrorPresenter
+    @State var recentsManager: RecentsManager
 
     var body: some View {
         RootView()
             .environment(settings)
             .environment(errorPresenter)
+            .environment(recentsManager)
             .preferredColorScheme(colorScheme)
     }
 
