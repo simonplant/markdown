@@ -340,9 +340,10 @@
         "No crashes or memory warnings during 2-hour session with 2 windows open",
         "Closing one window does not affect the other"
       ],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
+      "completedAt": "2026-03-20T12:58:55-07:00"
     },
     {
       "id": "FEAT-016",

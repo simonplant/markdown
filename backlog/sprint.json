@@ -1,7 +1,7 @@
 {
   "sprintId": "sprint-1774035962",
   "startedAt": "2026-03-20T12:46:02-07:00",
-  "status": "in_progress",
+  "status": "completed",
   "item": {
     "id": "FEAT-015",
     "title": "F-036a: iPad Multi-Window and Stage Manager",
@@ -19,6 +19,10 @@
       "Closing one window does not affect the other"
     ],
     "scope": [],
-    "startedAt": "2026-03-20T12:46:02-07:00"
-  }
+    "startedAt": "2026-03-20T12:46:02-07:00",
+    "status": "passed",
+    "completedAt": "2026-03-20T12:58:55-07:00"
+  },
+  "completedAt": "2026-03-20T12:58:55-07:00",
+  "attempts": 1
 }
