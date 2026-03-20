@@ -1,7 +1,7 @@
 {
   "sprintId": "sprint-1773970855",
   "startedAt": "2026-03-19T18:40:55-07:00",
-  "status": "in_progress",
+  "status": "completed",
   "item": {
     "id": "FEAT-008",
     "title": "F-008: Auto-Save",
@@ -19,6 +19,10 @@
       "Subtle haptic pulse confirms background save when app is foregrounded"
     ],
     "scope": [],
-    "startedAt": "2026-03-19T18:40:55-07:00"
-  }
+    "startedAt": "2026-03-19T18:40:55-07:00",
+    "status": "passed",
+    "completedAt": "2026-03-19T18:55:41-07:00"
+  },
+  "completedAt": "2026-03-19T18:55:41-07:00",
+  "attempts": 2
 }
