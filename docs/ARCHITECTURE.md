@@ -28,14 +28,17 @@ Easy Markdown is a cross-platform markdown editor. Three layers, one codebase pe
                   +----------------------------------+
                   |       Rust Core Engine           |
                   |                                  |
-                  |  Document model (piece table)    |
-                  |  tree-sitter-markdown parser     |
-                  |  Formatting engine               |
-                  |  Doctor engine                   |
-                  |  Undo/redo                       |
-                  |  File watching (notify)          |
-                  |  Auto-save, conflict detection   |
+                  |  Document model (String in M0;   |
+                  |    engine choice deferred to     |
+                  |    post-baseline)                |
+                  |  tree-sitter-markdown parser*    |
+                  |  Formatting engine*              |
+                  |  Doctor engine*                  |
+                  |  Undo/redo*                      |
+                  |  File watching (notify)*         |
+                  |  Auto-save, conflict detection*  |
                   +----------------------------------+
+                  * post-M0; see PRODUCT.md §7.1
 ```
 
 The three layers map cleanly to the three decisions in `docs/PRODUCT.md`:
@@ -50,21 +53,35 @@ A Rust CLI wrapper, a Rust crate, and an LSP server are all *possible* second-or
 
 The engine is the product. Everything else is a frontend.
 
-### Document Model: Piece Table
+### Document Model
 
-A piece table with UTF-8 byte storage and an incremental line-starts index.
+**M0 decision**: the walking skeleton uses a naive UTF-8 `String` behind a `Document` struct. No piece table, no rope, no incremental line index. See `PRODUCT.md §7.1.3` for why — we are proving the loop, not optimizing the engine, and we refuse to make an optimization decision without baseline measurements to compare against.
 
-**Why piece table**: Simpler than ropes (Xi used ropes and the complexity contributed to its abandonment). O(log n) edits via a balanced BST of pieces. Original file bytes are never mutated (trivial is-modified detection). The append-only add buffer makes undo straightforward.
+**Post-M0 decision point**: once `FEAT-006` has committed `docs/baseline.json`, we revisit the document model. At that point, the choice is informed by real measurements from the baseline run: cold startup, large-file open time, keystroke-to-onscreen latency, save round-trip, memory footprint.
 
-**Structure**:
-- Pieces stored in a red-black tree keyed by cumulative byte offset
-- Each piece: `{ buffer_id: Original | Add, offset: usize, length: usize, line_count: u32 }`
-- Line-starts index: sorted `Vec<usize>` of byte offsets, updated incrementally on edit
-- UTF-8 throughout (matches tree-sitter, matches file encoding, no UTF-16 translation)
+Three candidates are on the table. None is pre-selected; the post-baseline decision is made against numbers.
 
-**Compaction**: After thousands of small edits, the piece tree fragments. Periodic compaction rewrites the logical sequence into a fresh buffer. Trigger: when piece count exceeds 10x line count, or on save.
+**Candidate A — Piece table**
+- Pieces stored in a balanced BST keyed by cumulative byte offset
+- Each piece: `{ buffer_id: Original | Add, offset, length, line_count }`
+- Original file bytes never mutated (trivial `is-modified` detection)
+- Append-only Add buffer makes undo straightforward
+- Line-starts index as a sorted `Vec<usize>`, updated incrementally
+- Periodic compaction when piece count > 10× line count
+- **Pro**: proven in VS Code and other editors; O(log n) edits; cheap is-modified
+- **Con**: complex to implement correctly; the M0 `String` probably handles 99% of our documents without it
 
-**Scale**: 100MB file = mmap'd original buffer + line index (~4 bytes/line, ~8MB for 2M lines). Editing only allocates in the add buffer. Rendering reads only the visible viewport.
+**Candidate B — Rope**
+- Trees of small string nodes, balanced
+- **Pro**: also proven (Xi used one; `ropey` is a mature Rust crate)
+- **Con**: Xi's abandonment was attributed in part to rope complexity; we should learn from that
+
+**Candidate C — Keep `String`**
+- Do nothing. The naive approach works for documents up to the size where editing becomes perceptibly slow (empirically multi-MB on modern hardware).
+- **Pro**: zero added complexity; we know it works because M0 will have proved it
+- **Con**: large-file performance is worse than A or B; some hypothetical user with a 100MB markdown file won't have a good time
+
+The correct choice depends on what the baseline numbers tell us and what §7.1.5's regression budget lets us accept. **Do not pick before FEAT-006.**
 
 ### Parser: tree-sitter
 
@@ -130,19 +147,31 @@ All in Rust core:
 
 ### Core API
 
-Tauri integrates the Rust core directly as a Rust dependency — no FFI boundary, no separate process. Commands exposed to the webview via Tauri's `#[tauri::command]` macro and IPC bridge:
+Tauri integrates the Rust core directly as a Rust dependency — no FFI boundary, no separate process. Commands are exposed to the webview via Tauri's `#[tauri::command]` macro and IPC bridge.
+
+**M0 API (FEAT-003 wires exactly these four commands — no more, no less):**
 
 ```rust
-#[tauri::command] fn document_open(path: String) -> Result<DocumentHandle, Error>;
-#[tauri::command] fn document_edit(h: DocumentHandle, offset: usize, delete: usize, insert: String) -> EditResult;
-#[tauri::command] fn document_viewport(h: DocumentHandle, start: usize, end: usize) -> Viewport;
-#[tauri::command] fn document_diagnose(h: DocumentHandle) -> Vec<Diagnostic>;
-#[tauri::command] fn document_format(h: DocumentHandle) -> Vec<Mutation>;
-#[tauri::command] fn document_save(h: DocumentHandle, path: String) -> Result<(), Error>;
-#[tauri::command] fn document_undo(h: DocumentHandle);
-#[tauri::command] fn document_redo(h: DocumentHandle);
-#[tauri::command] fn document_close(h: DocumentHandle);
+#[tauri::command] fn open_file(state, path: String) -> Result<String, Error>;     // returns file contents
+#[tauri::command] fn edit(state, offset: usize, delete: usize, insert: String);   // mutates state-held Document
+#[tauri::command] fn save_file(state, path: String, content: String) -> Result<(), Error>;
+#[tauri::command] fn current_text(state) -> String;
 ```
+
+State is held in a Tauri `AppState` struct with a `Mutex<Option<Document>>` field. The walking skeleton does not ship any other commands. Do not add undo, viewport, diagnose, or format to the M0 bridge — they have their own post-M0 backlog items.
+
+**Long-term API target (post-M0, spread across multiple feature items):**
+
+```rust
+#[tauri::command] fn document_viewport(h, start: usize, end: usize) -> Viewport;
+#[tauri::command] fn document_diagnose(h) -> Vec<Diagnostic>;
+#[tauri::command] fn document_format(h) -> Vec<Mutation>;
+#[tauri::command] fn document_undo(h);
+#[tauri::command] fn document_redo(h);
+#[tauri::command] fn document_close(h);
+```
+
+These appear as the parser, doctor, formatter, and undo engines land. Each one is gated on its own backlog item and its own regression-check against `docs/baseline.json`.
 
 A C FFI layer via `cbindgen` is possible as a second-order output for embedding the core in external tools, but it is **not** a v1 deliverable and does not drive the core's shape.
 
@@ -265,16 +294,19 @@ When implementing a Rust equivalent, read the Swift file as pseudocode, not as s
 
 ## Phases
 
-These align with `docs/PRODUCT.md` §8. Timelines are soft — agent-driven sprints run continuously.
+These align with `docs/PRODUCT.md §7.1` (walking skeleton) and `§8` (post-M0 roadmap). Timelines are soft — agent-driven sprints run continuously. Ordering is not.
 
 | Phase | Deliverable |
 |-------|-------------|
-| **0 — Foundations** | Rust workspace, tree-sitter-markdown, document model, formatting engine, doctor engine, CommonMark spec suite in CI |
-| **1 — Editor** | CodeMirror 6 markdown mode, WYSIWYM decorations, bridge protocol, The Render prototype, themes |
-| **2 — First shells** | macOS + Linux Tauri shells, file open/save, auto-save, file watching, first public pre-release |
-| **3 — Polish + AI + Web + Windows** | Local AI, BYO-key mode, PWA shell, Windows shell, v1.0 |
+| **M0 — Walking skeleton** | Rust workspace + `em-core` (String-backed), Tauri 2.0 macOS shell, CodeMirror 6 plain-text editor, IPC bridge, end-to-end open → edit → save → reopen loop, baseline metrics committed to `docs/baseline.json` and enforced as a CI regression gate |
+| **0 — Post-M0 foundations** | tree-sitter-markdown parser and AST, document-model engine decision (piece table / rope / String) made against baseline numbers, formatting engine first rules, doctor engine first rules, CommonMark spec suite in CI |
+| **1 — Editor polish** | WYSIWYM decorations via CodeMirror 6, The Render prototype, themes, keyboard shortcuts, typography, find/replace |
+| **2 — Second shells** | Linux Tauri shell, Windows Tauri shell, Web (PWA). First public pre-release |
+| **3 — AI and file scale** | Local AI (llama.cpp/MLX/ONNX), BYO-key cloud AI, auto-save, file watching, conflict detection, large-file handling, v1.0 |
 | **4 — Mobile** | iOS + Android via Tauri mobile |
-| **5 — Expansion** | Wikilinks/backlinks, extended doctor, voice intent, Mermaid AI editing |
+| **5 — Expansion** | Wikilinks/backlinks against plain files, extended doctor rules, voice intent, Mermaid AI editing |
+
+**Every item in every phase measures against `docs/baseline.json` before merging.** See `PRODUCT.md §7.1.5` and `D-M0-2`. A regression of more than 10% in the median of the measurement run blocks the merge until the regression is understood, named, and accepted.
 
 ## Key Risks and Mitigations
 

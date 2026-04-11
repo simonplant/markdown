@@ -4,8 +4,8 @@ project:
   name: "markdown"
 
 validation:
-  command: ""
-  timeout: 120
+  command: "cargo build --workspace && cargo test --workspace"
+  timeout: 600
 
 # Setup command runs in each worktree before the sprint starts.
 # Use this to install dependencies that aren't in git (node_modules, venv, etc.)

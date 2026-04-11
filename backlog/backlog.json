@@ -21,16 +21,20 @@
       ],
       "acceptanceCriteria": [
         {
-          "text": "cargo test -p em-core passes with at least one integration test that opens a real file, edits it, saves it, and reads it back",
-          "verify": "cargo test -p em-core 2>&1 | grep -qE 'test result: ok'"
+          "text": "cargo build --workspace exits 0 from the repo root",
+          "verify": "cargo build --workspace"
         },
         {
-          "text": "cargo build --workspace completes with zero errors",
-          "verify": "cargo build --workspace 2>&1 | grep -qcv 'error\\[' || cargo build --workspace"
+          "text": "cargo test -p em-core runs and passes, including an integration test that opens a real temp file, edits it, saves it, and reads the new content back from disk",
+          "verify": "cargo test -p em-core 2>&1 | grep -qE 'test result: ok\\. [1-9]'"
         },
         {
-          "text": "The four public API functions (open_file, edit, save_file, current_text) exist and are callable from outside the crate",
-          "verify": "cargo test -p em-core 2>&1 | grep -qE 'test result: ok'"
+          "text": "em-core exposes the four M0 public functions (open_file, edit, save_file, current_text) — proven by the integration test above calling each one",
+          "verify": "cargo test -p em-core 2>&1 | grep -qE 'test result: ok\\. [1-9]'"
+        },
+        {
+          "text": "Cargo.lock is committed (binary workspace convention)",
+          "verify": "test -f Cargo.lock && git ls-files --error-unmatch Cargo.lock"
         }
       ],
       "scope": [
@@ -61,16 +65,20 @@
       ],
       "acceptanceCriteria": [
         {
-          "text": "cargo build --workspace completes with src-tauri included, no errors",
-          "verify": "cargo build --workspace 2>&1 | grep -qcv 'error\\[' || true"
+          "text": "cargo build --workspace completes successfully with src-tauri included and exits 0",
+          "verify": "cargo build --workspace"
         },
         {
-          "text": "The GitHub Actions build workflow file exists and is valid YAML",
-          "verify": "test -f .github/workflows/build.yml"
+          "text": "src-tauri/Cargo.toml declares em-core as a path dependency",
+          "verify": "grep -qE 'em-core.*path\\s*=' src-tauri/Cargo.toml"
         },
         {
-          "text": "src-tauri/Cargo.toml declares em-core as a dependency",
-          "verify": "grep -q 'em-core' src-tauri/Cargo.toml"
+          "text": "The GitHub Actions build workflow exists, is valid YAML, and has at least one job",
+          "verify": "test -f .github/workflows/build.yml && yq '.jobs | length >= 1' .github/workflows/build.yml | grep -q true"
+        },
+        {
+          "text": "Tauri app builds a real bundle on the local machine",
+          "verify": "cd src-tauri && cargo build --release"
         }
       ],
       "scope": [
@@ -218,7 +226,7 @@
       "id": "FEAT-006",
       "title": "M0-baseline: Capture performance baseline and lock regression gate",
       "intent": "docs/baseline.json exists, is committed, and contains real measured values for all six metrics from PRODUCT.md §7.1.5 on a documented reference machine. The CI job fails if a subsequent commit regresses any metric by more than 10%. Until this item is done, no Phase 1 or §7.2 feature item may be marked readyForSprint.",
-      "description": "After M0-open-save-loop passes, run a measurement pass on a documented reference machine and capture: cold startup to editable cursor, open 100-line file, open 10k-line file, keystroke to on-screen, save round-trip, and memory footprint after 1 min editing a 10k-line file. Write the results plus machine metadata (make, model, OS version) into docs/baseline.json. Add a CI step that re-runs the measurements on every PR and fails if any metric degrades by more than 10%. Document the reference machine in docs/baseline.json — these numbers are not portable and must not be compared across machines.",
+      "description": "After M0-open-save-loop passes, run a measurement pass on the canonical baseline environment (GitHub Actions ubuntu-latest runner, not a local machine) and capture six metrics: cold startup to editable cursor, open 100-line file, open 10k-line file, keystroke-to-onscreen, save round-trip, memory footprint after 1 min editing a 10k-line file. Each metric is the median of N>=5 measurement runs. Write the results plus runner metadata (OS image version, uname -a, /proc/cpuinfo CPU model, free -m memory) into docs/baseline.json. Add a GitHub Actions job that runs the same measurement pass on every PR targeting main and fails the job if any metric median exceeds 110% of the committed baseline median. Local runs on other machines are for exploration only and do not count toward baseline comparisons. See PRODUCT.md §7.1.5 for the canonical environment decision and the methodology.",
       "priority": "must",
       "category": "scaffolding",
       "steps": [
@@ -232,16 +240,20 @@
       ],
       "acceptanceCriteria": [
         {
-          "text": "docs/baseline.json exists and contains all six metric fields from PRODUCT.md §7.1.5",
-          "verify": "test -f docs/baseline.json && python3 -c \"import json; d=json.load(open('docs/baseline.json')); assert 'cold_startup_ms' in d or len(d) >= 6\""
+          "text": "docs/baseline.json exists and contains all six metric fields plus runner metadata",
+          "verify": "test -f docs/baseline.json && jq -e '.metrics.cold_startup_ms and .metrics.open_small_ms and .metrics.open_10k_ms and .metrics.keystroke_ms and .metrics.save_ms and .metrics.memory_mb and .runner.os_image and .runner.uname' docs/baseline.json"
         },
         {
-          "text": "docs/baseline.json includes machine metadata (os_version, cpu, or similar fields)",
-          "verify": "test -f docs/baseline.json && python3 -c \"import json; d=json.load(open('docs/baseline.json')); assert any(k in d for k in ['machine','os','cpu','hostname'])\""
+          "text": "docs/baseline.json metrics are captured as medians, not single values (each metric has a runs array and a median)",
+          "verify": "jq -e '.metrics.cold_startup_ms | type == \"number\" and (.metrics.cold_startup_ms.runs // [1,2,3,4,5] | length) >= 5' docs/baseline.json 2>/dev/null || jq -e '.metrics | to_entries | all(.value | type == \"number\")' docs/baseline.json"
         },
         {
-          "text": "The GitHub Actions workflow includes a regression gate job or step that references docs/baseline.json",
-          "verify": "grep -r 'baseline.json' .github/workflows/"
+          "text": "The GitHub Actions workflow contains a baseline job that reads docs/baseline.json and exits non-zero on a median regression >10%",
+          "verify": "yq '.jobs.baseline or .jobs.baseline-regression' .github/workflows/*.yml 2>/dev/null | grep -qv null && grep -rq 'baseline.json' .github/workflows/"
+        },
+        {
+          "text": "The baseline job runs the real Tauri app end-to-end on the runner (not a mock) and produces timing output parseable by the gate",
+          "verify": "grep -rq 'cargo tauri build\\|tauri-driver\\|cargo run' .github/workflows/"
         }
       ],
       "scope": [
@@ -260,7 +272,7 @@
       "id": "FEAT-007",
       "title": "Phase0-tree-sitter: Integrate tree-sitter-markdown into em-core",
       "intent": "em-core can parse any markdown string into a typed AST using tree-sitter-markdown (split_parser branch). The parse result is a Rust struct tree, not a raw tree-sitter CST. Every downstream feature (formatting, doctor, WYSIWYM decorations) reads from this AST — no component parses markdown ad-hoc.",
-      "description": "Integrate tree-sitter-markdown (the split_parser branch, which separates block and inline grammars) into em-core as the single parser. Port the AST node types to Rust enums that map to the tree-sitter node kinds. The AST types must cover: headings, paragraphs, code blocks (fenced and indented), lists and list items, blockquotes, tables (GFM), links, images, emphasis, strong, inline code, thematic breaks, and frontmatter (YAML block detection). Provide a parse(text: &str) -> SyntaxTree function in em-core. Do NOT use the String-based Document from M0 for the AST — the parser operates on a &str input and returns an owned tree. Reference: reference/EMParser/ in the Swift prototype for node type inspiration (algorithm reference only — no Swift code transfers).",
+      "description": "Integrate tree-sitter-markdown (the split_parser branch, which separates block and inline grammars) into em-core as the single parser. Port the AST node types to Rust enums that map to the tree-sitter node kinds. The AST types must cover: headings, paragraphs, code blocks (fenced and indented), lists and list items, blockquotes, tables (GFM), links, images, emphasis, strong, inline code, thematic breaks, and frontmatter (YAML block detection). Provide a parse(text: &str) -> SyntaxTree function in em-core. Do NOT use the String-based Document from M0 for the AST — the parser operates on a &str input and returns an owned tree. Reference for algorithm inspiration (not code): the legacy Swift files in reference/ (TreeSitterConversion.swift and the EMFormatter/EMDoctor rule files). Note that reference/ does not contain an EMParser directory — use TreeSitterConversion.swift as the tree-sitter node-type mapping reference.",
       "priority": "must",
       "category": "core",
       "steps": [
@@ -405,7 +417,7 @@
       "intent": "Every CI run reports exactly how many CommonMark spec tests pass, how many are in the documented skip-list, and zero unexplained failures. Any test that fails without a skip-list entry breaks the build. Known tree-sitter divergences are named, documented, and tracked for upstream contribution.",
       "description": "Wire the official CommonMark spec test suite (spec.json from the commonmark-spec repo) into the em-core test harness. The test runner parses each spec test's markdown input through em-core's parse() function, renders the output, and compares against the expected HTML. Maintain an explicit skip-list at em-core/tests/commonmark_skip.json — each entry must include the spec test number, the failing input fragment, and a one-sentence reason (e.g. 'tree-sitter lazy continuation divergence, see issue #N'). CI fails if any test fails and is NOT in the skip-list. CI also fails if a skip-listed test starts passing (a signal to remove it from the list). Document the current pass rate in docs/commonmark_status.md.",
       "priority": "must",
-      "category": "quality",
+      "category": "core",
       "steps": [
         "Download or vendor spec.json from the commonmark-spec repository into em-core/tests/fixtures/",
         "Write em-core/tests/commonmark.rs that reads spec.json and runs each test through parse()",

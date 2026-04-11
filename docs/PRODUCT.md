@@ -398,7 +398,7 @@ If any of these feel essential to have in M0, the answer is "no, they belong in 
 Every M0 acceptance criterion must exercise the running system end to end. The only acceptable verify commands:
 
 - `cargo test --workspace` passing integration tests that open, edit, and save real files on a real filesystem
-- Tauri WebDriver or a headless smoke test that launches the app, scripts the nine-step journey, and asserts on observable state
+- `tauri-driver` (Tauri's WebDriver bridge) or a headless smoke test that launches the app, scripts the nine-step journey, and asserts on observable state
 - A shell script that opens the app, sends synthetic input, and compares on-disk file contents before and after
 
 **Explicitly forbidden as M0 acceptance criteria:**
@@ -423,7 +423,13 @@ Metrics to capture (values are set *by measurement*, not by prediction):
 - **Save round-trip**: time from ⌘S press to file-on-disk contains the edit
 - **Memory footprint editing a 10k-line file**: RSS after 1 minute of editing
 
-These metrics are captured on a specific reference machine documented in `docs/baseline.json` (make, model, OS version). They are not cross-machine portable; they are a regression gate on one known environment.
+**Canonical baseline environment**: the metrics are captured on a GitHub Actions `ubuntu-latest` runner. This is the only environment whose numbers are committed to `docs/baseline.json` and enforced by the CI regression gate. Local runs on any other machine are for exploration; they are not comparable and do not count.
+
+Why GitHub Actions `ubuntu-latest`: free, reproducible, available to any contributor or agent, and slower than most development machines, which gives us headroom. Other options (a physical benchmark machine, macOS runners, pinned cloud VMs) are long-tail and can be revisited once we have evidence the default is insufficient.
+
+**Measurement methodology**: each metric is captured by running N≥5 measurements and taking the median. The regression gate fires when the median of a PR's measurement run exceeds 110% of the committed baseline median. Single runs are not acceptable because CI runners have 10–15% inherent variance on cold-startup metrics, and a single-run gate produces random failures.
+
+The machine metadata committed to `docs/baseline.json` must include: the runner OS image version, `uname -a` output, `/proc/cpuinfo` CPU model, and `free -m` memory. This metadata is reference-only — the gate compares against the committed medians, not against the metadata.
 
 **Decision [D-M0-1]**: Until M0 passes with a committed `docs/baseline.json`, no §7.2+ feature item may be marked `readyForSprint: true`.
 
@@ -436,73 +442,97 @@ When populating the backlog from this doc, M0 should decompose into roughly thes
 1. **M0-workspace**: Rust workspace + `em-core` crate with a `String`-backed document struct exposing `open_file`, `edit`, `save_file`, `current_text`. Integration test that round-trips a file through the four functions on disk. Explicitly no parser, no formatter.
 2. **M0-tauri-shell**: Tauri 2.0 project scaffolded for macOS, producing a running window. Builds in CI. `em-core` wired as a Rust dependency.
 3. **M0-bridge**: Four `#[tauri::command]` wrappers around the `em-core` functions. Integration test that calls each command from the webview side and verifies the result.
-4. **M0-editor**: CodeMirror 6 mounted in the webview with a plain-text mode (no markdown highlighting, no decorations). Keystrokes update a local buffer. No IPC yet.
+4. **M0-editor**: CodeMirror 6 mounted in the webview configured as a plain-text editor — explicitly **without** the `@codemirror/lang-markdown` extension and **without** any decorations or WYSIWYM behavior. This is not "markdown mode with decorations disabled" — it is plain text. Markdown syntax highlighting, `@codemirror/lang-markdown`, and WYSIWYM all come in post-M0 editor-polish items. Keystrokes update a local buffer. No IPC yet.
 5. **M0-open-save-loop**: Wire the Open button, the Save shortcut, and the editor's keystrokes to the bridge. End-to-end test: launch app, open file, type, save, reopen file, assert new content.
 6. **M0-baseline**: Capture the six baseline metrics from §7.1.5 on a documented reference machine. Commit `docs/baseline.json`. Add a CI job that fails if any subsequent commit regresses a metric by >10%.
 
 M0 is done when all six items above pass their real evals and `docs/baseline.json` is committed.
 
-### 7.2 Features (gated on M0 passing)
+### 7.2 Features (populated post-M0)
 
-The items below are features that decorate the walking skeleton. **None of them are ready for sprint until §7.1 is complete.** The groomer must leave all §7.2 items with `readyForSprint: false` during initial populate.
+The §7.2 feature items are **deliberately not yet listed with IDs**. They will be generated into the backlog by running `.aishore/aishore backlog populate` (or `.aishore/aishore refine` + `populate`) after FEAT-006 lands and `docs/baseline.json` exists. IDs will be assigned at that time, continuing the `FEAT-NNN` sequence from the M0 items. No feature uses a legacy `F-NNN` identifier.
 
-### P0 — Must ship in first public release (post-M0)
+This is a deliberate reset. The pre-pivot version of this doc carried ~30 feature IDs (`F-001` through `F-037`) that did not map cleanly to the Rust + CodeMirror 6 + Tauri architecture. Carrying them forward would create confusion between the M0 `FEAT-001..FEAT-010` backlog and the `F-NNN` legacy list. Better to start clean.
 
-- **F-001 Open File** — OS file picker. Cloud-drive files via OS providers. Recent files list stored in lightweight local prefs (no index).
-- **F-002 Create File** — New file anywhere the user has write access.
-- **F-003 Rich Text Editor** — CodeMirror 6 with markdown mode. WYSIWYM decorations. Tables, lists, headings, code blocks, blockquotes, links, images.
-- **F-004 Auto-Formatting Engine** — Inline, real-time. Rules ported from legacy EMFormatter algorithms: list continuation, table alignment, heading spacing, blank-line separation, trailing whitespace.
-- **F-005 Document Doctor** — Background diagnostics. Rules ported from legacy EMDoctor algorithms: broken relative links, heading hierarchy, duplicate headings, unclosed formatting.
-- **F-006 Syntax Highlighting** — tree-sitter-markdown for structure; tree-sitter language grammars for fenced code blocks.
-- **F-007 Dark and Light Mode** — Follow system; override in settings.
-- **F-008 Auto-Save** — Debounced write, content-hash skip.
-- **F-009 Keyboard Support** — Platform-idiomatic shortcuts. All commands reachable via keyboard.
-- **F-010 Typography and Layout** — Designed, not default. Custom fonts licensed where necessary.
-- **F-033 Word Count and Document Stats** — Word count, reading time, structure summary.
-- **F-034 Spell Check** — Platform spell-check where available.
-- **F-035 The Render (Signature Transition)** — DP-9. CodeMirror 6 decorations + CSS/Web Animations transition.
-- **F-008a File Watching and Conflict Detection** — Detect external changes; surface non-destructively.
-- **F-025 AI Assist (MVP — Local)** — Improve, summarize, continue, smart completions. On-device inference.
+Until that populate runs, the authoritative list of *scopes* (not items) that must exist in the post-M0 backlog is below. The groomer reads this when generating the next batch. **Every scope below is subordinate to D-M0-1 and D-M0-2 and must measure against `docs/baseline.json`.**
 
-### P1 — Ship in v1.0 (high value, not launch-blocking)
+**Post-M0 Phase 0 foundations** (already in the backlog as FEAT-007..FEAT-010):
 
-- **F-011 Quick Open** — Fuzzy file search across the current folder tree.
-- **F-012 Find and Replace** — In-file and across-folder.
-- **F-013 Render, Print, and Share** — PDF export, native print, OS share.
-- **F-014 Custom Themes and Fonts** — User-overridable.
-- **F-015 Image Handling** — Inline rendering, drag-drop, paste.
-- **F-016 macOS Shell Polish** — Menu bar, Services, Quick Look, Spotlight.
-- **F-017 Extended Document Doctor** — More rules: passive voice, inconsistent list markers, orphaned sections.
-- **F-019 Wikilinks and Backlinks (plain-file mode)** — `[[note]]` resolves to files in the current folder tree. Backlinks computed on-demand, not stored. Explicitly not a vault.
-- **F-022a Mermaid Diagram Rendering** — Inline rendered Mermaid blocks.
-- **F-026 AI — BYO-Key Frontier Features** — Tone/style adjust, translation, longer-context analysis. Direct user→provider requests.
-- **F-028 AI — Smart Completions** — Local, inline.
-- **F-037 Voice Control — Intent-Based Editing** — Platform speech APIs. "Make this more concise," etc.
+- Tree-sitter-markdown parser + AST types
+- Document-model engine decision + implementation (see ARCHITECTURE.md §Document Model — candidates A/B/C)
+- Formatting engine with first rules
+- Doctor engine with first rules
+- CommonMark spec suite in CI with skip-list for known tree-sitter divergences
 
-### P2 — Phase 3 / Future (validated demand required)
+**Phase 1 — Editor polish** (must ship before the first public pre-release):
 
-- **F-022b AI-Assisted Mermaid Editing** — AI modifies existing Mermaid blocks on request.
-- Math block rendering (KaTeX)
-- Folding, outline view
+- Native file open, create, and save with OS file dialogs (extends M0 open-save-loop with recent files, multiple-document handling, untitled-buffer workflow)
+- `@codemirror/lang-markdown` + syntax highlighting (the full markdown extension, after the M0 plain-text baseline)
+- WYSIWYM decorations — syntax characters fade when cursor leaves the node, reveal on proximity (HyperMD-style)
+- The Render (DP-9) — source-to-rich toggle animation at 60fps+ on every shell
+- Dark and light theme with system follow
+- Typography and font handling (designed, not system default)
+- Keyboard shortcuts (platform-idiomatic — ⌘ on macOS, ctrl elsewhere)
+- Find and replace in current document
+- Word count and document stats
+- Spell check via OS APIs
+
+**Phase 2 — Second shells and file scale**:
+
+- Linux Tauri shell with WebKitGTK, `.desktop` + AppStream, Flatpak manifest
+- Windows Tauri shell with WebView2, MSI + WinGet
+- Web / PWA shell with File System Access API
+- Auto-save with content-hash skip
+- External file change detection and conflict resolution
+- Large-file handling (informed by the post-M0 document-model decision)
+- First public pre-release
+
+**Phase 3 — AI**:
+
+- Local AI (llama.cpp / MLX / ONNX depending on platform). First actions: improve, summarize, continue writing
+- BYO-key mode — settings pane to paste an OpenAI / Anthropic / Ollama / OpenAI-compatible endpoint key; all requests go directly from the user's machine to their chosen provider; key stored in OS keychain
+- Voice-intent command input (platform speech APIs)
+- Smart completions (local, inline)
+
+**Phase 4 — Mobile**:
+
+- iOS Tauri mobile shell
+- Android Tauri mobile shell
+
+**Phase 5 — Expansion**:
+
+- Wikilinks and on-demand backlinks against plain files (not a vault)
+- Extended doctor rules (passive voice, orphaned sections, inconsistent list markers)
+- Mermaid diagram rendering and AI-assisted Mermaid editing
+- Math rendering (KaTeX)
+- Folding and outline view
 - Multi-document tabs and split view
-- Export to static HTML bundle
+- Quick Open (fuzzy file search across the current folder tree)
+- Image handling (inline rendering, drag-drop, paste)
+- Render, print, and share as polished PDF
+- Custom themes and fonts
+
+This is a list of *scopes*, not commitments to ship order within each phase. The groomer will decompose each scope into concrete `FEAT-NNN` items during the post-M0 populate, with real acceptance criteria that measure against `docs/baseline.json`.
 
 ---
 
 ## 8. Roadmap
 
-Six phases. Timelines are soft — agent-driven sprints run continuously, so "phase" is more about what's unlocked than a calendar promise.
+Seven phases, starting with M0 (the walking skeleton). Timelines are soft — agent-driven sprints run continuously, so "phase" is about what's unlocked, not a calendar promise. Ordering is not soft: every phase gates on the previous one being real, running, and measured against `docs/baseline.json`.
 
-| Phase | Unlocks | Rough order |
-|-------|---------|-------------|
-| **Phase 0 — Foundations** | Rust workspace, tree-sitter-markdown integration, document model, formatting engine, doctor engine, CI with CommonMark spec suite | First |
-| **Phase 1 — Editor** | CodeMirror 6 markdown mode with WYSIWYM decorations, bridge protocol to Rust core, The Render prototype, themes | Next |
-| **Phase 2 — First shells** | macOS + Linux Tauri shells. File open/save, auto-save, file watching. First public pre-release. | Next |
-| **Phase 3 — Polish + AI + Web** | Local AI integration, BYO-key mode, Web (PWA) shell, Windows shell. v1.0. | Next |
-| **Phase 4 — Mobile** | iOS and Android via Tauri mobile. | After v1.0 is stable on desktop |
-| **Phase 5 — Expansion** | Wikilinks/backlinks, extended doctor, voice, Mermaid AI editing | Continuous |
+| Phase | Unlocks |
+|-------|---------|
+| **M0 — Walking skeleton** | Running Tauri app on macOS that opens a file, edits it, saves it, reopens it. `String`-backed `em-core`. Baseline metrics committed to `docs/baseline.json` and enforced by the CI regression gate. See §7.1 for the full spec. |
+| **Phase 0 — Post-M0 foundations** | tree-sitter-markdown parser + AST, document-model engine decision (measured against baseline), formatting engine first rules, doctor engine first rules, CommonMark spec suite in CI |
+| **Phase 1 — Editor polish** | `@codemirror/lang-markdown`, WYSIWYM decorations, The Render transition, themes, typography, keyboard shortcuts, find/replace, word count, spell check |
+| **Phase 2 — Second shells + file scale** | Linux (WebKitGTK), Windows (WebView2), Web (PWA). Auto-save, file watching, conflict detection. First public pre-release |
+| **Phase 3 — AI** | Local AI (llama.cpp/MLX/ONNX), BYO-key cloud AI, voice intent, smart completions |
+| **Phase 4 — Mobile** | iOS + Android via Tauri mobile |
+| **Phase 5 — Expansion** | Wikilinks/backlinks against plain files, extended doctor, Mermaid, math, folding, multi-doc tabs, images, PDF export, custom themes |
 
 **Decision [D-ROAD-1]**: Desktop before mobile. Not because mobile is less important (the primary persona lives on mobile) but because Tauri mobile is younger and higher-risk. Ship something solid on desktop first so mobile has a tested core to wrap.
+
+**Decision [D-ROAD-2]**: M0 blocks everything. Until the walking skeleton runs end-to-end and `docs/baseline.json` is committed, no Phase 0+ item can be marked `readyForSprint: true`. See `D-M0-1`.
 
 ---
 

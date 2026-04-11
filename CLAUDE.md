@@ -9,9 +9,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This project is **not** a CLI, lint tool, or `jq`-for-markdown. Earlier drafts of this doc framed it that way and were wrong. If the product description here ever drifts back toward "unix tool," stop and check `docs/PRODUCT.md`.
 
 Key docs:
-- **`docs/PRODUCT.md`** — Product vision, principles, decisions, features, roadmap, honest risks
-- **`docs/ARCHITECTURE.md`** — Technical architecture (Rust core + CodeMirror 6 + Tauri shells)
-- **`docs/PRODUCT_LEGACY.md`** — Archived earlier product doc (iOS-first, commercial). Preserved for traceability. Not authoritative.
+- **`README.md`** — one-page project orientation
+- **`docs/PRODUCT.md`** — product vision, principles, decisions, walking skeleton (§7.1), features, roadmap, honest risks
+- **`docs/ARCHITECTURE.md`** — technical architecture (Rust core + CodeMirror 6 + Tauri shells)
+- **`PRIVACY.md`** — no telemetry, no network, files stay local
 
 ## Architecture
 
@@ -30,16 +31,20 @@ Three layers, one codebase per layer:
 
 ## Current priorities
 
-Phase 0 (foundations) — the backlog should reflect these before anything downstream:
+**M0 walking skeleton first.** See `docs/PRODUCT.md §7.1` for the full spec and `backlog/backlog.json` for the six M0 items.
 
-1. Set up Rust workspace (`cargo init`)
-2. Integrate `tree-sitter-markdown` (split_parser branch); port AST types
-3. Implement the document model (piece table or rope — decide in ARCHITECTURE.md, don't re-debate in backlog)
-4. Port formatting rule *algorithms* from the legacy Swift EMFormatter (reference only — no Swift code transfers)
-5. Port doctor rule *algorithms* from the legacy Swift EMDoctor (reference only)
-6. CommonMark spec test suite wired into CI with explicit skip-list for known tree-sitter divergences
+The ordering is not negotiable: the first real milestone is a running app that opens a file, edits it, saves it, and captures baseline performance metrics. Only *after* M0 lands do parser, formatter, doctor, or piece-table engine work become eligible.
 
-Phase 1 (editor) begins only after Phase 0 parse/format/doctor are green.
+1. **FEAT-001** — Rust workspace and `em-core` crate with a `String`-backed document (no piece table, no parser, no formatter)
+2. **FEAT-002** — Tauri 2.0 macOS shell, `em-core` wired as a Rust dependency, building in CI
+3. **FEAT-003** — Tauri IPC commands exposing the four em-core functions
+4. **FEAT-004** — CodeMirror 6 in the webview, plain-text only, no markdown language extension
+5. **FEAT-005** — end-to-end open → edit → save → reopen loop with a real e2e test
+6. **FEAT-006** — measure and commit `docs/baseline.json` on the canonical GitHub Actions runner; add the >10% regression gate
+
+Post-M0 Phase 0 foundations (FEAT-007..FEAT-010 — tree-sitter, piece table, formatter, CommonMark CI) **must not be marked ready for sprint until FEAT-006 passes** — see D-M0-1 in `docs/PRODUCT.md`. This discipline is enforced by the backlog's dependency graph.
+
+**Document model decision is deferred.** M0 uses `String`. The choice between piece table, rope, or staying with `String` is made *after* FEAT-006 gives us measured numbers to compare against. Do not re-open this in backlog grooming until a baseline exists.
 
 ## Legacy Swift prototype
 

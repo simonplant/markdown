@@ -1,13 +1,28 @@
-# Xcode / Swift
-.build/
-.swiftpm/
-*.xcuserstate
-xcuserdata/
-EasyMarkdown.xcodeproj/xcuserdata/
-EasyMarkdown.xcodeproj/**/xcuserdata/
-Package.resolved
-DerivedData/
+# Rust
+target/
+**/*.rs.bk
+
+# Node / frontend
+node_modules/
+dist/
+build/
+.vite/
+.turbo/
+
+# Tauri
+src-tauri/target/
+src-tauri/gen/
+src-tauri/WixTools/
+
+# OS
 .DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*~
 
 # Claude Code local settings
 .claude/
@@ -19,3 +34,6 @@ DerivedData/
 .aishore/data/status/.aishore.lock
 .aishore/data/status/backlog-snapshot/
 .aishore/data/status/last-failure.json
+
+# Baseline output (captured by FEAT-006; committed to docs/baseline.json, not build artifacts)
+baseline-runs/
