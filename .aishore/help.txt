@@ -1,0 +1,69 @@
+aishore - iterative intent-based development with evals (v__VERSION__)
+Copyright (C) 2025-2026 Simon Plant. Licensed under Apache-2.0. See LICENSE.
+
+Usage: .aishore/aishore <command> [options]
+       .aishore/aishore run [<count>|<ID>|<scope>] [--limit N] [--retries N] [--max-failures N] [--no-merge] [--dry-run]
+
+Commands:
+  backlog list      List all items (features + bugs)
+    --status <s>    Filter by status (todo, in-progress, done)
+    --type <t>      Filter by type (feat, bug)
+    --priority <p>  Filter by priority (must, should, could, future)
+    --ready         Show only sprint-ready items
+    --no-ready      Show only items not yet ready
+  backlog add --json '{..}'  Add a new item (JSON object, or pipe via stdin)
+  backlog show <ID> Show full detail of one item
+  backlog edit <ID> --json '{..}'  Update fields (merges onto existing item)
+  backlog check <ID> Check readiness gates (title, intent, steps, AC, step length)
+    --all           Audit every non-done item and print a summary table
+  backlog rm <ID>   Remove an item (with confirmation)
+    --force         Skip confirmation
+  backlog populate  Populate backlog from PRODUCT.md (AI-assisted)
+
+  run [count]       Run N sprints (default: 1, feature branches, push/pull)
+  run <ID>          Run specific item by ID (e.g., TEST-006)
+  run <scope>       Drain backlog by scope — enables auto-grooming & circuit breaker
+    done            Drain entire backlog
+    p0              Complete all P0 (must) items
+    p1              Complete all P0+P1 (must + should) items
+    p2              Complete all P0-P2 (must + should + could) items
+    --limit N       Cap session at N successful items then exit cleanly
+    --max-failures N  Consecutive failures before stopping (default: 5)
+    --retries N     Per-item retry attempts on failure
+    --no-merge      Keep feature branches for review
+    --dry-run       Preview without running agents
+
+  groom             Groom bugs, features, and tech debt
+  refine            Improve PRODUCT.md through interactive interview
+    --from-sprints  Feed sprint learnings back into PRODUCT.md
+  scaffold          Detect fragment risk, inject scaffolding items (Architect)
+
+  review            Architecture review (read-only)
+    --update-docs   Allow updates to docs
+    --since <hash>  Review since specific commit
+
+  status            Show backlog overview and sprint readiness
+  update            Update from upstream (--dry-run to check, --force to override, --ref SHA)
+  clean             Archive and remove done items (--dry-run to preview, --no-archive to skip)
+    --regression    Clear the regression suite (backup created before removal)
+  checksums         Regenerate checksums.sha256 manifest
+  init              Setup wizard — checks prerequisites, configures project
+    -y, --yes       Accept all detected defaults (non-interactive)
+  version, -v, --version   Show version
+  help, -h, --help         Show this help
+
+Examples:
+  .aishore/aishore run done                # Drain entire backlog
+  .aishore/aishore run p1 --retries 2      # Complete must + should, with retries
+  .aishore/aishore run FEAT-001            # Run specific item
+  .aishore/aishore run --no-merge 3        # Keep branches for review
+  .aishore/aishore scaffold                # Detect missing scaffolding, add skeleton items
+  .aishore/aishore update --dry-run        # Check for updates
+
+Files:
+  backlog/backlog.json    Your feature backlog (user content)
+  backlog/bugs.json       Your bugs/tech debt (user content)
+  backlog/sprint.json     Current sprint state
+  .aishore/config.yaml    Optional configuration overrides
+
+See README.md for environment variables, agent permissions, and configuration.

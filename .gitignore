@@ -1,0 +1,21 @@
+# Xcode / Swift
+.build/
+.swiftpm/
+*.xcuserstate
+xcuserdata/
+EasyMarkdown.xcodeproj/xcuserdata/
+EasyMarkdown.xcodeproj/**/xcuserdata/
+Package.resolved
+DerivedData/
+.DS_Store
+
+# Claude Code local settings
+.claude/
+
+# aishore runtime files
+.aishore/data/logs/
+.aishore/data/status/result.json
+.aishore/data/status/.item_source
+.aishore/data/status/.aishore.lock
+.aishore/data/status/backlog-snapshot/
+.aishore/data/status/last-failure.json
