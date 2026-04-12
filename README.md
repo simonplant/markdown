@@ -1,4 +1,4 @@
-# Easy Markdown
+# Markdown
 
 The best free markdown editor on every platform. Apache 2.0. No vault, no account, no subscription.
 
