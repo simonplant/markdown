@@ -4,7 +4,10 @@ project:
   name: "markdown"
 
 validation:
-  command: "cargo build --workspace && cargo test --workspace"
+  # Short-circuits to success when there is no Cargo.toml yet — the repo is
+  # pre-bootstrap and FEAT-001 is the item that creates the workspace. Once
+  # Cargo.toml exists, every subsequent sprint runs the real cargo pipeline.
+  command: "[ ! -f Cargo.toml ] || (cargo build --workspace && cargo test --workspace)"
   timeout: 600
 
 # Setup command runs in each worktree before the sprint starts.
