@@ -5,19 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Easy Markdown</title>
     <style>
-      body {
+      html, body {
         margin: 0;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        height: 100vh;
+        padding: 0;
+        height: 100%;
         background: #fafafa;
-        color: #333;
+      }
+      #editor {
+        height: 100%;
+      }
+      .cm-editor {
+        height: 100%;
       }
     </style>
   </head>
   <body>
-    <div>Easy Markdown</div>
+    <div id="editor"></div>
+    <script type="module">
+      import { initEditor } from "/editor.ts";
+      initEditor(document.getElementById("editor"));
+    </script>
   </body>
 </html>
