@@ -1,0 +1,3 @@
+[workspace]
+members = ["em-core"]
+resolver = "2"
