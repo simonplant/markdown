@@ -1,7 +1,8 @@
 use std::sync::Mutex;
 
 use em_core::Document;
-use tauri::State;
+use tauri::menu::{MenuBuilder, MenuItemBuilder, SubmenuBuilder};
+use tauri::{Emitter, State};
 
 pub struct AppState {
     pub document: Mutex<Option<Document>>,
@@ -32,10 +33,10 @@ fn edit(state: State<'_, AppState>, offset: usize, delete: usize, insert: String
 }
 
 #[tauri::command]
-fn save_file(state: State<'_, AppState>, path: String) -> Result<(), String> {
-    let guard = state.document.lock().unwrap();
-    let doc = guard.as_ref().ok_or("No document open")?;
-    doc.save_file(&path).map_err(|e| e.to_string())
+fn save_file(state: State<'_, AppState>, path: String, content: String) -> Result<(), String> {
+    std::fs::write(&path, &content).map_err(|e| e.to_string())?;
+    *state.document.lock().unwrap() = Some(Document::from_content(content));
+    Ok(())
 }
 
 #[tauri::command]
@@ -47,8 +48,35 @@ fn current_text(state: State<'_, AppState>) -> Result<String, String> {
 
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .manage(AppState::default())
         .invoke_handler(tauri::generate_handler![open_file, edit, save_file, current_text])
+        .setup(|app| {
+            let open_item = MenuItemBuilder::with_id("open", "Open…")
+                .accelerator("CmdOrCtrl+O")
+                .build(app)?;
+            let save_item = MenuItemBuilder::with_id("save", "Save")
+                .accelerator("CmdOrCtrl+S")
+                .build(app)?;
+            let file_menu = SubmenuBuilder::new(app, "File")
+                .item(&open_item)
+                .item(&save_item)
+                .build()?;
+            let menu = MenuBuilder::new(app).item(&file_menu).build()?;
+            app.set_menu(menu)?;
+            Ok(())
+        })
+        .on_menu_event(|app, event| {
+            match event.id().as_ref() {
+                "open" => {
+                    let _ = app.emit("menu-open", ());
+                }
+                "save" => {
+                    let _ = app.emit("menu-save", ());
+                }
+                _ => {}
+            }
+        })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
@@ -100,5 +128,52 @@ mod tests {
         // Verify saved content by reopening
         let reopened = Document::open_file(&path).unwrap();
         assert_eq!(reopened.current_text(), "hello rust");
+    }
+
+    #[test]
+    fn e2e_open_edit_save_reopen() {
+        let state = AppState::default();
+
+        // 1. Create a temp .md file with initial content
+        let mut tmp = tempfile::Builder::new()
+            .suffix(".md")
+            .tempfile()
+            .unwrap();
+        tmp.write_all(b"# Hello\n\nOriginal content.").unwrap();
+        tmp.flush().unwrap();
+        let path = tmp.path().to_str().unwrap().to_string();
+
+        // 2. Open file (simulates invoke('open_file', {path}))
+        let text = {
+            let doc = Document::open_file(&path).unwrap();
+            let text = doc.current_text().to_string();
+            *state.document.lock().unwrap() = Some(doc);
+            text
+        };
+        assert_eq!(text, "# Hello\n\nOriginal content.");
+
+        // 3. Simulate JS editing: user types " Edited!" at the end
+        let edited_content = format!("{} Edited!", text);
+
+        // 4. Save with content from JS (simulates invoke('save_file', {path, content}))
+        {
+            std::fs::write(&path, &edited_content).unwrap();
+            *state.document.lock().unwrap() =
+                Some(Document::from_content(edited_content.clone()));
+        }
+
+        // 5. Verify AppState is updated
+        {
+            let guard = state.document.lock().unwrap();
+            let doc = guard.as_ref().unwrap();
+            assert_eq!(doc.current_text(), "# Hello\n\nOriginal content. Edited!");
+        }
+
+        // 6. Reopen from disk and verify persistence
+        let reopened = Document::open_file(&path).unwrap();
+        assert_eq!(
+            reopened.current_text(),
+            "# Hello\n\nOriginal content. Edited!"
+        );
     }
 }

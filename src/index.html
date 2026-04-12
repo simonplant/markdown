@@ -10,9 +10,22 @@
         padding: 0;
         height: 100%;
         background: #fafafa;
+        display: flex;
+        flex-direction: column;
+      }
+      #toolbar {
+        padding: 4px 8px;
+        background: #eee;
+        border-bottom: 1px solid #ccc;
+        flex-shrink: 0;
+      }
+      #toolbar button {
+        padding: 4px 12px;
+        cursor: pointer;
       }
       #editor {
-        height: 100%;
+        flex: 1;
+        overflow: hidden;
       }
       .cm-editor {
         height: 100%;
@@ -20,10 +33,10 @@
     </style>
   </head>
   <body>
+    <div id="toolbar">
+      <button id="btn-open">Open</button>
+    </div>
     <div id="editor"></div>
-    <script type="module">
-      import { initEditor } from "/editor.ts";
-      initEditor(document.getElementById("editor"));
-    </script>
+    <script type="module" src="/main.ts"></script>
   </body>
 </html>
