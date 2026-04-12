@@ -1,1 +1,46 @@
-{"sprintId": null, "status": "idle", "item": null}
+{
+  "sprintId": "sprint-1776008387",
+  "startedAt": "2026-04-12T08:39:47-07:00",
+  "status": "in_progress",
+  "item": {
+    "id": "FEAT-007",
+    "title": "Phase0-tree-sitter: Integrate tree-sitter-markdown into em-core",
+    "intent": "em-core can parse any markdown string into a typed AST using tree-sitter-markdown (split_parser branch). The parse result is a Rust struct tree, not a raw tree-sitter CST. Every downstream feature (formatting, doctor, WYSIWYM decorations) reads from this AST — no component parses markdown ad-hoc.",
+    "description": "Integrate tree-sitter-markdown (the split_parser branch, which separates block and inline grammars) into em-core as the single parser. Port the AST node types to Rust enums that map to the tree-sitter node kinds. The AST types must cover: headings, paragraphs, code blocks (fenced and indented), lists and list items, blockquotes, tables (GFM), links, images, emphasis, strong, inline code, thematic breaks, and frontmatter (YAML block detection). Provide a parse(text: &str) -> SyntaxTree function in em-core. Do NOT use the String-based Document from M0 for the AST — the parser operates on a &str input and returns an owned tree. Reference for algorithm inspiration (not code): the legacy Swift files in reference/ (TreeSitterConversion.swift and the EMFormatter/EMDoctor rule files). Note that reference/ does not contain an EMParser directory — use TreeSitterConversion.swift as the tree-sitter node-type mapping reference.",
+    "sourceBacklog": "backlog.json",
+    "steps": [
+      "Add tree-sitter and tree-sitter-markdown as Cargo dependencies (using the split_parser branch via git dependency)",
+      "Create em-core/src/ast.rs defining Rust enums for all major node kinds listed in the description",
+      "Create em-core/src/parser.rs implementing parse(text: &str) -> SyntaxTree that walks the tree-sitter CST",
+      "Map tree-sitter node type strings (e.g. 'atx_heading', 'fenced_code_block') to the Rust AST enums",
+      "Handle GFM extensions: table, strikethrough, task list item, autolink",
+      "Handle YAML frontmatter: detect a leading '---' block and wrap it in a FrontmatterNode",
+      "Write unit tests in em-core/src/parser.rs that parse representative markdown fragments and assert on the resulting AST structure",
+      "Run cargo test -p em-core and confirm all new parser tests pass"
+    ],
+    "acceptanceCriteria": [
+      {
+        "text": "cargo test -p em-core --test parser passes with parser tests covering major node kinds",
+        "verify": "cargo test -p em-core --test parser"
+      },
+      {
+        "text": "tree-sitter-markdown is a real dependency of em-core (confirmed by cargo tree)",
+        "verify": "cargo tree -p em-core 2>&1 | grep -q tree-sitter"
+      },
+      {
+        "text": "parse() returns a typed AST (not a raw tree-sitter cursor) — proven by tests that assert on Rust enum variants",
+        "verify": "cargo test -p em-core -- typed_ast"
+      },
+      {
+        "text": "cargo test --workspace passes with no failures",
+        "verify": "cargo test --workspace"
+      }
+    ],
+    "scope": [
+      "em-core/src/ast.rs",
+      "em-core/src/parser.rs",
+      "em-core/Cargo.toml"
+    ],
+    "startedAt": "2026-04-12T08:39:47-07:00"
+  }
+}

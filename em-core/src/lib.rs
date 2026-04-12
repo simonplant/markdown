@@ -1,6 +1,9 @@
 use std::fs;
 use std::io;
 
+pub mod ast;
+pub mod parser;
+
 pub struct Document {
     content: String,
 }
