@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-**Easy Markdown** — the best free markdown editor on every platform. Apache 2.0, no vault, no account, no subscription. Open any `.md` file from a local folder or cloud drive (iCloud, Dropbox, Google Drive, OneDrive) on macOS, Linux, Windows, Web, iOS, and Android.
+**Markdown** — the free, final markdown editor for the AI age. Apache 2.0, no vault, no account, no subscription. Markdown is the document format of the AI age; the tool for working with it should be free, open source, and run on everything. Open any `.md` file from a local folder or cloud drive (iCloud, Dropbox, Google Drive, OneDrive) on macOS, Linux, Windows, Web, iOS, and Android.
 
 This project is **not** a CLI, lint tool, or `jq`-for-markdown. Earlier drafts of this doc framed it that way and were wrong. If the product description here ever drifts back toward "unix tool," stop and check `docs/PRODUCT.md`.
 

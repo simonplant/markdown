@@ -1,10 +1,12 @@
-# Easy Markdown — Product Document
+# Markdown — Product Document
 
 This document is the single source of truth for what we are building, why, and the decisions that constrain implementation. The backlog is derived from this document. If a decision isn't recorded here, it hasn't been made.
 
+**The thesis in one sentence**: Markdown is the document format of the AI age, and the tool for working with it should be free, open source, and run on everything — a commodity, not a product.
+
 **How to read this document**: Section 1 is the north star (press release + why now). Sections 2–3 establish intent (who we serve, what problems we solve). Sections 4–6 establish constraints (principles, non-goals, and the decisions that bind us). Sections 7–9 define what gets built (features, roadmap, honest risks). Sections 10–11 define how we measure success.
 
-**Ambition level**: The best free markdown editor on every platform. Not "a nice open-source alternative" — the one people reach for when they want to read, write, or refine a `.md` file. Obsidian's craft without Obsidian's vault. iA Writer's polish without the $50 and the Apple-only lock-in. VS Code's ubiquity without being a code editor. Every decision in this document should be evaluated against that bar.
+**Ambition level**: Make the markdown editor a commodity. Markdown is the document format of the AI age — every LLM, every agent, every copilot writes it. The tool you use to open, read, edit, and refine `.md` files should be as free and universal as the format itself. Not "a nice open-source alternative" — the one that makes Obsidian's vault, iA Writer's price tag, and Typora's closed source feel like relics. Every decision in this document should be evaluated against that bar.
 
 **Document heritage**: The earlier version of this file (`PRODUCT_LEGACY.md`) was a commercial iOS-first product plan with a $9.99 purchase and a $3.99/mo Pro AI subscription. Most of the feature thinking and design principles transfer. The business model, platform sequencing, and "not open source" decision do not. Where legacy decisions are preserved below, they keep their IDs. Where they are reversed, the reversal is explicit.
 
@@ -16,47 +18,53 @@ This is the Amazon "working backwards" press release. It describes the product a
 
 > **FOR IMMEDIATE RELEASE**
 >
-> ### Easy Markdown: the best free markdown editor on every platform.
+> ### Markdown: the free, final editor for the AI age.
 >
-> *Open any `.md` file, anywhere, on any device. No vault. No account. No subscription. Fully open source, Apache 2.0.*
+> *Open any `.md` file, anywhere, on any device. No vault. No account. No subscription. Open source forever — Apache 2.0.*
 >
-> **2026** — Markdown is the universal format of the AI age. Every LLM reads and writes it. Every README, every note, every AI-generated report, every prompt — markdown. But the tools people use to open these files are locked-down vaults (Obsidian), premium purchases (iA Writer, Typora), Electron boat anchors, or TextEdit.
+> **Every AI writes markdown.** Every LLM, every agent, every copilot — they all output `.md`. Product briefs, research reports, architecture docs, meeting summaries, READMEs, prompts. Markdown is no longer a developer format. It is the document format of the AI age, and the volume is growing by orders of magnitude.
 >
-> **Easy Markdown is different.** Open any `.md` file from anywhere your OS can reach — a local folder, iCloud Drive, Dropbox, Google Drive, OneDrive, a cloned git repo — and edit it in a native-feeling editor that runs on macOS, Linux, Windows, Web, iOS, and Android. No import step. No "create a vault." Your files stay where you put them, in standard markdown, with no sidecar files and no proprietary metadata.
+> **The tools haven't caught up.** Obsidian locks your files in a vault and charges for sync. iA Writer costs $50 and only runs on Apple. Typora is closed source. MarkText is dead — maintainer burnout, like every free markdown editor before it. VS Code is a code editor, not a writing tool. For a format that is becoming as universal as plain text, the state of tooling is absurd.
 >
-> **The experience is the point.** Intelligent auto-formatting cleans up your markdown as you type. A built-in document doctor catches broken links, inconsistent headings, and structural issues in the background. When you toggle between source and rich view, markdown *transforms* into its rendered form — a signature animation we call The Render. Tables, diagrams, code blocks, and math all render inline. The editor feels fast because it is fast: a Rust core does the heavy lifting and CodeMirror 6 handles the UI that browsers already solved (CJK, RTL, IME, accessibility).
+> **Markdown fixes this.** Open any `.md` file from anywhere your OS can reach — a local folder, iCloud Drive, Dropbox, Google Drive, OneDrive, a git repo — and edit it in a fast, polished editor that runs on macOS, Linux, Windows, Web, iOS, and Android. No import step. No vault. No sidecar files. Your files stay where you put them, in standard markdown, untouched.
 >
-> **AI is local-first and optional.** Core AI features — improve, summarize, continue, smart completions — run on-device with no account and no network. Users who want frontier-model capabilities can paste their own API key (OpenAI, Anthropic, Ollama, or any OpenAI-compatible endpoint); calls go directly from their machine to their chosen provider. We never proxy, relay, or store keys. There is no paid tier. There is no "Pro." There is no upsell.
+> **The experience is what keeps you — not lock-in.** Intelligent auto-formatting cleans up your markdown as you type. A document doctor catches broken links and structural issues in the background. Toggle between source and rich view and watch markdown *transform* into its rendered form — a signature animation we call The Render. Tables, diagrams, code blocks, and math render inline. The editor is fast because the core is Rust; the UI works everywhere because it's CodeMirror 6 in a Tauri shell — the same pragmatic stack that powers Obsidian and VS Code.
 >
-> **It's free software, forever.** Apache 2.0, source on GitHub, built and maintained through autonomous agent-driven sprints. No one has to burn their evenings and weekends to keep it alive — the pattern that killed MarkText, Remarkable, Haroopad, and every other free markdown editor before it. Easy Markdown is an experiment in what happens when an open-source app is built by agents with a human at the helm: a free tool that sustains itself.
+> **AI assistance is built in, not bolted on.** On-device AI handles improve, summarize, continue, and smart completions — no account, no network. Power users paste their own API key for frontier models; calls go direct from their machine to their provider. We never see the content or the key. There is no paid tier.
 >
-> "We built it because we were tired of choosing between a paywall and a vault," said the Easy Markdown team.
+> **A markdown editor should be a commodity.** It is infrastructure for knowledge work in the AI age — as essential as a web browser. It should be free, open source, and run on everything. That is what Markdown is. Apache 2.0, the whole stack, forever.
 >
-> Getting started is instant: download, open a file, write.
+> Download. Open a file. Write.
 
 ### What this press release locks in
 
 | Claim | Implication | Constrains |
 |-------|-------------|------------|
-| "Best free markdown editor on every platform" | Cross-platform day one, not sequenced. No platform is a second-class citizen by design. | Architecture, tech stack |
-| "Open any `.md` file from anywhere your OS can reach" | Must use OS file APIs. Cloud-drive files are accessed via OS mounts/providers, not reimplemented sync. | DP-1, file architecture |
+| "The free, final editor for the AI age" | This is commodity infrastructure, not a premium product. Free is the point, not a compromise. | Business model, D-BIZ-1 |
+| "Every AI writes markdown" | We are riding a secular trend, not creating a category. The product is essential because the format is essential. | Positioning, roadmap priority |
+| "The tools haven't caught up" | We exist because the incumbents are paywalled, vault-locked, platform-locked, or dead. The gap is real and structural. | Competitive positioning |
+| "Open any `.md` file from anywhere your OS can reach" | Must use OS file APIs. Cloud-drive files accessed via OS mounts/providers, not reimplemented sync. | DP-1, file architecture |
 | "No vault. No account. No sidecar files." | Zero-configuration first launch. Nothing proprietary touches the user's filesystem. | UX, file handling |
-| "Native-feeling on every platform" | We use a webview-based stack (Tauri + CodeMirror 6), not per-platform native UI. The "native feeling" comes from platform conventions (menus, shortcuts, file pickers, typography), not from per-platform UI codebases. | Architecture, D-PLAT-2 reversal |
-| "Fast because it is fast" | Rust core for parsing/formatting/diagnostics. Hot-path interactions duplicated in JS for zero-latency response. <50ms format of 10k-line docs, <1ms incremental reparse. | Engineering budget |
-| "AI is local-first and optional" | On-device inference for core features. BYO API key for power users. No server infrastructure. No paid tier. | D-AI-1 (revised), D-AI-2 (replaced) |
-| "Apache 2.0, free software forever" | The whole stack is open source. Not open-core. Not source-available. | D-NO-13 reversed |
-| "Built and maintained through agent-driven sprints" | Sustainability bet: agents break the volunteer-burnout failure mode. Honestly named as a bet, not a slogan. | Section 9 Honest Risks |
+| "The experience is what keeps you — not lock-in" | Retention through craft, not through organizational lock-in. The editor has to be genuinely good. | Architecture, D-PLAT-2, DP-2 |
+| "Fast because the core is Rust" | Rust core for parsing/formatting/diagnostics. <50ms format of 10k-line docs, <1ms incremental reparse. | Engineering budget |
+| "AI assistance is built in" | On-device inference for core features. BYO API key for frontier models. No server infrastructure. No paid tier. | D-AI-1 (revised), D-AI-2 (replaced) |
+| "A markdown editor should be a commodity" | Apache 2.0, whole stack. Not open-core. Not source-available. This is infrastructure, not a product to monetize. | D-NO-13 reversed, D-BIZ-1 |
 
 ### Why now
 
-Six things make this product possible and necessary in 2026:
+The demand side and the supply side both changed. This product was not possible — or necessary — three years ago.
 
-1. **AI made markdown universal.** LLMs don't output LaTeX, DOCX, or HTML. They output markdown. The volume of machine-generated markdown has grown by orders of magnitude and the tooling hasn't kept up.
-2. **Obsidian proved the market and drew a line.** Obsidian showed that millions of people want a markdown editor with craft and local files. It also showed the limits of that model: a proprietary vault, a paid sync tier, a paid publish tier, closed source, and a plugin ecosystem that makes users fear leaving. The opportunity is everything Obsidian is minus everything Obsidian takes.
-3. **CodeMirror 6 solved the cross-platform editor problem.** A decade of attempts to build cross-platform text editors using native frameworks produced mostly Apple-only products (iA Writer, Typora-on-macOS, Bear, Ulysses). CodeMirror 6 handles CJK, RTL, bidi, IME, and accessibility because browsers already do — the multi-year problems that sank every native attempt are free. This is the pragmatic path.
-4. **Tauri made cross-platform shells cheap.** Tauri 2.0 provides webview hosting, Rust backend, file system access, menus, auto-updater, and mobile support out of the box. The per-platform shell is ~1,000 lines instead of ~10,000.
-5. **On-device inference crossed the usability threshold.** llama.cpp, MLX, Core ML, and ONNX runtimes can run 1–4GB quantized models on commodity hardware with usable quality and sub-second latency. Local-first AI for prose is now viable without a GPU cluster.
-6. **Agents broke the volunteer-burnout pattern.** Every standalone free markdown editor before this died because a single human maintainer ran out of energy: MarkText (54K stars, deprecated 2025), Remarkable, Haroopad, Abricotine — 100% mortality rate. Easy Markdown is an experiment in a different shape of open source: grooming and sprint execution run through autonomous agents (`aishore`), with a human directing intent and reviewing output. This does not eliminate the human bottleneck; it moves it from "write every line of code on evenings and weekends" to "review and steer." Whether this is enough to sustain a free editor category long-term is an open question. We are running the experiment.
+**Demand: markdown became universal infrastructure.**
+
+1. **AI made markdown the default document format.** LLMs don't output LaTeX, DOCX, or HTML. They output markdown. Every research report, product brief, architecture doc, and meeting summary that an AI writes is a `.md` file. The volume of markdown in the world grew by orders of magnitude in two years, and the tooling is still priced and locked like it's a niche developer format.
+2. **Obsidian proved the market and drew a line.** Millions of people want a markdown editor with craft and local files. Obsidian proved that. It also showed the limits: a proprietary vault, paid sync, paid publish, closed source, a plugin ecosystem that makes users afraid to leave. The opportunity is everything Obsidian is minus everything Obsidian takes.
+
+**Supply: the cost of building a great cross-platform editor collapsed.**
+
+3. **CodeMirror 6 solved the editor.** A decade of cross-platform text editor attempts produced mostly Apple-only products. CodeMirror 6 handles CJK, RTL, bidi, IME, and accessibility because browsers already do. The multi-year problems that sank every native attempt are free.
+4. **Tauri made the shell cheap.** Tauri 2.0 — webview hosting, Rust backend, file system access, menus, auto-updater, mobile support — out of the box. The per-platform shell is ~1,000 lines instead of ~10,000.
+5. **On-device inference crossed the usability threshold.** llama.cpp, MLX, Core ML, and ONNX can run quantized models on commodity hardware with usable quality. Local-first AI for prose is viable without a GPU cluster.
+6. **Agents broke the volunteer-burnout pattern.** Every standalone free markdown editor died because one human ran out of energy: MarkText (54K stars, deprecated 2025), Remarkable, Haroopad, Abricotine — 100% mortality. Markdown is built differently: grooming and sprint execution run through autonomous agents, with a human directing intent and reviewing output. This moves the bottleneck from "write every line on evenings and weekends" to "review and steer." Whether it's enough is an open question (see §9). We are running the experiment.
 
 ---
 
@@ -64,17 +72,19 @@ Six things make this product possible and necessary in 2026:
 
 ### The market landscape
 
+Markdown became universal infrastructure. The tools for it didn't.
+
 | | Great UX | Mediocre UX |
 |---|---|---|
 | **Locked storage / vault** | Obsidian, Bear, Notion, Ulysses | Day One, Standard Notes |
 | **Open files, cross-platform** | *empty — this is us* | VS Code (not an editor for prose), text editors, TextEdit, Notes |
 | **Open files, Apple-only** | iA Writer ($50), Typora (desktop) | — |
 
-Easy Markdown occupies the empty cell: **great UX + open files + cross-platform + free**. No product in the market holds this position.
+Markdown occupies the empty cell: **great UX + open files + cross-platform + free**. No product in the market holds this position. It is the commodity tool that should exist for a commodity format.
 
-**Decision [D-MKT-1]**: We are building at the intersection of four underserved positions: **craft-quality UX + open files + every platform + free**. We serve both directions of the AI-era markdown workflow: writing with AI as co-author and receiving/refining AI-generated output.
+**Decision [D-MKT-1]**: We are building commodity infrastructure for the AI age: **craft-quality UX + open files + every platform + free**. We serve both directions of the AI-era markdown workflow: writing with AI as co-author and receiving/refining AI-generated output.
 
-**Decision [D-MKT-3]**: Markdown is the document format for most knowledge work in the AI age. We are the tool that makes opening, reading, and editing any `.md` file a first-class experience on any device. The workflow — open, read, edit, render, share — is first-class. Rich content (tables, diagrams, code blocks, math) renders beautifully inline.
+**Decision [D-MKT-3]**: Markdown is the document format for most knowledge work in the AI age. The tool for working with it should be as free and universal as the format itself. The workflow — open, read, edit, render, share — is first-class. Rich content (tables, diagrams, code blocks, math) renders beautifully inline.
 
 ### Pain points we solve
 
@@ -87,7 +97,7 @@ Easy Markdown occupies the empty cell: **great UX + open files + cross-platform 
 | P5 | **Bloat and complexity.** Obsidian's plugin system is powerful but overwhelming. Notion is a kitchen sink. | Focused feature set. No plugin system. | **[D-SCOPE-1]** No plugin/extension system. We ship what we ship. |
 | P6 | **AI requires cloud and accounts.** Notion AI, Craft AI, and every other AI writing tool sends your content to remote servers, requires an account, and charges a separate subscription. | Core AI runs on-device with no account. Optional BYO-key mode calls the user's chosen provider directly. We never see the content or the key. | **[D-AI-1]** Local-first AI. No relay. No paid tier. |
 | P7 | **No purpose-built markdown tool for non-IDE users.** Developers use Cursor/VS Code but have no great standalone tool for prose. Writers have no tool that combines AI + open files + great UX + every platform. | Be the app developers open alongside their IDE, and the app writers open instead of one. | **[D-MKT-2]** Position as the complement to IDEs, not a competitor. |
-| P8 | **No AI-native document tool for markdown.** AI agents produce `.md` files daily — research reports, summaries, briefs, architecture docs — and there's no purpose-built tool for consuming, refining, and sharing them. | Open AI-generated `.md` files with diagrams/tables rendering beautifully on open. Refine with local AI or BYO-key AI. Share as polished PDF or the `.md` itself. | **[D-MKT-3]** Easy Markdown is the AI-era markdown tool. |
+| P8 | **No AI-native document tool for markdown.** AI agents produce `.md` files daily — research reports, summaries, briefs, architecture docs — and there's no purpose-built tool for consuming, refining, and sharing them. | Open AI-generated `.md` files with diagrams/tables rendering beautifully on open. Refine with local AI or BYO-key AI. Share as polished PDF or the `.md` itself. | **[D-MKT-3]** Markdown is the AI-era markdown tool. |
 | P9 | **Free markdown editors die.** MarkText, Remarkable, Haroopad, Abricotine. Volunteer maintainers burn out. | Agent-driven grooming and sprint execution via aishore. Sustainability is a bet, not a promise — see §9. | **[D-SUST-1]** We are running the experiment. |
 
 ---
@@ -96,7 +106,7 @@ Easy Markdown occupies the empty cell: **great UX + open files + cross-platform 
 
 ### Primary persona: The AI-Native Knowledge Worker
 
-> *"I write product briefs, review AI research reports, draft architecture docs — all in markdown, all with AI helping me. I need a tool that makes these documents look beautiful, helps me refine with AI, and lets me share polished output. I don't think of myself as 'a markdown user' — I'm someone who creates documents in the AI age."*
+> *"Half my documents start as AI output — research reports, meeting summaries, first drafts. They're all markdown. I just need a good tool to open them, clean them up, and move on. I shouldn't have to create a vault, pay a subscription, or be locked to one platform for that."*
 
 - Creates documents with AI as co-author: product briefs, reports, proposals, blog posts
 - Receives `.md` files from AI agents (Claude, ChatGPT, Perplexity, Cursor, custom agents)
@@ -118,7 +128,7 @@ Easy Markdown occupies the empty cell: **great UX + open files + cross-platform 
 - Cares where files live — git repos, iCloud, Dropbox, local folders
 - Loudest referral channel — builders recommend tools to each other
 
-**Decision [D-USER-2]**: Deep investment. Keyboard shortcuts, fast file switching, AI that understands code-adjacent writing. We will not add Vim bindings, terminal integration, or git integration — Easy Markdown is not an IDE.
+**Decision [D-USER-2]**: Deep investment. Keyboard shortcuts, fast file switching, AI that understands code-adjacent writing. We will not add Vim bindings, terminal integration, or git integration — Markdown is not an IDE.
 
 ### Tertiary persona: The Content Creator
 
@@ -148,7 +158,7 @@ Easy Markdown occupies the empty cell: **great UX + open files + cross-platform 
 Non-negotiable. Resolve ambiguity when the backlog doesn't have a clear answer.
 
 ### DP-1: Open by default
-The file system is our storage layer. We use the OS file picker to open files and the OS file system to save them. We never create a vault, database, index, library, or proprietary container. If the user uninstalls Easy Markdown, their files are untouched.
+The file system is our storage layer. We use the OS file picker to open files and the OS file system to save them. We never create a vault, database, index, library, or proprietary container. If the user uninstalls Markdown, their files are untouched.
 
 **What this means in practice**:
 - No app-specific directory structure
@@ -256,7 +266,7 @@ Accessibility is P0, not P1.
 **Decision [D-A11Y-1]**: Every feature spec must include accessibility acceptance criteria. A feature that doesn't work with the platform screen reader doesn't ship.
 
 ### DP-11: Agent-built, human-directed
-Easy Markdown is built by autonomous agents running grooming and sprint execution (`aishore`), with a human directing intent and reviewing output. This is a design principle because it shapes how work is planned, scoped, and reviewed — not just how code is written.
+Markdown is built by autonomous agents running grooming and sprint execution (`aishore`), with a human directing intent and reviewing output. This is a design principle because it shapes how work is planned, scoped, and reviewed — not just how code is written.
 
 **What this means in practice**:
 - Backlog items must carry explicit "commander's intent" fields so agents can resolve ambiguity without human intervention
@@ -335,7 +345,7 @@ Key decisions in one place. IDs with *(revised)* or *(reversed)* indicate change
 
 ## 7. Feature Specifications
 
-**This section has two parts.** §7.1 is the **walking skeleton** — the smallest end-to-end version of Easy Markdown that proves the architecture actually works. Nothing else ships until the walking skeleton is real, running, and measured. §7.2 onward are **features** that decorate the skeleton and are gated on regression budgets set during §7.1.
+**This section has two parts.** §7.1 is the **walking skeleton** — the smallest end-to-end version of Markdown that proves the architecture actually works. Nothing else ships until the walking skeleton is real, running, and measured. §7.2 onward are **features** that decorate the skeleton and are gated on regression budgets set during §7.1.
 
 If you are populating the backlog from this doc, read §7.1 carefully: the walking skeleton must be the first milestone, and feature items in §7.2+ must not be marked ready for sprint until the skeleton has landed and baseline metrics exist.
 
@@ -346,7 +356,7 @@ The walking skeleton is the atomic loop. It is deliberately ugly, deliberately m
 #### 7.1.1 The primary user journey (M0)
 
 ```
-1. User launches Easy Markdown          (Tauri shell runs, window opens)
+1. User launches Markdown          (Tauri shell runs, window opens)
 2. User clicks "Open"                    (native file dialog)
 3. User picks a .md file                 (Rust reads bytes from disk)
 4. File contents appear in the editor    (bytes → IPC → CodeMirror 6)
@@ -540,7 +550,7 @@ Seven phases, starting with M0 (the walking skeleton). Timelines are soft — ag
 
 The critiques that would come from a reviewer who doesn't buy the pitch. Kept here so we don't flinch from them.
 
-- **The sustainability bet may fail.** Agent-driven development does not eliminate the human bottleneck — it moves it to review and direction. If the human at the helm runs out of time or interest, Easy Markdown joins the MarkText graveyard. The bet is that "review and steer" is a lower-energy activity than "write every line," not that it is zero-energy. We do not know how long this lasts.
+- **The sustainability bet may fail.** Agent-driven development does not eliminate the human bottleneck — it moves it to review and direction. If the human at the helm runs out of time or interest, Markdown joins the MarkText graveyard. The bet is that "review and steer" is a lower-energy activity than "write every line," not that it is zero-energy. We do not know how long this lasts.
 - **Webview animations won't match native.** DP-9 (The Render) is a signature interaction. A CodeMirror 6 + CSS animation pipeline cannot match SwiftUI Core Animation on a 120Hz ProMotion display. The gap is small but real. On every *other* platform, there is no comparable competitor at all — Linux, Windows, Web, Android have no native 120fps markdown editor for us to lose to.
 - **Tauri mobile is young.** Tauri 2.0 mobile support (iOS and Android) is behind its desktop support. Phase 4 carries real platform-risk.
 - **WebKitGTK lags.** Linux shells use WebKitGTK, which is 6–12 months behind Chromium on CSS and Web APIs. We will hit rendering quirks. The alternative (bundling Chromium/CEF) costs ~100MB per install and defeats the lightweight goal.
@@ -557,7 +567,7 @@ As of 2026:
 
 | Competitor | What they have | What they lack | Our angle |
 |-----------|----------------|----------------|-----------|
-| **Obsidian** | Great UX, local files (sort of), huge plugin ecosystem | Vault lock-in, Electron, paid sync, paid publish, closed source | Same craft, no vault, no subscriptions, open source, every platform |
+| **Obsidian** | Great UX, local files (sort of), huge plugin ecosystem | Vault lock-in, Electron, paid sync, paid publish, closed source | The free commodity alternative: same craft, no vault, no subscriptions, open source, every platform |
 | **iA Writer** | Beautiful typography, open files | Apple-only, $50, no AI, no cross-platform | Same craft, every platform, free, AI-native |
 | **Typora** | Live preview, open files | Desktop-only, closed source, paid, no AI | Every platform, free, open source, AI-native |
 | **Bear** | Beautiful iOS/macOS UX | Apple-only, proprietary storage, subscription | Every platform, open files, free |
@@ -585,11 +595,11 @@ No revenue metrics. Success for a free, open-source editor looks different.
 - Included in at least one default desktop environment image
 - Recognized in at least one "tools we recommend" list from a major publication or OSS project
 - First external contributor merges (human or agent)
-- The primary persona (AI-Native Knowledge Worker) describes Easy Markdown as "the one I use" without qualification
+- The primary persona (AI-Native Knowledge Worker) describes Markdown as "the one I use" without qualification
 
 **Year 3**:
-- When someone asks "what's a good free markdown editor on Linux/Windows/Web," the answer is Easy Markdown
-- Easy Markdown is the default way knowledge workers open AI-generated `.md` files
+- When someone asks "what's a good free markdown editor on Linux/Windows/Web," the answer is Markdown — the way Firefox was the answer for browsers
+- Markdown is the default way knowledge workers open AI-generated `.md` files — the commodity tool for a commodity format
 - The sustainability experiment (DP-11, D-SUST-1) is either demonstrably working or demonstrably failed — we have data either way
 
 **Anti-metrics** (things we explicitly do not optimize for):
