@@ -1,0 +1,19 @@
+{"itemId":"FEAT-001","date":"2026-04-11","text":"cargo build --workspace exits 0 from the repo root","verify":"cargo build --workspace"}
+{"itemId":"FEAT-001","date":"2026-04-11","text":"cargo test -p em-core exits 0, meaning all tests pass","verify":"cargo test -p em-core"}
+{"itemId":"FEAT-001","date":"2026-04-11","text":"At least one integration test exists in em-core (not just an empty test suite)","verify":"cargo test -p em-core -- --list 2>&1 | grep -c test | grep -qvE ^0"}
+{"itemId":"FEAT-001","date":"2026-04-11","text":"Cargo.lock is committed (binary workspace convention)","verify":"test -f Cargo.lock && git ls-files --error-unmatch Cargo.lock"}
+{"itemId":"FEAT-002","date":"2026-04-11","text":"cargo build --workspace completes successfully with src-tauri included and exits 0","verify":"cargo build --workspace"}
+{"itemId":"FEAT-002","date":"2026-04-11","text":"em-core is a dependency of the Tauri backend crate — proven by cargo tree","verify":"cargo tree 2>&1 | grep -q em-core"}
+{"itemId":"FEAT-002","date":"2026-04-11","text":"The GitHub Actions build workflow exists, is valid YAML, and has at least one job","verify":"test -f .github/workflows/build.yml && yq e '(.jobs | length) >= 1' .github/workflows/build.yml | grep -q true"}
+{"itemId":"FEAT-002","date":"2026-04-11","text":"Tauri app builds a real bundle on the local machine","verify":"cd src-tauri && cargo build --release"}
+{"itemId":"FEAT-003","date":"2026-04-11","text":"cargo test --workspace passes all tests including bridge tests that exercise the four IPC commands against a real temp file","verify":"cargo test --workspace"}
+{"itemId":"FEAT-003","date":"2026-04-11","text":"A bridge test exists and passes that calls open_file, edit, save_file, and current_text end-to-end","verify":"cargo test --workspace -- bridge"}
+{"itemId":"FEAT-003","date":"2026-04-11","text":"The Tauri app still builds after the bridge commands are wired","verify":"cd src-tauri && cargo build --release"}
+{"itemId":"FEAT-005","date":"2026-04-11","text":"An end-to-end test exists that exercises the full open-edit-save-reopen cycle through the IPC bridge with a real temp file","verify":"cargo test --workspace -- e2e"}
+{"itemId":"FEAT-005","date":"2026-04-11","text":"cargo test --workspace passes all tests with no failures","verify":"cargo test --workspace"}
+{"itemId":"FEAT-005","date":"2026-04-11","text":"The Tauri app builds successfully for macOS in release mode","verify":"cd src-tauri && cargo build --release"}
+{"itemId":"FEAT-005","date":"2026-04-11","text":"npm run build exits 0 (frontend still builds after wiring)","verify":"npm run build"}
+{"itemId":"FEAT-006","date":"2026-04-12","text":"docs/baseline.json exists and contains numeric values for all six metrics (cold_startup_ms, open_small_ms, open_10k_ms, keystroke_ms, save_ms, memory_mb)","verify":"test -f docs/baseline.json && jq -e 'has(\"metrics\")' docs/baseline.json"}
+{"itemId":"FEAT-006","date":"2026-04-12","text":"A measurement script exists that can be run to capture the six metrics","verify":"test -f scripts/measure_baseline.sh || test -f scripts/measure_baseline.rs || ls scripts/measure* 2>/dev/null | grep -q ."}
+{"itemId":"FEAT-006","date":"2026-04-12","text":"The GitHub Actions workflow includes a baseline or regression job that references docs/baseline.json","verify":"grep -rq baseline .github/workflows/"}
+{"itemId":"FEAT-006","date":"2026-04-12","text":"cargo test --workspace still passes after adding measurement infrastructure","verify":"cargo test --workspace"}

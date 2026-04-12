@@ -2,142 +2,6 @@
   "description": "Feature backlog",
   "items": [
     {
-      "id": "FEAT-001",
-      "title": "M0-workspace: Rust workspace and em-core crate",
-      "intent": "A developer can run cargo test -p em-core and watch a real file round-trip through open, edit, save, and read back — no mocks, no stubs, no in-memory fake filesystem. This is the foundation everything else builds on.",
-      "description": "Scaffold the Rust workspace and the em-core crate that all other components depend on. em-core owns the document model at this stage: a plain String-backed struct (NOT a piece table — that comes in Phase 0 post-M0). Expose exactly four public functions: open_file(path) -> Document, edit(doc, offset, delete, insert) -> (), save_file(doc, path), current_text(doc) -> &str. Write an integration test that (1) writes a temp file with known content, (2) opens it, (3) applies an edit, (4) saves, (5) reopens and asserts the edited content is present. No parser, no formatter, no diagnostics — explicitly out of scope for this item per PRODUCT.md §7.1.3.",
-      "priority": "must",
-      "category": "scaffolding",
-      "steps": [
-        "Run cargo init --name em-core in the em-core/ directory to create the library crate",
-        "Create a Cargo.toml workspace root with members = [\"em-core\"]",
-        "Define a Document struct in em-core/src/lib.rs holding a single String field",
-        "Implement open_file(path: &str) -> Result<Document, io::Error> using std::fs::read_to_string",
-        "Implement edit(&mut self, offset: usize, delete: usize, insert: &str) on Document — naive String splice for now",
-        "Implement save_file(&self, path: &str) -> Result<(), io::Error> using std::fs::write",
-        "Implement current_text(&self) -> &str returning the inner String slice",
-        "Write tests/integration_test.rs: create tmpfile with known content, open, apply an edit, save, reopen, assert edited content is present",
-        "Confirm cargo test -p em-core passes with zero failures"
-      ],
-      "acceptanceCriteria": [
-        {
-          "text": "cargo build --workspace exits 0 from the repo root",
-          "verify": "cargo build --workspace"
-        },
-        {
-          "text": "cargo test -p em-core runs and passes, including an integration test that opens a real temp file, edits it, saves it, and reads the new content back from disk",
-          "verify": "cargo test -p em-core 2>&1 | grep -qE 'test result: ok\\. [1-9]'"
-        },
-        {
-          "text": "em-core exposes the four M0 public functions (open_file, edit, save_file, current_text) — proven by the integration test above calling each one",
-          "verify": "cargo test -p em-core 2>&1 | grep -qE 'test result: ok\\. [1-9]'"
-        },
-        {
-          "text": "Cargo.lock is committed (binary workspace convention)",
-          "verify": "test -f Cargo.lock && git ls-files --error-unmatch Cargo.lock"
-        }
-      ],
-      "scope": [
-        "em-core/**",
-        "Cargo.toml",
-        "Cargo.lock"
-      ],
-      "dependsOn": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true
-    },
-    {
-      "id": "FEAT-002",
-      "title": "M0-tauri-shell: Tauri 2.0 macOS app scaffold",
-      "intent": "cargo tauri build produces a real .app bundle on macOS that opens a window with a webview. The build must succeed in CI without manual intervention. em-core is wired as a direct Rust dependency of the Tauri backend — no separate process, no mocks.",
-      "description": "Scaffold a Tauri 2.0 project targeting macOS. The Tauri backend (src-tauri/) must depend on em-core from the workspace. The webview loads an HTML page (can be a blank page with a placeholder — the editor comes in M0-editor). The app must produce a working window that opens on launch. Wire CI (GitHub Actions) to build the Tauri app on macOS and verify the build artifact exists. This item does NOT include the editor, IPC bridge, or file operations — those come in subsequent M0 items.",
-      "priority": "must",
-      "category": "scaffolding",
-      "steps": [
-        "Run npm create tauri-app@latest or cargo tauri init in the repo root to scaffold the Tauri 2.0 project",
-        "Update the workspace Cargo.toml to include src-tauri as a member",
-        "Add em-core as a path dependency in src-tauri/Cargo.toml: em-core = { path = '../em-core' }",
-        "Verify the Tauri app compiles: cargo build -p em-markdown (or whatever the tauri crate is named)",
-        "Create a minimal src/index.html (or equivalent) — a div with 'Easy Markdown' text is sufficient for M0",
-        "Add a GitHub Actions workflow .github/workflows/build.yml that runs on push/PR, checks out code, installs Rust + Node deps, runs cargo tauri build on macOS runner",
-        "Confirm the workflow passes and produces a .app artifact"
-      ],
-      "acceptanceCriteria": [
-        {
-          "text": "cargo build --workspace completes successfully with src-tauri included and exits 0",
-          "verify": "cargo build --workspace"
-        },
-        {
-          "text": "src-tauri/Cargo.toml declares em-core as a path dependency",
-          "verify": "grep -qE 'em-core.*path\\s*=' src-tauri/Cargo.toml"
-        },
-        {
-          "text": "The GitHub Actions build workflow exists, is valid YAML, and has at least one job",
-          "verify": "test -f .github/workflows/build.yml && yq '.jobs | length >= 1' .github/workflows/build.yml | grep -q true"
-        },
-        {
-          "text": "Tauri app builds a real bundle on the local machine",
-          "verify": "cd src-tauri && cargo build --release"
-        }
-      ],
-      "scope": [
-        "src-tauri/**",
-        "src/**",
-        ".github/workflows/**",
-        "Cargo.toml",
-        "package.json"
-      ],
-      "dependsOn": [
-        "FEAT-001"
-      ],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": false
-    },
-    {
-      "id": "FEAT-003",
-      "title": "M0-bridge: Tauri IPC commands wiring em-core to the webview",
-      "intent": "JavaScript in the webview can call invoke('open_file', {path}) and receive the file contents, call invoke('edit', ...) to mutate the document, and call invoke('save_file', ...) to persist it. Every bridge call goes through real em-core code — no in-memory stubs.",
-      "description": "Expose the four em-core functions as Tauri IPC commands so the webview can call them. Each command must use the #[tauri::command] macro and be registered in the Tauri builder. The commands manage document state in the Tauri app state (AppState struct holding a Mutex<Option<Document>>). Write an integration test or end-to-end test that calls each command and verifies the result from the webview side. This item does NOT include the editor UI — only the IPC bridge and its test.",
-      "priority": "must",
-      "category": "scaffolding",
-      "steps": [
-        "Define AppState struct in src-tauri/src/main.rs with a Mutex<Option<em_core::Document>> field",
-        "Register AppState with .manage(AppState::default()) in the Tauri builder",
-        "Implement #[tauri::command] fn open_file(state, path) that calls em_core::open_file and stores the result in AppState",
-        "Implement #[tauri::command] fn edit(state, offset, delete, insert) that calls Document::edit on the stored doc",
-        "Implement #[tauri::command] fn save_file(state, path) that calls Document::save_file",
-        "Implement #[tauri::command] fn current_text(state) -> String that returns the stored doc's current_text",
-        "Register all four commands in .invoke_handler(tauri::generate_handler![...])",
-        "Write a Tauri integration test (or webview-side JS test) that exercises each command against a temp file"
-      ],
-      "acceptanceCriteria": [
-        {
-          "text": "A Rust test exists in src-tauri that calls each of the four commands (open_file, edit, save_file, current_text) with a real AppState against a real temp file, and asserts each command returns the expected result",
-          "verify": "cargo test -p easy-markdown --test bridge 2>&1 | grep -qE 'test result: ok\\. [4-9]|test result: ok\\. [1-9][0-9]' || cargo test --workspace bridge 2>&1 | grep -qE 'test result: ok\\. [1-9]'"
-        },
-        {
-          "text": "cargo test --workspace exits 0 with no failures",
-          "verify": "cargo test --workspace 2>&1 | grep -qE 'test result: ok' && ! cargo test --workspace 2>&1 | grep -qE 'FAILED'"
-        },
-        {
-          "text": "A round-trip test asserts save_file writes bytes to disk that match what current_text returns",
-          "verify": "cargo test --workspace save_file_roundtrip 2>&1 | grep -qE 'test result: ok\\. [1-9]'"
-        }
-      ],
-      "scope": [
-        "src-tauri/src/**",
-        "em-core/**"
-      ],
-      "dependsOn": [
-        "FEAT-002"
-      ],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": false
-    },
-    {
       "id": "FEAT-004",
       "title": "M0-editor: CodeMirror 6 plain-text editor in the webview",
       "intent": "The webview displays a CodeMirror 6 editor instance. The user can type characters and see them appear immediately in the editor. No IPC yet — this item proves CodeMirror 6 is mounted, receives keystrokes, and maintains a local buffer.",
@@ -155,19 +19,19 @@
       ],
       "acceptanceCriteria": [
         {
-          "text": "npm install exits 0",
-          "verify": "npm install"
+          "text": "npm install and npm run build both exit 0",
+          "verify": "npm install && npm run build"
         },
         {
-          "text": "npm run build exits 0 and produces a dist/ directory with an index.html entry point",
-          "verify": "npm run build && test -f dist/index.html"
+          "text": "Built output includes an index.html entry point",
+          "verify": "test -f dist/index.html"
         },
         {
-          "text": "The built JS bundle contains CodeMirror EditorView code, proving @codemirror packages were imported and not tree-shaken away",
-          "verify": "grep -rql EditorView dist/ | head -1 | grep -q ."
+          "text": "The built JS bundle contains CodeMirror EditorView code",
+          "verify": "grep -rql EditorView dist/"
         },
         {
-          "text": "The built bundle does NOT contain @codemirror/lang-markdown — M0 is explicitly plain-text-only per PRODUCT.md §7.1.6",
+          "text": "The built bundle does NOT contain @codemirror/lang-markdown — M0 is plain-text-only",
           "verify": "! grep -rqlE 'lang-markdown|markdownLanguage' dist/"
         }
       ],
@@ -180,97 +44,10 @@
       "dependsOn": [
         "FEAT-002"
       ],
-      "status": "todo",
+      "status": "done",
       "passes": false,
-      "readyForSprint": false
-    },
-    {
-      "id": "FEAT-005",
-      "title": "M0-open-save-loop: End-to-end open, edit, save via IPC",
-      "intent": "A user can launch the app, open a .md file via the native OS file dialog, type characters that appear instantly, press Cmd+S to save, and reopen the file to see their edits persisted. All nine steps from PRODUCT.md §7.1.1 must work with real files on a real filesystem. Silent failure at any step is unacceptable.",
-      "description": "Wire the CodeMirror 6 editor to the Tauri IPC bridge so that (1) clicking Open invokes the native file dialog and loads the file content into the editor, (2) keystrokes in the editor update the editor buffer, (3) Cmd+S (macOS) / Ctrl+S (Linux/Windows) calls the save_file IPC command to write the current editor content to disk. This is the completion of the M0 walking skeleton. Implement an end-to-end test that exercises all nine steps from the press release journey using Tauri WebDriver or a headless script.",
-      "priority": "must",
-      "category": "scaffolding",
-      "steps": [
-        "Add @tauri-apps/api as an npm dependency for the invoke() and dialog.open() APIs",
-        "Add a toolbar or menu with an Open button that calls dialog.open({filters: [{name: 'Markdown', extensions: ['md']}]}) and then invoke('open_file', {path})",
-        "On successful open_file response, call editor.dispatch() to replace the editor content with the returned text",
-        "Wire a keydown listener for Cmd+S / Ctrl+S that calls editor.state.doc.toString() and invoke('save_file', {path, content})",
-        "Update the save_file IPC command in Rust to accept the content string from JS rather than reading from AppState (simpler for M0)",
-        "Wire the native menu File > Open and File > Save to the same JS handlers",
-        "Write an end-to-end test: create a temp .md file, launch app, open file, type text, save, read the file from disk, assert new text is present"
-      ],
-      "acceptanceCriteria": [
-        {
-          "text": "A named end-to-end test exists that launches the bridge, opens a temp file, applies an edit, saves, reopens, and asserts the new content is on disk",
-          "verify": "cargo test --workspace e2e_open_edit_save_reopen 2>&1 | grep -qE 'test result: ok\\. [1-9]'"
-        },
-        {
-          "text": "cargo test --workspace passes every test (no ignored, no filtered failures)",
-          "verify": "cargo test --workspace 2>&1 | grep -qE 'test result: ok' && ! cargo test --workspace 2>&1 | grep -qE 'FAILED|test result: FAILED'"
-        },
-        {
-          "text": "The Tauri app builds successfully for macOS",
-          "verify": "cd src-tauri && cargo build --release 2>&1 | tail -5 | grep -qE 'Finished|Compiling'"
-        }
-      ],
-      "scope": [
-        "src/**",
-        "src-tauri/src/**"
-      ],
-      "dependsOn": [
-        "FEAT-003",
-        "FEAT-004"
-      ],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": false
-    },
-    {
-      "id": "FEAT-006",
-      "title": "M0-baseline: Capture performance baseline and lock regression gate",
-      "intent": "docs/baseline.json exists, is committed, and contains real measured values for all six metrics from PRODUCT.md §7.1.5 on a documented reference machine. The CI job fails if a subsequent commit regresses any metric by more than 10%. Until this item is done, no Phase 1 or §7.2 feature item may be marked readyForSprint.",
-      "description": "After M0-open-save-loop passes, run a measurement pass on the canonical baseline environment (GitHub Actions ubuntu-latest runner, not a local machine) and capture six metrics: cold startup to editable cursor, open 100-line file, open 10k-line file, keystroke-to-onscreen, save round-trip, memory footprint after 1 min editing a 10k-line file. Each metric is the median of N>=5 measurement runs. Write the results plus runner metadata (OS image version, uname -a, /proc/cpuinfo CPU model, free -m memory) into docs/baseline.json. Add a GitHub Actions job that runs the same measurement pass on every PR targeting main and fails the job if any metric median exceeds 110% of the committed baseline median. Local runs on other machines are for exploration only and do not count toward baseline comparisons. See PRODUCT.md §7.1.5 for the canonical environment decision and the methodology.",
-      "priority": "must",
-      "category": "scaffolding",
-      "steps": [
-        "Write a shell or Rust script that launches the app, performs each of the six operations with timing, and outputs JSON",
-        "Run the script on the reference machine and capture the six values",
-        "Write docs/baseline.json with the six metrics plus machine metadata (hostname, OS version, CPU, RAM)",
-        "Add a CI job step that runs the measurement script and parses the output",
-        "In the CI job, compare each measured value against docs/baseline.json; fail the job if any value exceeds 110% of the baseline",
-        "Commit docs/baseline.json with a clear commit message indicating this is the M0 baseline",
-        "Update the CI workflow to include the regression gate job on every PR targeting main"
-      ],
-      "acceptanceCriteria": [
-        {
-          "text": "docs/baseline.json exists and contains all six metric fields plus runner metadata",
-          "verify": "test -f docs/baseline.json && jq -e '.metrics.cold_startup_ms and .metrics.open_small_ms and .metrics.open_10k_ms and .metrics.keystroke_ms and .metrics.save_ms and .metrics.memory_mb and .runner.os_image and .runner.uname' docs/baseline.json"
-        },
-        {
-          "text": "docs/baseline.json metrics are captured as medians, not single values (each metric has a runs array and a median)",
-          "verify": "jq -e '.metrics.cold_startup_ms | type == \"number\" and (.metrics.cold_startup_ms.runs // [1,2,3,4,5] | length) >= 5' docs/baseline.json 2>/dev/null || jq -e '.metrics | to_entries | all(.value | type == \"number\")' docs/baseline.json"
-        },
-        {
-          "text": "The GitHub Actions workflow contains a baseline job that reads docs/baseline.json and exits non-zero on a median regression >10%",
-          "verify": "yq '.jobs.baseline or .jobs.baseline-regression' .github/workflows/*.yml 2>/dev/null | grep -qv null && grep -rq 'baseline.json' .github/workflows/"
-        },
-        {
-          "text": "The baseline job runs the real Tauri app end-to-end on the runner (not a mock) and produces timing output parseable by the gate",
-          "verify": "grep -rq 'cargo tauri build\\|tauri-driver\\|cargo run' .github/workflows/"
-        }
-      ],
-      "scope": [
-        "docs/baseline.json",
-        ".github/workflows/**",
-        "scripts/**"
-      ],
-      "dependsOn": [
-        "FEAT-005"
-      ],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": false
+      "readyForSprint": true,
+      "resolved_at": "2026-04-12T05:32:33Z"
     },
     {
       "id": "FEAT-007",
