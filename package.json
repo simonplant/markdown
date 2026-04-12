@@ -1,0 +1,8 @@
+{
+  "name": "easy-markdown",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "tauri": "cargo tauri"
+  }
+}
