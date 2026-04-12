@@ -29,6 +29,9 @@ jobs:
       - name: Run tests
         run: cargo test --workspace
 
+      - name: Run CommonMark spec suite
+        run: cargo test -p em-core --test commonmark -- --nocapture
+
       - name: Build Tauri app bundle
         run: cargo tauri build
         env:
