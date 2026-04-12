@@ -4,7 +4,10 @@
   "version": "0.1.0",
   "identifier": "com.easymarkdown.app",
   "build": {
-    "frontendDist": "../src"
+    "beforeBuildCommand": "npm run build",
+    "beforeDevCommand": "npm run dev",
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:5173"
   },
   "app": {
     "windows": [
