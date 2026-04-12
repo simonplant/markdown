@@ -4,7 +4,7 @@ This document is the single source of truth for what we are building, why, and t
 
 **The thesis in one sentence**: Markdown is the document format of the AI age, and the tool for working with it should be free, open source, and run on everything — a commodity, not a product.
 
-**How to read this document**: Section 1 is the north star (press release + why now). Sections 2–3 establish intent (who we serve, what problems we solve). Sections 4–6 establish constraints (principles, non-goals, and the decisions that bind us). Sections 7–9 define what gets built (features, roadmap, honest risks). Sections 10–11 define how we measure success.
+**How to read this document**: Section 1 is the north star (press release + why now). Sections 2–3 establish intent (who we serve, what problems we solve). Sections 4–6 establish constraints (principles, sustainability model, non-goals, and the decisions that bind us). Sections 7–9 define what gets built (features, roadmap, honest risks). Sections 10–11 define how we measure success.
 
 **Ambition level**: Make the markdown editor a commodity. Markdown is the document format of the AI age — every LLM, every agent, every copilot writes it. The tool you use to open, read, edit, and refine `.md` files should be as free and universal as the format itself. Not "a nice open-source alternative" — the one that makes Obsidian's vault, iA Writer's price tag, and Typora's closed source feel like relics. Every decision in this document should be evaluated against that bar.
 
@@ -18,13 +18,13 @@ This is the Amazon "working backwards" press release. It describes the product a
 
 > **FOR IMMEDIATE RELEASE**
 >
-> ### Markdown: the free, final editor for the AI age.
+> ### Markdown: the free, universal editor for the AI age.
 >
 > *Open any `.md` file, anywhere, on any device. No vault. No account. No subscription. Open source forever — Apache 2.0.*
 >
 > **Every AI writes markdown.** Every LLM, every agent, every copilot — they all output `.md`. Product briefs, research reports, architecture docs, meeting summaries, READMEs, prompts. Markdown is no longer a developer format. It is the document format of the AI age, and the volume is growing by orders of magnitude.
 >
-> **The tools haven't caught up.** Obsidian locks your files in a vault and charges for sync. iA Writer costs $50 and only runs on Apple. Typora is closed source. MarkText is dead — maintainer burnout, like every free markdown editor before it. VS Code is a code editor, not a writing tool. For a format that is becoming as universal as plain text, the state of tooling is absurd.
+> **The tools haven't caught up.** Obsidian locks you into an ecosystem and charges for sync. iA Writer costs $50 and only runs on Apple. Typora is closed source. MarkText is dead — maintainer burnout, like every free markdown editor before it. VS Code is a code editor, not a writing tool. For a format that is becoming as universal as plain text, the state of tooling is absurd.
 >
 > **Markdown fixes this.** Open any `.md` file from anywhere your OS can reach — a local folder, iCloud Drive, Dropbox, Google Drive, OneDrive, a git repo — and edit it in a fast, polished editor that runs on macOS, Linux, Windows, Web, iOS, and Android. No import step. No vault. No sidecar files. Your files stay where you put them, in standard markdown, untouched.
 >
@@ -40,7 +40,7 @@ This is the Amazon "working backwards" press release. It describes the product a
 
 | Claim | Implication | Constrains |
 |-------|-------------|------------|
-| "The free, final editor for the AI age" | This is commodity infrastructure, not a premium product. Free is the point, not a compromise. | Business model, D-BIZ-1 |
+| "The free, universal editor for the AI age" | This is commodity infrastructure, not a premium product. Free is the point, not a compromise. | Business model, D-BIZ-1 |
 | "Every AI writes markdown" | We are riding a secular trend, not creating a category. The product is essential because the format is essential. | Positioning, roadmap priority |
 | "The tools haven't caught up" | We exist because the incumbents are paywalled, vault-locked, platform-locked, or dead. The gap is real and structural. | Competitive positioning |
 | "Open any `.md` file from anywhere your OS can reach" | Must use OS file APIs. Cloud-drive files accessed via OS mounts/providers, not reimplemented sync. | DP-1, file architecture |
@@ -48,7 +48,7 @@ This is the Amazon "working backwards" press release. It describes the product a
 | "The experience is what keeps you — not lock-in" | Retention through craft, not through organizational lock-in. The editor has to be genuinely good. | Architecture, D-PLAT-2, DP-2 |
 | "Fast because the core is Rust" | Rust core for parsing/formatting/diagnostics. <50ms format of 10k-line docs, <1ms incremental reparse. | Engineering budget |
 | "AI assistance is built in" | On-device inference for core features. BYO API key for frontier models. No server infrastructure. No paid tier. | D-AI-1 (revised), D-AI-2 (replaced) |
-| "A markdown editor should be a commodity" | Apache 2.0, whole stack. Not open-core. Not source-available. This is infrastructure, not a product to monetize. | D-NO-13 reversed, D-BIZ-1 |
+| "A markdown editor should be a commodity" | Apache 2.0, whole stack. Not open-core. Not source-available. This is infrastructure, not a product to monetize. Sustainability via community BYO-compute, not revenue (see §4a). | D-NO-13 reversed, D-BIZ-1, D-SUST-1 |
 
 ### Why now
 
@@ -64,7 +64,7 @@ The demand side and the supply side both changed. This product was not possible 
 3. **CodeMirror 6 solved the editor.** A decade of cross-platform text editor attempts produced mostly Apple-only products. CodeMirror 6 handles CJK, RTL, bidi, IME, and accessibility because browsers already do. The multi-year problems that sank every native attempt are free.
 4. **Tauri made the shell cheap.** Tauri 2.0 — webview hosting, Rust backend, file system access, menus, auto-updater, mobile support — out of the box. The per-platform shell is ~1,000 lines instead of ~10,000.
 5. **On-device inference crossed the usability threshold.** llama.cpp, MLX, Core ML, and ONNX can run quantized models on commodity hardware with usable quality. Local-first AI for prose is viable without a GPU cluster.
-6. **Agents broke the volunteer-burnout pattern.** Every standalone free markdown editor died because one human ran out of energy: MarkText (54K stars, deprecated 2025), Remarkable, Haroopad, Abricotine — 100% mortality. Markdown is built differently: grooming and sprint execution run through autonomous agents, with a human directing intent and reviewing output. This moves the bottleneck from "write every line on evenings and weekends" to "review and steer." Whether it's enough is an open question (see §9). We are running the experiment.
+6. **AI coding agents decoupled OSS maintenance from human energy.** Every standalone free markdown editor died because one human ran out of energy: MarkText (54K stars, deprecated 2025), Remarkable, Haroopad, Abricotine — 100% mortality. AI coding agents don't burn out. When a project is agent-legible — clear intent documents, machine-verifiable acceptance criteria, good test suites — agents can land useful work against it. The human role shifts from "write every line" to "direct intent and review output." The cost of building collapsed (points 3–5); the cost of *maintaining* collapsed with it. See §4a for the full sustainability model and §9 for the honest risks.
 
 ---
 
@@ -90,7 +90,7 @@ Markdown occupies the empty cell: **great UX + open files + cross-platform + fre
 
 | # | Pain point | Our response | Decision |
 |---|-----------|--------------|----------|
-| P1 | **Vault/library lock-in.** Obsidian requires a vault. Bear uses proprietary storage. Users don't realize they're locked in until they try to leave. | Use only OS-level file access. Never create a proprietary container. | **[D-FILE-1]** No vault, library, or proprietary file store. Ever. |
+| P1 | **Ecosystem lock-in.** Obsidian requires a vault structure and builds an ecosystem (plugins, sync, publish) that makes leaving expensive — not because your files are trapped, but because your workflows are. Bear uses proprietary storage. Users invest in workflows they can't take elsewhere. | Use only OS-level file access. Never create a proprietary container or ecosystem dependency. | **[D-FILE-1]** No vault, library, or proprietary file store. Ever. |
 | P2 | **Platform fragmentation.** The best-crafted markdown editors are Apple-only. Typora is desktop-only. 1Writer is iOS-only. There is no single tool that works well everywhere a user's files live. | Cross-platform day one via Tauri + CodeMirror 6. | **[D-PLAT-1]** All platforms are first-class. Ship order is driven by engineering cost, not tier. |
 | P3 | **Paywalls for basic features.** Obsidian charges $10/mo for sync that git does free, and $20/mo for publish that any static host does free. iA Writer is $50. Bear and Ulysses are subscriptions. | Free forever. Apache 2.0. No Pro tier. No sync subscription. No publish subscription. | **[D-BIZ-1]** The app is free. There is no commercial upgrade path. |
 | P4 | **Formatting friction.** Most editors are dumb text boxes. Users manually fix indentation, align tables, chase broken links. | Auto-formatting engine + document doctor as core features, not plugins. | **[D-EDIT-1]** Intelligent editing is built-in and on by default. |
@@ -98,7 +98,7 @@ Markdown occupies the empty cell: **great UX + open files + cross-platform + fre
 | P6 | **AI requires cloud and accounts.** Notion AI, Craft AI, and every other AI writing tool sends your content to remote servers, requires an account, and charges a separate subscription. | Core AI runs on-device with no account. Optional BYO-key mode calls the user's chosen provider directly. We never see the content or the key. | **[D-AI-1]** Local-first AI. No relay. No paid tier. |
 | P7 | **No purpose-built markdown tool for non-IDE users.** Developers use Cursor/VS Code but have no great standalone tool for prose. Writers have no tool that combines AI + open files + great UX + every platform. | Be the app developers open alongside their IDE, and the app writers open instead of one. | **[D-MKT-2]** Position as the complement to IDEs, not a competitor. |
 | P8 | **No AI-native document tool for markdown.** AI agents produce `.md` files daily — research reports, summaries, briefs, architecture docs — and there's no purpose-built tool for consuming, refining, and sharing them. | Open AI-generated `.md` files with diagrams/tables rendering beautifully on open. Refine with local AI or BYO-key AI. Share as polished PDF or the `.md` itself. | **[D-MKT-3]** Markdown is the AI-era markdown tool. |
-| P9 | **Free markdown editors die.** MarkText, Remarkable, Haroopad, Abricotine. Volunteer maintainers burn out. | Agent-driven grooming and sprint execution via aishore. Sustainability is a bet, not a promise — see §9. | **[D-SUST-1]** We are running the experiment. |
+| P9 | **Free markdown editors die.** MarkText, Remarkable, Haroopad, Abricotine. Volunteer maintainers burn out. | Agent-driven development with community BYO-compute contributions. The project provides architecture and review; contributors bring their own AI agent subscriptions. Sustainability is a bet, not a promise — see §4a for the full model and §9 for the risks. | **[D-SUST-1]** We are running the experiment. |
 
 ---
 
@@ -266,15 +266,39 @@ Accessibility is P0, not P1.
 **Decision [D-A11Y-1]**: Every feature spec must include accessibility acceptance criteria. A feature that doesn't work with the platform screen reader doesn't ship.
 
 ### DP-11: Agent-built, human-directed
-Markdown is built by autonomous agents running grooming and sprint execution (`aishore`), with a human directing intent and reviewing output. This is a design principle because it shapes how work is planned, scoped, and reviewed — not just how code is written.
+Markdown is built by autonomous agents running grooming and sprint execution (`aishore`), with a small number of humans directing intent and reviewing output. This is a design principle because it shapes how work is planned, scoped, reviewed, and contributed to.
 
 **What this means in practice**:
 - Backlog items must carry explicit "commander's intent" fields so agents can resolve ambiguity without human intervention
 - Every item has acceptance criteria concrete enough for an agent to verify
 - Scope discipline is enforced by the process, not by human restraint mid-sprint
 - Review is the human bottleneck, so review must be fast, focused, and frequent — not a batched end-of-sprint ritual
+- Agent-assisted first-pass review (lint, test, architecture conformance, style) gates what reaches human reviewers
+- Contributing guide includes agent-specific guidance: how to set up context, which documents to load, how to scope a PR for reviewability
 
-**Decision [D-PROC-1]**: The process itself is part of the product. Improving the agent loop (grooming quality, sprint success rate, review ergonomics) is first-class work, not meta-work.
+**Decision [D-PROC-1]**: The process itself is part of the product. Improving the agent loop (grooming quality, sprint success rate, review ergonomics) is first-class work.
+
+---
+
+## 4a. Sustainability Model
+
+This section describes how Markdown survives. It is the answer to the question that killed every free markdown editor before us — and it is a bet, not a proven pattern. The full risk accounting is in §9.
+
+**The model in one paragraph**: The project's cost structure is inverted from traditional OSS. The project itself has near-zero operating costs. Contributors bring their own AI coding agent subscriptions (Claude Code, Cursor, or equivalent) and run them against well-scoped issues in an agent-legible codebase. The project provides the architecture, the intent documents, the test suites, and the review. The "labor" is distributed across subscribers who are already paying for the tooling for their own reasons. No donations (Wikipedia model), no corporate sponsorship (Linux Foundation model), no open-core bait-and-switch (Elastic model), no maintainer martyrdom (the default). The funding source is orthogonal to the project.
+
+**Agent-legibility is the infrastructure.** The pattern that makes this work is not "agents write code" — it's the project structure that makes agent contribution viable. This includes: the product doc with decision IDs, the walking skeleton with real evals (§7.1), acceptance criteria that agents can verify, explicit non-goals so agents don't scope-creep (§5), and architecture documents that fit in a context window. Maintaining agent-legibility is ongoing work and is treated as such — it is not meta-work, it is the infrastructure that enables all other work.
+
+**The real cost structure** (most lines are zero, but naming them matters):
+- Architect/reviewer time: valuable, finite, irreplaceable — this is the binding constraint
+- Contributors' agent subscription costs: real but externalized; the project does not pay for them
+- CI/hosting: small, covered by free tiers (GitHub Actions, GitHub Pages) for the foreseeable future
+- Agent-legibility maintenance: ongoing, non-trivial, and easy to underinvest in
+
+**Decision [D-SUST-1]**: Sustainability via agent-driven development with community BYO-compute contributions. The project provides architecture, intent, and review; contributors bring their own AI agent subscriptions. This is a bet on a new model, not a proven pattern — see §9 for the honest risks.
+
+**Decision [D-SUST-2]**: Agent-legibility — the quality of intent documents, acceptance criteria, architecture docs, and contributing guides as consumed by AI agents — is a maintained property of the project, tracked and reviewed like code quality.
+
+**Decision [D-SUST-3]**: If the sustainability experiment produces 3x rather than 10x force multiplication, the reduced-ambition scope is: macOS + Linux + Web, no mobile, no Mermaid/math/PDF, and the core loop (open, edit, format, doctor, save) done to craft quality. That is still a product no one else ships. See §9 for the full risk analysis.
 
 ---
 
@@ -309,6 +333,11 @@ Key decisions in one place. IDs with *(revised)* or *(reversed)* indicate change
 - **[D-MD-1]** CommonMark + GFM baseline. Extensions: frontmatter detection, math (`$`/`$$`), Mermaid fenced blocks. No proprietary syntax.
 - **[D-MD-2]** Parser: tree-sitter-markdown (split_parser branch). Known CommonMark divergences documented; spec tests run in CI; fixes contributed upstream.
 
+### Market positioning
+- **[D-MKT-1]** Commodity infrastructure for the AI age: craft-quality UX + open files + every platform + free.
+- **[D-MKT-2]** Position as the complement to IDEs, not a competitor. The app developers open alongside Cursor/VS Code; the app writers open instead of one.
+- **[D-MKT-3]** Markdown is the AI-era document tool. The workflow — open, read, edit, render, share — is first-class.
+
 ### Editor
 - **[D-EDIT-1]** Auto-formatting + document doctor on by default.
 - **[D-EDIT-2]** WYSIWYM via CodeMirror 6 decorations (HyperMD-style). Syntax characters hide when cursor is away, reveal on proximity.
@@ -331,7 +360,9 @@ Key decisions in one place. IDs with *(revised)* or *(reversed)* indicate change
 ### Business
 - **[D-BIZ-1]** *(reversed)* The app is free. No commercial model. Apache 2.0.
 - **[D-NO-13]** *(reversed)* Fully open source, not open-core.
-- **[D-SUST-1]** Sustainability is maintained via agent-driven development (see DP-11). This is a bet; see §9.
+- **[D-SUST-1]** Sustainability via agent-driven development with community BYO-compute contributions. See §4a for the full model and §9 for the honest risks.
+- **[D-SUST-2]** Agent-legibility is a maintained property: intent documents, acceptance criteria, architecture docs, and contributing guides are kept in a state where AI agents can consume them and land useful work. Tracked like code quality. See §4a.
+- **[D-SUST-3]** Reduced-ambition fallback if sustainability produces 3x not 10x: macOS + Linux + Web, no mobile, no Mermaid/math/PDF, core loop to craft quality. See §4a and §9.
 
 ### Performance
 - **[D-PERF-1]** Formatting a 10k-line document: <50ms. Incremental reparse on keystroke: <1ms. Full diagnostic pass: <100ms. Perceived input latency: <5ms.
@@ -340,6 +371,7 @@ Key decisions in one place. IDs with *(revised)* or *(reversed)* indicate change
 - **[D-QA-1]** CommonMark spec suite runs in CI. Divergences tracked in an explicit skip-list.
 - **[D-QA-2]** Accessibility is a blocking criterion (D-A11Y-1).
 - **[D-PROC-1]** Agent loop quality (grooming, sprint success, review ergonomics) is first-class work.
+- See also **[D-SUST-2]** (agent-legibility) under Business.
 
 ---
 
@@ -544,20 +576,34 @@ Seven phases, starting with M0 (the walking skeleton). Timelines are soft — ag
 
 **Decision [D-ROAD-2]**: M0 blocks everything. Until the walking skeleton runs end-to-end and `docs/baseline.json` is committed, no Phase 0+ item can be marked `readyForSprint: true`. See `D-M0-1`.
 
+**Decision [D-ROAD-3]**: If the sustainability experiment produces 3x rather than 10x force multiplication, the roadmap contracts to the reduced-ambition scope defined in D-SUST-3. Phase 3 (AI) may partially survive; Phases 4 and 5 do not.
+
 ---
 
 ## 9. Honest Risks
 
 The critiques that would come from a reviewer who doesn't buy the pitch. Kept here so we don't flinch from them.
 
-- **The sustainability bet may fail.** Agent-driven development does not eliminate the human bottleneck — it moves it to review and direction. If the human at the helm runs out of time or interest, Markdown joins the MarkText graveyard. The bet is that "review and steer" is a lower-energy activity than "write every line," not that it is zero-energy. We do not know how long this lasts.
+**Sustainability risks** (the ones that kill the project):
+
+- **The review bottleneck may be harder than the writing bottleneck.** Agent-driven development moves the constraint from "write every line" to "review every PR." Review is cognitively expensive — the reviewer must hold the whole system in their head while evaluating choices they didn't make. If agents produce 10x the PRs, you need 10x the review capacity or a queue that grows until the reviewer quits. Agent-assisted first-pass review helps (see §4a), but the final architectural judgment is human and finite. If the human at the helm runs out of review energy, Markdown joins the MarkText graveyard — not because no one wrote the code, but because no one could review it fast enough.
+- **The sustainability model depends on a vendor we don't control.** Contributors bring their own AI agent subscriptions. If Anthropic, OpenAI, or other providers raise prices, degrade quality, impose tighter rate limits, or pivot away from coding agents, the contributor pool shrinks and the project has no lever to pull. This is the same structural dependency that traditional corporate-sponsored OSS has — just pointed at a different vendor. We accept this as a known dependency rather than pretending it doesn't exist.
+- **BYO-compute selects for privilege.** Claude Code is ~$200/month. That's trivial for a senior developer at a U.S. tech company. It's exclusionary for students, hobbyists, and developers in lower-cost-of-living countries. The model doesn't *worsen* OSS contribution demographics — traditional OSS has always skewed toward employed developers in wealthy countries — but it doesn't democratize them either. We should be honest that "the community's agent subscriptions" means "the community members who can afford agent subscriptions."
+- **"Free forever" is easy to say, hard to prove.** The legacy argument — that free editors can't sustain themselves — is still on the table. We are betting that agent-driven development with community BYO-compute breaks the pattern. If it doesn't, we fail honestly. The important question is not "will it work?" but "at what multiplier does it work?" — see the next risk.
+- **The roadmap assumes 10x. What if we get 3x?** The full roadmap (seven phases, five platforms, accessibility as P0, AI, mobile, Mermaid, math, PDF export) is a funded-team backlog. If agent-driven development is a 10x force multiplier over solo volunteer work, it's achievable. If it's 3x — still transformative, but not miraculous — Phases 4 and 5 are a graveyard. The reduced-ambition fallback is defined in **[D-SUST-3]**: macOS + Linux + Web, no mobile, no Mermaid/math/PDF, and the core loop (open, edit, format, doctor, save) done to craft quality. That's still a product no one else ships.
+
+**Technical risks**:
+
 - **Webview animations won't match native.** DP-9 (The Render) is a signature interaction. A CodeMirror 6 + CSS animation pipeline cannot match SwiftUI Core Animation on a 120Hz ProMotion display. The gap is small but real. On every *other* platform, there is no comparable competitor at all — Linux, Windows, Web, Android have no native 120fps markdown editor for us to lose to.
 - **Tauri mobile is young.** Tauri 2.0 mobile support (iOS and Android) is behind its desktop support. Phase 4 carries real platform-risk.
 - **WebKitGTK lags.** Linux shells use WebKitGTK, which is 6–12 months behind Chromium on CSS and Web APIs. We will hit rendering quirks. The alternative (bundling Chromium/CEF) costs ~100MB per install and defeats the lightweight goal.
 - **tree-sitter-markdown is not 100% CommonMark compliant.** Known divergences in lazy continuation lines and some nested link references. We run the spec suite in CI, ship an explicit skip-list, and upstream fixes. Users who hit an edge case will notice.
+
+**Market risks**:
+
 - **No PKM may cost us users.** Wikilinks-as-plain-files (F-019) is not a full second-brain replacement. Some Obsidian users will bounce when they discover there's no graph view. This is deliberate ([D-NO-1]) and we accept the cost.
 - **Local AI quality ceiling.** On-device quantized models are meaningfully weaker than frontier cloud models. Power users who need frontier quality will use BYO-key; users without an API key will see a quality floor we do not control.
-- **"Free forever" is easy to say, hard to prove.** The legacy argument — that free editors can't sustain themselves — is still on the table. We are betting agents break the pattern. If they don't, we fail honestly.
+- **Obsidian's vault is less locked-in than we claim.** Obsidian's vault is a folder of markdown files. The real lock-in is plugins, community, and workflow investment — not file format. Our competitive positioning is stronger if we acknowledge this honestly: the lock-in is ecosystem lock-in, not data lock-in. Informed users will catch the distinction.
 
 ---
 
@@ -567,14 +613,14 @@ As of 2026:
 
 | Competitor | What they have | What they lack | Our angle |
 |-----------|----------------|----------------|-----------|
-| **Obsidian** | Great UX, local files (sort of), huge plugin ecosystem | Vault lock-in, Electron, paid sync, paid publish, closed source | The free commodity alternative: same craft, no vault, no subscriptions, open source, every platform |
+| **Obsidian** | Great UX, local files (folder of `.md` files), huge plugin ecosystem | Ecosystem lock-in (plugins, community, workflow investment), Electron, paid sync, paid publish, closed source | The free commodity alternative: same craft, no ecosystem lock-in, no subscriptions, open source, every platform |
 | **iA Writer** | Beautiful typography, open files | Apple-only, $50, no AI, no cross-platform | Same craft, every platform, free, AI-native |
 | **Typora** | Live preview, open files | Desktop-only, closed source, paid, no AI | Every platform, free, open source, AI-native |
 | **Bear** | Beautiful iOS/macOS UX | Apple-only, proprietary storage, subscription | Every platform, open files, free |
 | **Ulysses** | Writer-focused | Apple-only, subscription, proprietary library | Every platform, open files, free |
 | **Notion** | Rich blocks, collab | Not markdown, cloud-only, accounts | Actually markdown, local-first |
 | **VS Code** | Ubiquitous, open source, free | Code editor, not a prose experience | Prose-first, not an IDE |
-| **MarkText** | Free, open source, WYSIWYM | Deprecated 2025 (maintainer burnout) | Same category, different sustainability model |
+| **MarkText** | Free, open source, WYSIWYM | Deprecated 2025 (maintainer burnout) | Same category, different sustainability model: agent-driven development with community BYO-compute (see §4a) |
 | **TextEdit / Notes** | Installed on your Mac | Not markdown, no rendering, no AI | Purpose-built for `.md` |
 
 ---
@@ -600,7 +646,16 @@ No revenue metrics. Success for a free, open-source editor looks different.
 **Year 3**:
 - When someone asks "what's a good free markdown editor on Linux/Windows/Web," the answer is Markdown — the way Firefox was the answer for browsers
 - Markdown is the default way knowledge workers open AI-generated `.md` files — the commodity tool for a commodity format
-- The sustainability experiment (DP-11, D-SUST-1) is either demonstrably working or demonstrably failed — we have data either way
+- The sustainability experiment (§4a, D-SUST-1) is either demonstrably working or demonstrably failed — we have data either way
+
+**Sustainability experiment metrics** (tracked from first external contribution):
+- Number of distinct contributors (human or agent-assisted) who have merged a PR
+- Ratio of agent-generated PRs that pass first-pass automated review vs. require human intervention before review
+- Mean time from "issue marked ready" to "PR merged" — the throughput of the full loop
+- Review queue depth — leading indicator of reviewer burnout; if this grows monotonically, the model is failing
+- Agent-readiness rate: percentage of open issues that have all of: a decision ID reference, at least one acceptance criterion with a verifiable command, and a context-loading instruction. Proxy for agent-legibility health
+- Agent first-attempt CI pass rate: percentage of agent-submitted PRs that pass CI on first submission without human guidance during the attempt. Proxy for whether the codebase and issue descriptions are actually agent-legible in practice, not just on paper
+- Architect-absence resilience: issue-to-merge throughput does not degrade more than 50% during a 7-day architect absence. Measured when opportunities arise naturally, not engineered as a test
 
 **Anti-metrics** (things we explicitly do not optimize for):
 - MAU/DAU (no telemetry)
@@ -622,6 +677,6 @@ For traceability. If you find legacy behavior in the codebase or backlog, check 
 | D-AI-2 | Pro AI $3.99/mo subscription | BYO-key mode | No paid tier |
 | D-NO-7 | Paid only | Free only | — |
 | D-NO-13 | "We are not open source" | Apache 2.0, fully open source | Mission is free software |
-| Why Now #6 | "Free editors can't sustain themselves, so we charge" | "Agents break the volunteer-burnout pattern, so we don't need to charge" | New sustainability thesis (see DP-11, §9) |
+| Why Now #6 | "Free editors can't sustain themselves, so we charge" | "Agents break the volunteer-burnout pattern, so we don't need to charge" | New sustainability thesis (see §4a, §9) |
 
 Sections of the legacy doc that were stripped entirely: §11 Business Model, §12 Growth Strategy, pricing messaging in §1 and §4, the tertiary persona footnote wishing open-source users well.
