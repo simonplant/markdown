@@ -10,10 +10,8 @@ validation:
   command: "[ ! -f Cargo.toml ] || (cargo build --workspace && cargo test --workspace)"
   timeout: 600
 
-# Setup command runs in each worktree before the sprint starts.
-# Use this to install dependencies that aren't in git (node_modules, venv, etc.)
-# setup:
-#   command: "npm install"
+setup:
+  command: "npm install --ignore-scripts 2>/dev/null || true"
 
 # models:
 #   primary: "claude-opus-4-6"
