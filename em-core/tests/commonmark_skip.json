@@ -1,0 +1,1737 @@
+[
+  {
+    "example": 2,
+    "input_fragment": "  \tfoo\tbaz\t\tbim\n",
+    "reason": "tree-sitter tab handling divergence"
+  },
+  {
+    "example": 4,
+    "input_fragment": "  - foo\n\n\tbar\n",
+    "reason": "tree-sitter tab handling divergence"
+  },
+  {
+    "example": 5,
+    "input_fragment": "- foo\n\n\t\tbar\n",
+    "reason": "tree-sitter tab handling divergence"
+  },
+  {
+    "example": 6,
+    "input_fragment": ">\t\tfoo\n",
+    "reason": "tree-sitter tab handling divergence"
+  },
+  {
+    "example": 7,
+    "input_fragment": "-\t\tfoo\n",
+    "reason": "tree-sitter tab handling divergence"
+  },
+  {
+    "example": 9,
+    "input_fragment": " - foo\n   - bar\n\t - baz\n",
+    "reason": "tree-sitter tab handling divergence"
+  },
+  {
+    "example": 12,
+    "input_fragment": "\\!\\\"\\#\\$\\%\\&\\'\\(\\)\\*\\+\\,\\-\\.\\/\\:\\;\\<\\=\\>",
+    "reason": "tree-sitter backslash escape handling divergence"
+  },
+  {
+    "example": 14,
+    "input_fragment": "\\*not emphasized*\n\\<br/> not a tag\n\\[not",
+    "reason": "tree-sitter backslash escape handling divergence"
+  },
+  {
+    "example": 15,
+    "input_fragment": "\\\\*emphasis*\n",
+    "reason": "tree-sitter backslash escape handling divergence"
+  },
+  {
+    "example": 20,
+    "input_fragment": "<https://example.com?find=\\*>\n",
+    "reason": "tree-sitter backslash escape handling divergence"
+  },
+  {
+    "example": 22,
+    "input_fragment": "[foo](/bar\\* \"ti\\*tle\")\n",
+    "reason": "tree-sitter backslash escape handling divergence"
+  },
+  {
+    "example": 23,
+    "input_fragment": "[foo]\n\n[foo]: /bar\\* \"ti\\*tle\"\n",
+    "reason": "tree-sitter backslash escape handling divergence"
+  },
+  {
+    "example": 24,
+    "input_fragment": "``` foo\\+bar\nfoo\n```\n",
+    "reason": "tree-sitter backslash escape handling divergence"
+  },
+  {
+    "example": 25,
+    "input_fragment": "&nbsp; &amp; &copy; &AElig; &Dcaron;\n&fr",
+    "reason": "AST does not decode HTML entities; tree-sitter treats them as literal text"
+  },
+  {
+    "example": 26,
+    "input_fragment": "&#35; &#1234; &#992; &#0;\n",
+    "reason": "AST does not decode HTML entities; tree-sitter treats them as literal text"
+  },
+  {
+    "example": 27,
+    "input_fragment": "&#X22; &#XD06; &#xcab;\n",
+    "reason": "AST does not decode HTML entities; tree-sitter treats them as literal text"
+  },
+  {
+    "example": 32,
+    "input_fragment": "[foo](/f&ouml;&ouml; \"f&ouml;&ouml;\")\n",
+    "reason": "AST does not decode HTML entities; tree-sitter treats them as literal text"
+  },
+  {
+    "example": 33,
+    "input_fragment": "[foo]\n\n[foo]: /f&ouml;&ouml; \"f&ouml;&ou",
+    "reason": "AST does not decode HTML entities; tree-sitter treats them as literal text"
+  },
+  {
+    "example": 34,
+    "input_fragment": "``` f&ouml;&ouml;\nfoo\n```\n",
+    "reason": "AST does not decode HTML entities; tree-sitter treats them as literal text"
+  },
+  {
+    "example": 37,
+    "input_fragment": "&#42;foo&#42;\n*foo*\n",
+    "reason": "AST does not decode HTML entities; tree-sitter treats them as literal text"
+  },
+  {
+    "example": 38,
+    "input_fragment": "&#42; foo\n\n* foo\n",
+    "reason": "AST does not decode HTML entities; tree-sitter treats them as literal text"
+  },
+  {
+    "example": 39,
+    "input_fragment": "foo&#10;&#10;bar\n",
+    "reason": "AST does not decode HTML entities; tree-sitter treats them as literal text"
+  },
+  {
+    "example": 40,
+    "input_fragment": "&#9;foo\n",
+    "reason": "AST does not decode HTML entities; tree-sitter treats them as literal text"
+  },
+  {
+    "example": 41,
+    "input_fragment": "[a](url &quot;tit&quot;)\n",
+    "reason": "AST does not decode HTML entities; tree-sitter treats them as literal text"
+  },
+  {
+    "example": 42,
+    "input_fragment": "- `one\n- two`\n",
+    "reason": "tree-sitter block precedence divergence"
+  },
+  {
+    "example": 49,
+    "input_fragment": "Foo\n    ***\n",
+    "reason": "tree-sitter thematic break detection divergence"
+  },
+  {
+    "example": 56,
+    "input_fragment": " *-*\n",
+    "reason": "tree-sitter thematic break detection divergence"
+  },
+  {
+    "example": 57,
+    "input_fragment": "- foo\n***\n- bar\n",
+    "reason": "tree-sitter thematic break detection divergence"
+  },
+  {
+    "example": 59,
+    "input_fragment": "Foo\n---\nbar\n",
+    "reason": "tree-sitter thematic break detection divergence"
+  },
+  {
+    "example": 60,
+    "input_fragment": "* Foo\n* * *\n* Bar\n",
+    "reason": "tree-sitter thematic break detection divergence"
+  },
+  {
+    "example": 61,
+    "input_fragment": "- Foo\n- * * *\n",
+    "reason": "tree-sitter thematic break detection divergence"
+  },
+  {
+    "example": 65,
+    "input_fragment": "\\## foo\n",
+    "reason": "tree-sitter ATX heading parsing or test renderer content extraction divergence"
+  },
+  {
+    "example": 66,
+    "input_fragment": "# foo *bar* \\*baz\\*\n",
+    "reason": "tree-sitter ATX heading parsing or test renderer content extraction divergence"
+  },
+  {
+    "example": 68,
+    "input_fragment": " ### foo\n  ## foo\n   # foo\n",
+    "reason": "tree-sitter ATX heading parsing or test renderer content extraction divergence"
+  },
+  {
+    "example": 70,
+    "input_fragment": "foo\n    # bar\n",
+    "reason": "tree-sitter ATX heading parsing or test renderer content extraction divergence"
+  },
+  {
+    "example": 71,
+    "input_fragment": "## foo ##\n  ###   bar    ###\n",
+    "reason": "tree-sitter ATX heading parsing or test renderer content extraction divergence"
+  },
+  {
+    "example": 72,
+    "input_fragment": "# foo ##################################",
+    "reason": "tree-sitter ATX heading parsing or test renderer content extraction divergence"
+  },
+  {
+    "example": 73,
+    "input_fragment": "### foo ###     \n",
+    "reason": "tree-sitter ATX heading parsing or test renderer content extraction divergence"
+  },
+  {
+    "example": 76,
+    "input_fragment": "### foo \\###\n## foo #\\##\n# foo \\#\n",
+    "reason": "tree-sitter ATX heading parsing or test renderer content extraction divergence"
+  },
+  {
+    "example": 80,
+    "input_fragment": "Foo *bar*\n=========\n\nFoo *bar*\n---------",
+    "reason": "tree-sitter setext heading boundary detection divergence"
+  },
+  {
+    "example": 81,
+    "input_fragment": "Foo *bar\nbaz*\n====\n",
+    "reason": "tree-sitter setext heading boundary detection divergence"
+  },
+  {
+    "example": 82,
+    "input_fragment": "  Foo *bar\nbaz*\t\n====\n",
+    "reason": "tree-sitter setext heading boundary detection divergence"
+  },
+  {
+    "example": 83,
+    "input_fragment": "Foo\n-------------------------\n\nFoo\n=\n",
+    "reason": "tree-sitter setext heading boundary detection divergence"
+  },
+  {
+    "example": 84,
+    "input_fragment": "   Foo\n---\n\n  Foo\n-----\n\n  Foo\n  ===\n",
+    "reason": "tree-sitter setext heading boundary detection divergence"
+  },
+  {
+    "example": 86,
+    "input_fragment": "Foo\n   ----      \n",
+    "reason": "tree-sitter setext heading boundary detection divergence"
+  },
+  {
+    "example": 87,
+    "input_fragment": "Foo\n    ---\n",
+    "reason": "tree-sitter setext heading boundary detection divergence"
+  },
+  {
+    "example": 89,
+    "input_fragment": "Foo  \n-----\n",
+    "reason": "tree-sitter setext heading boundary detection divergence"
+  },
+  {
+    "example": 90,
+    "input_fragment": "Foo\\\n----\n",
+    "reason": "tree-sitter setext heading boundary detection divergence"
+  },
+  {
+    "example": 91,
+    "input_fragment": "`Foo\n----\n`\n\n<a title=\"a lot\n---\nof dash",
+    "reason": "tree-sitter setext heading boundary detection divergence"
+  },
+  {
+    "example": 92,
+    "input_fragment": "> Foo\n---\n",
+    "reason": "tree-sitter setext heading boundary detection divergence"
+  },
+  {
+    "example": 93,
+    "input_fragment": "> foo\nbar\n===\n",
+    "reason": "tree-sitter setext heading boundary detection divergence"
+  },
+  {
+    "example": 94,
+    "input_fragment": "- Foo\n---\n",
+    "reason": "tree-sitter setext heading boundary detection divergence"
+  },
+  {
+    "example": 95,
+    "input_fragment": "Foo\nBar\n---\n",
+    "reason": "tree-sitter setext heading boundary detection divergence"
+  },
+  {
+    "example": 96,
+    "input_fragment": "---\nFoo\n---\nBar\n---\nBaz\n",
+    "reason": "tree-sitter setext heading boundary detection divergence"
+  },
+  {
+    "example": 98,
+    "input_fragment": "---\n---\n",
+    "reason": "tree-sitter setext heading boundary detection divergence"
+  },
+  {
+    "example": 99,
+    "input_fragment": "- foo\n-----\n",
+    "reason": "tree-sitter setext heading boundary detection divergence"
+  },
+  {
+    "example": 101,
+    "input_fragment": "> foo\n-----\n",
+    "reason": "tree-sitter setext heading boundary detection divergence"
+  },
+  {
+    "example": 102,
+    "input_fragment": "\\> foo\n------\n",
+    "reason": "tree-sitter setext heading boundary detection divergence"
+  },
+  {
+    "example": 103,
+    "input_fragment": "Foo\n\nbar\n---\nbaz\n",
+    "reason": "tree-sitter setext heading boundary detection divergence"
+  },
+  {
+    "example": 106,
+    "input_fragment": "Foo\nbar\n\\---\nbaz\n",
+    "reason": "tree-sitter setext heading boundary detection divergence"
+  },
+  {
+    "example": 108,
+    "input_fragment": "  - foo\n\n    bar\n",
+    "reason": "tree-sitter indented code block boundary divergence or test renderer indentation stripping"
+  },
+  {
+    "example": 109,
+    "input_fragment": "1.  foo\n\n    - bar\n",
+    "reason": "tree-sitter indented code block boundary divergence or test renderer indentation stripping"
+  },
+  {
+    "example": 111,
+    "input_fragment": "    chunk1\n\n    chunk2\n  \n \n \n    chunk3",
+    "reason": "tree-sitter indented code block boundary divergence or test renderer indentation stripping"
+  },
+  {
+    "example": 113,
+    "input_fragment": "Foo\n    bar\n\n",
+    "reason": "tree-sitter indented code block boundary divergence or test renderer indentation stripping"
+  },
+  {
+    "example": 115,
+    "input_fragment": "# Heading\n    foo\nHeading\n------\n    foo",
+    "reason": "tree-sitter indented code block boundary divergence or test renderer indentation stripping"
+  },
+  {
+    "example": 121,
+    "input_fragment": "``\nfoo\n``\n",
+    "reason": "tree-sitter fenced code block parsing or test renderer fence stripping divergence"
+  },
+  {
+    "example": 128,
+    "input_fragment": "> ```\n> aaa\n\nbbb\n",
+    "reason": "tree-sitter fenced code block parsing or test renderer fence stripping divergence"
+  },
+  {
+    "example": 131,
+    "input_fragment": " ```\n aaa\naaa\n```\n",
+    "reason": "tree-sitter fenced code block parsing or test renderer fence stripping divergence"
+  },
+  {
+    "example": 132,
+    "input_fragment": "  ```\naaa\n  aaa\naaa\n  ```\n",
+    "reason": "tree-sitter fenced code block parsing or test renderer fence stripping divergence"
+  },
+  {
+    "example": 133,
+    "input_fragment": "   ```\n   aaa\n    aaa\n  aaa\n   ```\n",
+    "reason": "tree-sitter fenced code block parsing or test renderer fence stripping divergence"
+  },
+  {
+    "example": 137,
+    "input_fragment": "```\naaa\n    ```\n",
+    "reason": "tree-sitter fenced code block parsing or test renderer fence stripping divergence"
+  },
+  {
+    "example": 141,
+    "input_fragment": "foo\n---\n~~~\nbar\n~~~\n# baz\n",
+    "reason": "tree-sitter fenced code block parsing or test renderer fence stripping divergence"
+  },
+  {
+    "example": 143,
+    "input_fragment": "~~~~    ruby startline=3 $%@#$\ndef foo(x",
+    "reason": "tree-sitter fenced code block parsing or test renderer fence stripping divergence"
+  },
+  {
+    "example": 146,
+    "input_fragment": "~~~ aa ``` ~~~\nfoo\n~~~\n",
+    "reason": "tree-sitter fenced code block parsing or test renderer fence stripping divergence"
+  },
+  {
+    "example": 148,
+    "input_fragment": "<table><tr><td>\n<pre>\n**Hello**,\n\n_world",
+    "reason": "tree-sitter HTML block boundary detection divergence"
+  },
+  {
+    "example": 149,
+    "input_fragment": "<table>\n  <tr>\n    <td>\n           hi\n  ",
+    "reason": "tree-sitter HTML block boundary detection divergence"
+  },
+  {
+    "example": 152,
+    "input_fragment": "<DIV CLASS=\"foo\">\n\n*Markdown*\n\n</DIV>\n",
+    "reason": "tree-sitter HTML block boundary detection divergence"
+  },
+  {
+    "example": 155,
+    "input_fragment": "<div>\n*foo*\n\n*bar*\n",
+    "reason": "tree-sitter HTML block boundary detection divergence"
+  },
+  {
+    "example": 167,
+    "input_fragment": "<del>\n\n*foo*\n\n</del>\n",
+    "reason": "tree-sitter HTML block boundary detection divergence"
+  },
+  {
+    "example": 171,
+    "input_fragment": "<textarea>\n\n*foo*\n\n_bar_\n\n</textarea>\n",
+    "reason": "tree-sitter HTML block boundary detection divergence"
+  },
+  {
+    "example": 174,
+    "input_fragment": "> <div>\n> foo\n\nbar\n",
+    "reason": "tree-sitter HTML block boundary detection divergence"
+  },
+  {
+    "example": 175,
+    "input_fragment": "- <div>\n- foo\n",
+    "reason": "tree-sitter HTML block boundary detection divergence"
+  },
+  {
+    "example": 184,
+    "input_fragment": "  <div>\n\n    <div>\n",
+    "reason": "tree-sitter HTML block boundary detection divergence"
+  },
+  {
+    "example": 188,
+    "input_fragment": "<div>\n\n*Emphasized* text.\n\n</div>\n",
+    "reason": "tree-sitter HTML block boundary detection divergence"
+  },
+  {
+    "example": 190,
+    "input_fragment": "<table>\n\n<tr>\n\n<td>\nHi\n</td>\n\n</tr>\n\n</t",
+    "reason": "tree-sitter HTML block boundary detection divergence"
+  },
+  {
+    "example": 191,
+    "input_fragment": "<table>\n\n  <tr>\n\n    <td>\n      Hi\n    <",
+    "reason": "tree-sitter HTML block boundary detection divergence"
+  },
+  {
+    "example": 192,
+    "input_fragment": "[foo]: /url \"title\"\n\n[foo]\n",
+    "reason": "tree-sitter does not resolve reference links; AST lacks reference definitions"
+  },
+  {
+    "example": 193,
+    "input_fragment": "   [foo]: \n      /url  \n           'the ",
+    "reason": "tree-sitter does not resolve reference links; AST lacks reference definitions"
+  },
+  {
+    "example": 194,
+    "input_fragment": "[Foo*bar\\]]:my_(url) 'title (with parens",
+    "reason": "tree-sitter does not resolve reference links; AST lacks reference definitions"
+  },
+  {
+    "example": 195,
+    "input_fragment": "[Foo bar]:\n<my url>\n'title'\n\n[Foo bar]\n",
+    "reason": "tree-sitter does not resolve reference links; AST lacks reference definitions"
+  },
+  {
+    "example": 196,
+    "input_fragment": "[foo]: /url '\ntitle\nline1\nline2\n'\n\n[foo]",
+    "reason": "tree-sitter does not resolve reference links; AST lacks reference definitions"
+  },
+  {
+    "example": 197,
+    "input_fragment": "[foo]: /url 'title\n\nwith blank line'\n\n[f",
+    "reason": "tree-sitter does not resolve reference links; AST lacks reference definitions"
+  },
+  {
+    "example": 198,
+    "input_fragment": "[foo]:\n/url\n\n[foo]\n",
+    "reason": "tree-sitter does not resolve reference links; AST lacks reference definitions"
+  },
+  {
+    "example": 199,
+    "input_fragment": "[foo]:\n\n[foo]\n",
+    "reason": "tree-sitter does not resolve reference links; AST lacks reference definitions"
+  },
+  {
+    "example": 200,
+    "input_fragment": "[foo]: <>\n\n[foo]\n",
+    "reason": "tree-sitter does not resolve reference links; AST lacks reference definitions"
+  },
+  {
+    "example": 201,
+    "input_fragment": "[foo]: <bar>(baz)\n\n[foo]\n",
+    "reason": "tree-sitter does not resolve reference links; AST lacks reference definitions"
+  },
+  {
+    "example": 202,
+    "input_fragment": "[foo]: /url\\bar\\*baz \"foo\\\"bar\\baz\"\n\n[fo",
+    "reason": "tree-sitter does not resolve reference links; AST lacks reference definitions"
+  },
+  {
+    "example": 203,
+    "input_fragment": "[foo]\n\n[foo]: url\n",
+    "reason": "tree-sitter does not resolve reference links; AST lacks reference definitions"
+  },
+  {
+    "example": 204,
+    "input_fragment": "[foo]\n\n[foo]: first\n[foo]: second\n",
+    "reason": "tree-sitter does not resolve reference links; AST lacks reference definitions"
+  },
+  {
+    "example": 205,
+    "input_fragment": "[FOO]: /url\n\n[Foo]\n",
+    "reason": "tree-sitter does not resolve reference links; AST lacks reference definitions"
+  },
+  {
+    "example": 206,
+    "input_fragment": "[ΑΓΩ]: /φου\n\n[αγω]\n",
+    "reason": "tree-sitter does not resolve reference links; AST lacks reference definitions"
+  },
+  {
+    "example": 207,
+    "input_fragment": "[foo]: /url\n",
+    "reason": "tree-sitter does not resolve reference links; AST lacks reference definitions"
+  },
+  {
+    "example": 208,
+    "input_fragment": "[\nfoo\n]: /url\nbar\n",
+    "reason": "tree-sitter does not resolve reference links; AST lacks reference definitions"
+  },
+  {
+    "example": 209,
+    "input_fragment": "[foo]: /url \"title\" ok\n",
+    "reason": "tree-sitter does not resolve reference links; AST lacks reference definitions"
+  },
+  {
+    "example": 210,
+    "input_fragment": "[foo]: /url\n\"title\" ok\n",
+    "reason": "tree-sitter does not resolve reference links; AST lacks reference definitions"
+  },
+  {
+    "example": 211,
+    "input_fragment": "    [foo]: /url \"title\"\n\n[foo]\n",
+    "reason": "tree-sitter does not resolve reference links; AST lacks reference definitions"
+  },
+  {
+    "example": 212,
+    "input_fragment": "```\n[foo]: /url\n```\n\n[foo]\n",
+    "reason": "tree-sitter does not resolve reference links; AST lacks reference definitions"
+  },
+  {
+    "example": 213,
+    "input_fragment": "Foo\n[bar]: /baz\n\n[bar]\n",
+    "reason": "tree-sitter does not resolve reference links; AST lacks reference definitions"
+  },
+  {
+    "example": 214,
+    "input_fragment": "# [Foo]\n[foo]: /url\n> bar\n",
+    "reason": "tree-sitter does not resolve reference links; AST lacks reference definitions"
+  },
+  {
+    "example": 215,
+    "input_fragment": "[foo]: /url\nbar\n===\n[foo]\n",
+    "reason": "tree-sitter does not resolve reference links; AST lacks reference definitions"
+  },
+  {
+    "example": 216,
+    "input_fragment": "[foo]: /url\n===\n[foo]\n",
+    "reason": "tree-sitter does not resolve reference links; AST lacks reference definitions"
+  },
+  {
+    "example": 217,
+    "input_fragment": "[foo]: /foo-url \"foo\"\n[bar]: /bar-url\n  ",
+    "reason": "tree-sitter does not resolve reference links; AST lacks reference definitions"
+  },
+  {
+    "example": 218,
+    "input_fragment": "[foo]\n\n> [foo]: /url\n",
+    "reason": "tree-sitter does not resolve reference links; AST lacks reference definitions"
+  },
+  {
+    "example": 222,
+    "input_fragment": "  aaa\n bbb\n",
+    "reason": "tree-sitter paragraph boundary detection divergence"
+  },
+  {
+    "example": 223,
+    "input_fragment": "aaa\n             bbb\n                   ",
+    "reason": "tree-sitter paragraph boundary detection divergence"
+  },
+  {
+    "example": 224,
+    "input_fragment": "   aaa\nbbb\n",
+    "reason": "tree-sitter paragraph boundary detection divergence"
+  },
+  {
+    "example": 226,
+    "input_fragment": "aaa     \nbbb     \n",
+    "reason": "tree-sitter paragraph boundary detection divergence"
+  },
+  {
+    "example": 228,
+    "input_fragment": "> # Foo\n> bar\n> baz\n",
+    "reason": "tree-sitter block quote nesting or lazy continuation divergence"
+  },
+  {
+    "example": 229,
+    "input_fragment": "># Foo\n>bar\n> baz\n",
+    "reason": "tree-sitter block quote nesting or lazy continuation divergence"
+  },
+  {
+    "example": 230,
+    "input_fragment": "   > # Foo\n   > bar\n > baz\n",
+    "reason": "tree-sitter block quote nesting or lazy continuation divergence"
+  },
+  {
+    "example": 232,
+    "input_fragment": "> # Foo\n> bar\nbaz\n",
+    "reason": "tree-sitter block quote nesting or lazy continuation divergence"
+  },
+  {
+    "example": 233,
+    "input_fragment": "> bar\nbaz\n> foo\n",
+    "reason": "tree-sitter block quote nesting or lazy continuation divergence"
+  },
+  {
+    "example": 234,
+    "input_fragment": "> foo\n---\n",
+    "reason": "tree-sitter block quote nesting or lazy continuation divergence"
+  },
+  {
+    "example": 235,
+    "input_fragment": "> - foo\n- bar\n",
+    "reason": "tree-sitter block quote nesting or lazy continuation divergence"
+  },
+  {
+    "example": 236,
+    "input_fragment": ">     foo\n    bar\n",
+    "reason": "tree-sitter block quote nesting or lazy continuation divergence"
+  },
+  {
+    "example": 237,
+    "input_fragment": "> ```\nfoo\n```\n",
+    "reason": "tree-sitter block quote nesting or lazy continuation divergence"
+  },
+  {
+    "example": 238,
+    "input_fragment": "> foo\n    - bar\n",
+    "reason": "tree-sitter block quote nesting or lazy continuation divergence"
+  },
+  {
+    "example": 239,
+    "input_fragment": ">\n",
+    "reason": "tree-sitter block quote nesting or lazy continuation divergence"
+  },
+  {
+    "example": 240,
+    "input_fragment": ">\n>  \n> \n",
+    "reason": "tree-sitter block quote nesting or lazy continuation divergence"
+  },
+  {
+    "example": 241,
+    "input_fragment": ">\n> foo\n>  \n",
+    "reason": "tree-sitter block quote nesting or lazy continuation divergence"
+  },
+  {
+    "example": 242,
+    "input_fragment": "> foo\n\n> bar\n",
+    "reason": "tree-sitter block quote nesting or lazy continuation divergence"
+  },
+  {
+    "example": 243,
+    "input_fragment": "> foo\n> bar\n",
+    "reason": "tree-sitter block quote nesting or lazy continuation divergence"
+  },
+  {
+    "example": 244,
+    "input_fragment": "> foo\n>\n> bar\n",
+    "reason": "tree-sitter block quote nesting or lazy continuation divergence"
+  },
+  {
+    "example": 245,
+    "input_fragment": "foo\n> bar\n",
+    "reason": "tree-sitter block quote nesting or lazy continuation divergence"
+  },
+  {
+    "example": 246,
+    "input_fragment": "> aaa\n***\n> bbb\n",
+    "reason": "tree-sitter block quote nesting or lazy continuation divergence"
+  },
+  {
+    "example": 247,
+    "input_fragment": "> bar\nbaz\n",
+    "reason": "tree-sitter block quote nesting or lazy continuation divergence"
+  },
+  {
+    "example": 248,
+    "input_fragment": "> bar\n\nbaz\n",
+    "reason": "tree-sitter block quote nesting or lazy continuation divergence"
+  },
+  {
+    "example": 249,
+    "input_fragment": "> bar\n>\nbaz\n",
+    "reason": "tree-sitter block quote nesting or lazy continuation divergence"
+  },
+  {
+    "example": 250,
+    "input_fragment": "> > > foo\nbar\n",
+    "reason": "tree-sitter block quote nesting or lazy continuation divergence"
+  },
+  {
+    "example": 251,
+    "input_fragment": ">>> foo\n> bar\n>>baz\n",
+    "reason": "tree-sitter block quote nesting or lazy continuation divergence"
+  },
+  {
+    "example": 252,
+    "input_fragment": ">     code\n\n>    not code\n",
+    "reason": "tree-sitter block quote nesting or lazy continuation divergence"
+  },
+  {
+    "example": 253,
+    "input_fragment": "A paragraph\nwith two lines.\n\n    indente",
+    "reason": "tree-sitter list item parsing divergence (nesting, continuation, blank lines)"
+  },
+  {
+    "example": 254,
+    "input_fragment": "1.  A paragraph\n    with two lines.\n\n   ",
+    "reason": "tree-sitter list item parsing divergence (nesting, continuation, blank lines)"
+  },
+  {
+    "example": 255,
+    "input_fragment": "- one\n\n two\n",
+    "reason": "tree-sitter list item parsing divergence (nesting, continuation, blank lines)"
+  },
+  {
+    "example": 256,
+    "input_fragment": "- one\n\n  two\n",
+    "reason": "tree-sitter list item parsing divergence (nesting, continuation, blank lines)"
+  },
+  {
+    "example": 257,
+    "input_fragment": " -    one\n\n     two\n",
+    "reason": "tree-sitter list item parsing divergence (nesting, continuation, blank lines)"
+  },
+  {
+    "example": 258,
+    "input_fragment": " -    one\n\n      two\n",
+    "reason": "tree-sitter list item parsing divergence (nesting, continuation, blank lines)"
+  },
+  {
+    "example": 259,
+    "input_fragment": "   > > 1.  one\n>>\n>>     two\n",
+    "reason": "tree-sitter list item parsing divergence (nesting, continuation, blank lines)"
+  },
+  {
+    "example": 260,
+    "input_fragment": ">>- one\n>>\n  >  > two\n",
+    "reason": "tree-sitter list item parsing divergence (nesting, continuation, blank lines)"
+  },
+  {
+    "example": 262,
+    "input_fragment": "- foo\n\n\n  bar\n",
+    "reason": "tree-sitter list item parsing divergence (nesting, continuation, blank lines)"
+  },
+  {
+    "example": 263,
+    "input_fragment": "1.  foo\n\n    ```\n    bar\n    ```\n\n    ba",
+    "reason": "tree-sitter list item parsing divergence (nesting, continuation, blank lines)"
+  },
+  {
+    "example": 264,
+    "input_fragment": "- Foo\n\n      bar\n\n\n      baz\n",
+    "reason": "tree-sitter list item parsing divergence (nesting, continuation, blank lines)"
+  },
+  {
+    "example": 265,
+    "input_fragment": "123456789. ok\n",
+    "reason": "tree-sitter list item parsing divergence (nesting, continuation, blank lines)"
+  },
+  {
+    "example": 267,
+    "input_fragment": "0. ok\n",
+    "reason": "tree-sitter list item parsing divergence (nesting, continuation, blank lines)"
+  },
+  {
+    "example": 268,
+    "input_fragment": "003. ok\n",
+    "reason": "tree-sitter list item parsing divergence (nesting, continuation, blank lines)"
+  },
+  {
+    "example": 270,
+    "input_fragment": "- foo\n\n      bar\n",
+    "reason": "tree-sitter list item parsing divergence (nesting, continuation, blank lines)"
+  },
+  {
+    "example": 271,
+    "input_fragment": "  10.  foo\n\n           bar\n",
+    "reason": "tree-sitter list item parsing divergence (nesting, continuation, blank lines)"
+  },
+  {
+    "example": 273,
+    "input_fragment": "1.     indented code\n\n   paragraph\n\n    ",
+    "reason": "tree-sitter list item parsing divergence (nesting, continuation, blank lines)"
+  },
+  {
+    "example": 274,
+    "input_fragment": "1.      indented code\n\n   paragraph\n\n   ",
+    "reason": "tree-sitter list item parsing divergence (nesting, continuation, blank lines)"
+  },
+  {
+    "example": 275,
+    "input_fragment": "   foo\n\nbar\n",
+    "reason": "tree-sitter list item parsing divergence (nesting, continuation, blank lines)"
+  },
+  {
+    "example": 276,
+    "input_fragment": "-    foo\n\n  bar\n",
+    "reason": "tree-sitter list item parsing divergence (nesting, continuation, blank lines)"
+  },
+  {
+    "example": 277,
+    "input_fragment": "-  foo\n\n   bar\n",
+    "reason": "tree-sitter list item parsing divergence (nesting, continuation, blank lines)"
+  },
+  {
+    "example": 278,
+    "input_fragment": "-\n  foo\n-\n  ```\n  bar\n  ```\n-\n      baz\n",
+    "reason": "tree-sitter list item parsing divergence (nesting, continuation, blank lines)"
+  },
+  {
+    "example": 279,
+    "input_fragment": "-   \n  foo\n",
+    "reason": "tree-sitter list item parsing divergence (nesting, continuation, blank lines)"
+  },
+  {
+    "example": 280,
+    "input_fragment": "-\n\n  foo\n",
+    "reason": "tree-sitter list item parsing divergence (nesting, continuation, blank lines)"
+  },
+  {
+    "example": 281,
+    "input_fragment": "- foo\n-\n- bar\n",
+    "reason": "tree-sitter list item parsing divergence (nesting, continuation, blank lines)"
+  },
+  {
+    "example": 282,
+    "input_fragment": "- foo\n-   \n- bar\n",
+    "reason": "tree-sitter list item parsing divergence (nesting, continuation, blank lines)"
+  },
+  {
+    "example": 283,
+    "input_fragment": "1. foo\n2.\n3. bar\n",
+    "reason": "tree-sitter list item parsing divergence (nesting, continuation, blank lines)"
+  },
+  {
+    "example": 284,
+    "input_fragment": "*\n",
+    "reason": "tree-sitter list item parsing divergence (nesting, continuation, blank lines)"
+  },
+  {
+    "example": 286,
+    "input_fragment": " 1.  A paragraph\n     with two lines.\n\n ",
+    "reason": "tree-sitter list item parsing divergence (nesting, continuation, blank lines)"
+  },
+  {
+    "example": 287,
+    "input_fragment": "  1.  A paragraph\n      with two lines.\n",
+    "reason": "tree-sitter list item parsing divergence (nesting, continuation, blank lines)"
+  },
+  {
+    "example": 288,
+    "input_fragment": "   1.  A paragraph\n       with two lines",
+    "reason": "tree-sitter list item parsing divergence (nesting, continuation, blank lines)"
+  },
+  {
+    "example": 290,
+    "input_fragment": "  1.  A paragraph\nwith two lines.\n\n     ",
+    "reason": "tree-sitter list item parsing divergence (nesting, continuation, blank lines)"
+  },
+  {
+    "example": 291,
+    "input_fragment": "  1.  A paragraph\n    with two lines.\n",
+    "reason": "tree-sitter list item parsing divergence (nesting, continuation, blank lines)"
+  },
+  {
+    "example": 292,
+    "input_fragment": "> 1. > Blockquote\ncontinued here.\n",
+    "reason": "tree-sitter list item parsing divergence (nesting, continuation, blank lines)"
+  },
+  {
+    "example": 293,
+    "input_fragment": "> 1. > Blockquote\n> continued here.\n",
+    "reason": "tree-sitter list item parsing divergence (nesting, continuation, blank lines)"
+  },
+  {
+    "example": 294,
+    "input_fragment": "- foo\n  - bar\n    - baz\n      - boo\n",
+    "reason": "tree-sitter list item parsing divergence (nesting, continuation, blank lines)"
+  },
+  {
+    "example": 295,
+    "input_fragment": "- foo\n - bar\n  - baz\n   - boo\n",
+    "reason": "tree-sitter list item parsing divergence (nesting, continuation, blank lines)"
+  },
+  {
+    "example": 296,
+    "input_fragment": "10) foo\n    - bar\n",
+    "reason": "tree-sitter list item parsing divergence (nesting, continuation, blank lines)"
+  },
+  {
+    "example": 297,
+    "input_fragment": "10) foo\n   - bar\n",
+    "reason": "tree-sitter list item parsing divergence (nesting, continuation, blank lines)"
+  },
+  {
+    "example": 298,
+    "input_fragment": "- - foo\n",
+    "reason": "tree-sitter list item parsing divergence (nesting, continuation, blank lines)"
+  },
+  {
+    "example": 299,
+    "input_fragment": "1. - 2. foo\n",
+    "reason": "tree-sitter list item parsing divergence (nesting, continuation, blank lines)"
+  },
+  {
+    "example": 300,
+    "input_fragment": "- # Foo\n- Bar\n  ---\n  baz\n",
+    "reason": "tree-sitter list item parsing divergence (nesting, continuation, blank lines)"
+  },
+  {
+    "example": 301,
+    "input_fragment": "- foo\n- bar\n+ baz\n",
+    "reason": "tree-sitter list tightness detection or continuation divergence"
+  },
+  {
+    "example": 302,
+    "input_fragment": "1. foo\n2. bar\n3) baz\n",
+    "reason": "tree-sitter list tightness detection or continuation divergence"
+  },
+  {
+    "example": 303,
+    "input_fragment": "Foo\n- bar\n- baz\n",
+    "reason": "tree-sitter list tightness detection or continuation divergence"
+  },
+  {
+    "example": 305,
+    "input_fragment": "The number of windows in my house is\n1. ",
+    "reason": "tree-sitter list tightness detection or continuation divergence"
+  },
+  {
+    "example": 307,
+    "input_fragment": "- foo\n  - bar\n    - baz\n\n\n      bim\n",
+    "reason": "tree-sitter list tightness detection or continuation divergence"
+  },
+  {
+    "example": 308,
+    "input_fragment": "- foo\n- bar\n\n<!-- -->\n\n- baz\n- bim\n",
+    "reason": "tree-sitter list tightness detection or continuation divergence"
+  },
+  {
+    "example": 309,
+    "input_fragment": "-   foo\n\n    notcode\n\n-   foo\n\n<!-- -->\n",
+    "reason": "tree-sitter list tightness detection or continuation divergence"
+  },
+  {
+    "example": 310,
+    "input_fragment": "- a\n - b\n  - c\n   - d\n  - e\n - f\n- g\n",
+    "reason": "tree-sitter list tightness detection or continuation divergence"
+  },
+  {
+    "example": 311,
+    "input_fragment": "1. a\n\n  2. b\n\n   3. c\n",
+    "reason": "tree-sitter list tightness detection or continuation divergence"
+  },
+  {
+    "example": 312,
+    "input_fragment": "- a\n - b\n  - c\n   - d\n    - e\n",
+    "reason": "tree-sitter list tightness detection or continuation divergence"
+  },
+  {
+    "example": 313,
+    "input_fragment": "1. a\n\n  2. b\n\n    3. c\n",
+    "reason": "tree-sitter list tightness detection or continuation divergence"
+  },
+  {
+    "example": 314,
+    "input_fragment": "- a\n- b\n\n- c\n",
+    "reason": "tree-sitter list tightness detection or continuation divergence"
+  },
+  {
+    "example": 315,
+    "input_fragment": "* a\n*\n\n* c\n",
+    "reason": "tree-sitter list tightness detection or continuation divergence"
+  },
+  {
+    "example": 316,
+    "input_fragment": "- a\n- b\n\n  c\n- d\n",
+    "reason": "tree-sitter list tightness detection or continuation divergence"
+  },
+  {
+    "example": 317,
+    "input_fragment": "- a\n- b\n\n  [ref]: /url\n- d\n",
+    "reason": "tree-sitter list tightness detection or continuation divergence"
+  },
+  {
+    "example": 318,
+    "input_fragment": "- a\n- ```\n  b\n\n\n  ```\n- c\n",
+    "reason": "tree-sitter list tightness detection or continuation divergence"
+  },
+  {
+    "example": 319,
+    "input_fragment": "- a\n  - b\n\n    c\n- d\n",
+    "reason": "tree-sitter list tightness detection or continuation divergence"
+  },
+  {
+    "example": 320,
+    "input_fragment": "* a\n  > b\n  >\n* c\n",
+    "reason": "tree-sitter list tightness detection or continuation divergence"
+  },
+  {
+    "example": 321,
+    "input_fragment": "- a\n  > b\n  ```\n  c\n  ```\n- d\n",
+    "reason": "tree-sitter list tightness detection or continuation divergence"
+  },
+  {
+    "example": 322,
+    "input_fragment": "- a\n",
+    "reason": "tree-sitter list tightness detection or continuation divergence"
+  },
+  {
+    "example": 323,
+    "input_fragment": "- a\n  - b\n",
+    "reason": "tree-sitter list tightness detection or continuation divergence"
+  },
+  {
+    "example": 324,
+    "input_fragment": "1. ```\n   foo\n   ```\n\n   bar\n",
+    "reason": "tree-sitter list tightness detection or continuation divergence"
+  },
+  {
+    "example": 325,
+    "input_fragment": "* foo\n  * bar\n\n  baz\n",
+    "reason": "tree-sitter list tightness detection or continuation divergence"
+  },
+  {
+    "example": 326,
+    "input_fragment": "- a\n  - b\n  - c\n\n- d\n  - e\n  - f\n",
+    "reason": "tree-sitter list tightness detection or continuation divergence"
+  },
+  {
+    "example": 330,
+    "input_fragment": "` `` `\n",
+    "reason": "tree-sitter code span boundary or test renderer backtick stripping divergence"
+  },
+  {
+    "example": 331,
+    "input_fragment": "`  ``  `\n",
+    "reason": "tree-sitter code span boundary or test renderer backtick stripping divergence"
+  },
+  {
+    "example": 335,
+    "input_fragment": "``\nfoo\nbar  \nbaz\n``\n",
+    "reason": "tree-sitter code span boundary or test renderer backtick stripping divergence"
+  },
+  {
+    "example": 336,
+    "input_fragment": "``\nfoo \n``\n",
+    "reason": "tree-sitter code span boundary or test renderer backtick stripping divergence"
+  },
+  {
+    "example": 337,
+    "input_fragment": "`foo   bar \nbaz`\n",
+    "reason": "tree-sitter code span boundary or test renderer backtick stripping divergence"
+  },
+  {
+    "example": 340,
+    "input_fragment": "` foo `` bar `\n",
+    "reason": "tree-sitter code span boundary or test renderer backtick stripping divergence"
+  },
+  {
+    "example": 343,
+    "input_fragment": "`<a href=\"`\">`\n",
+    "reason": "tree-sitter code span boundary or test renderer backtick stripping divergence"
+  },
+  {
+    "example": 346,
+    "input_fragment": "<https://foo.bar.`baz>`\n",
+    "reason": "tree-sitter code span boundary or test renderer backtick stripping divergence"
+  },
+  {
+    "example": 353,
+    "input_fragment": "* a *\n",
+    "reason": "tree-sitter emphasis/strong parsing or test renderer inline content extraction divergence"
+  },
+  {
+    "example": 354,
+    "input_fragment": "*$*alpha.\n\n*£*bravo.\n\n*€*charlie.\n",
+    "reason": "tree-sitter emphasis/strong parsing or test renderer inline content extraction divergence"
+  },
+  {
+    "example": 380,
+    "input_fragment": "a**\"foo\"**\n",
+    "reason": "tree-sitter emphasis/strong parsing or test renderer inline content extraction divergence"
+  },
+  {
+    "example": 385,
+    "input_fragment": "a__\"foo\"__\n",
+    "reason": "tree-sitter emphasis/strong parsing or test renderer inline content extraction divergence"
+  },
+  {
+    "example": 391,
+    "input_fragment": "**foo bar **\n",
+    "reason": "tree-sitter emphasis/strong parsing or test renderer inline content extraction divergence"
+  },
+  {
+    "example": 392,
+    "input_fragment": "**(**foo)\n",
+    "reason": "tree-sitter emphasis/strong parsing or test renderer inline content extraction divergence"
+  },
+  {
+    "example": 397,
+    "input_fragment": "__foo bar __\n",
+    "reason": "tree-sitter emphasis/strong parsing or test renderer inline content extraction divergence"
+  },
+  {
+    "example": 398,
+    "input_fragment": "__(__foo)\n",
+    "reason": "tree-sitter emphasis/strong parsing or test renderer inline content extraction divergence"
+  },
+  {
+    "example": 408,
+    "input_fragment": "__foo_ bar_\n",
+    "reason": "tree-sitter emphasis/strong parsing or test renderer inline content extraction divergence"
+  },
+  {
+    "example": 411,
+    "input_fragment": "*foo**bar**baz*\n",
+    "reason": "tree-sitter emphasis/strong parsing or test renderer inline content extraction divergence"
+  },
+  {
+    "example": 412,
+    "input_fragment": "*foo**bar*\n",
+    "reason": "tree-sitter emphasis/strong parsing or test renderer inline content extraction divergence"
+  },
+  {
+    "example": 413,
+    "input_fragment": "***foo** bar*\n",
+    "reason": "tree-sitter emphasis/strong parsing or test renderer inline content extraction divergence"
+  },
+  {
+    "example": 415,
+    "input_fragment": "*foo**bar***\n",
+    "reason": "tree-sitter emphasis/strong parsing or test renderer inline content extraction divergence"
+  },
+  {
+    "example": 419,
+    "input_fragment": "*foo [*bar*](/url)*\n",
+    "reason": "tree-sitter emphasis/strong parsing or test renderer inline content extraction divergence"
+  },
+  {
+    "example": 426,
+    "input_fragment": "____foo__ bar__\n",
+    "reason": "tree-sitter emphasis/strong parsing or test renderer inline content extraction divergence"
+  },
+  {
+    "example": 429,
+    "input_fragment": "**foo*bar*baz**\n",
+    "reason": "tree-sitter emphasis/strong parsing or test renderer inline content extraction divergence"
+  },
+  {
+    "example": 430,
+    "input_fragment": "***foo* bar**\n",
+    "reason": "tree-sitter emphasis/strong parsing or test renderer inline content extraction divergence"
+  },
+  {
+    "example": 433,
+    "input_fragment": "**foo [*bar*](/url)**\n",
+    "reason": "tree-sitter emphasis/strong parsing or test renderer inline content extraction divergence"
+  },
+  {
+    "example": 437,
+    "input_fragment": "foo *\\**\n",
+    "reason": "tree-sitter emphasis/strong parsing or test renderer inline content extraction divergence"
+  },
+  {
+    "example": 440,
+    "input_fragment": "foo **\\***\n",
+    "reason": "tree-sitter emphasis/strong parsing or test renderer inline content extraction divergence"
+  },
+  {
+    "example": 449,
+    "input_fragment": "foo _\\__\n",
+    "reason": "tree-sitter emphasis/strong parsing or test renderer inline content extraction divergence"
+  },
+  {
+    "example": 452,
+    "input_fragment": "foo __\\___\n",
+    "reason": "tree-sitter emphasis/strong parsing or test renderer inline content extraction divergence"
+  },
+  {
+    "example": 482,
+    "input_fragment": "[link](/uri \"title\")\n",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 486,
+    "input_fragment": "[link](<>)\n",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 488,
+    "input_fragment": "[link](/my uri)\n",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 489,
+    "input_fragment": "[link](</my uri>)\n",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 490,
+    "input_fragment": "[link](foo\nbar)\n",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 491,
+    "input_fragment": "[link](<foo\nbar>)\n",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 492,
+    "input_fragment": "[a](<b)c>)\n",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 493,
+    "input_fragment": "[link](<foo\\>)\n",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 494,
+    "input_fragment": "[a](<b)c\n[a](<b)c>\n[a](<b>c)\n",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 495,
+    "input_fragment": "[link](\\(foo\\))\n",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 497,
+    "input_fragment": "[link](foo(and(bar))\n",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 498,
+    "input_fragment": "[link](foo\\(and\\(bar\\))\n",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 499,
+    "input_fragment": "[link](<foo(and(bar)>)\n",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 500,
+    "input_fragment": "[link](foo\\)\\:)\n",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 502,
+    "input_fragment": "[link](foo\\bar)\n",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 503,
+    "input_fragment": "[link](foo%20b&auml;)\n",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 504,
+    "input_fragment": "[link](\"title\")\n",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 505,
+    "input_fragment": "[link](/url \"title\")\n[link](/url 'title'",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 506,
+    "input_fragment": "[link](/url \"title \\\"&quot;\")\n",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 507,
+    "input_fragment": "[link](/url \"title\")\n",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 508,
+    "input_fragment": "[link](/url \"title \"and\" title\")\n",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 509,
+    "input_fragment": "[link](/url 'title \"and\" title')\n",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 510,
+    "input_fragment": "[link](   /uri\n  \"title\"  )\n",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 511,
+    "input_fragment": "[link] (/uri)\n",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 512,
+    "input_fragment": "[link [foo [bar]]](/uri)\n",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 513,
+    "input_fragment": "[link] bar](/uri)\n",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 515,
+    "input_fragment": "[link \\[bar](/uri)\n",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 516,
+    "input_fragment": "[link *foo **bar** `#`*](/uri)\n",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 517,
+    "input_fragment": "[![moon](moon.jpg)](/uri)\n",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 520,
+    "input_fragment": "![[[foo](uri1)](uri2)](uri3)\n",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 523,
+    "input_fragment": "*foo [bar* baz]\n",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 526,
+    "input_fragment": "[foo<https://example.com/?search=](uri)>",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 527,
+    "input_fragment": "[foo][bar]\n\n[bar]: /url \"title\"\n",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 528,
+    "input_fragment": "[link [foo [bar]]][ref]\n\n[ref]: /uri\n",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 529,
+    "input_fragment": "[link \\[bar][ref]\n\n[ref]: /uri\n",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 530,
+    "input_fragment": "[link *foo **bar** `#`*][ref]\n\n[ref]: /u",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 531,
+    "input_fragment": "[![moon](moon.jpg)][ref]\n\n[ref]: /uri\n",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 532,
+    "input_fragment": "[foo [bar](/uri)][ref]\n\n[ref]: /uri\n",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 533,
+    "input_fragment": "[foo *bar [baz][ref]*][ref]\n\n[ref]: /uri",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 534,
+    "input_fragment": "*[foo*][ref]\n\n[ref]: /uri\n",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 535,
+    "input_fragment": "[foo *bar][ref]*\n\n[ref]: /uri\n",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 536,
+    "input_fragment": "[foo <bar attr=\"][ref]\">\n\n[ref]: /uri\n",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 537,
+    "input_fragment": "[foo`][ref]`\n\n[ref]: /uri\n",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 538,
+    "input_fragment": "[foo<https://example.com/?search=][ref]>",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 539,
+    "input_fragment": "[foo][BaR]\n\n[bar]: /url \"title\"\n",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 540,
+    "input_fragment": "[ẞ]\n\n[SS]: /url\n",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 541,
+    "input_fragment": "[Foo\n  bar]: /url\n\n[Baz][Foo bar]\n",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 542,
+    "input_fragment": "[foo] [bar]\n\n[bar]: /url \"title\"\n",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 543,
+    "input_fragment": "[foo]\n[bar]\n\n[bar]: /url \"title\"\n",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 544,
+    "input_fragment": "[foo]: /url1\n\n[foo]: /url2\n\n[bar][foo]\n",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 545,
+    "input_fragment": "[bar][foo\\!]\n\n[foo!]: /url\n",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 546,
+    "input_fragment": "[foo][ref[]\n\n[ref[]: /uri\n",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 547,
+    "input_fragment": "[foo][ref[bar]]\n\n[ref[bar]]: /uri\n",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 548,
+    "input_fragment": "[[[foo]]]\n\n[[[foo]]]: /url\n",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 549,
+    "input_fragment": "[foo][ref\\[]\n\n[ref\\[]: /uri\n",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 550,
+    "input_fragment": "[bar\\\\]: /uri\n\n[bar\\\\]\n",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 552,
+    "input_fragment": "[\n ]\n\n[\n ]: /uri\n",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 553,
+    "input_fragment": "[foo][]\n\n[foo]: /url \"title\"\n",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 554,
+    "input_fragment": "[*foo* bar][]\n\n[*foo* bar]: /url \"title\"",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 555,
+    "input_fragment": "[Foo][]\n\n[foo]: /url \"title\"\n",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 556,
+    "input_fragment": "[foo] \n[]\n\n[foo]: /url \"title\"\n",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 557,
+    "input_fragment": "[foo]\n\n[foo]: /url \"title\"\n",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 558,
+    "input_fragment": "[*foo* bar]\n\n[*foo* bar]: /url \"title\"\n",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 559,
+    "input_fragment": "[[*foo* bar]]\n\n[*foo* bar]: /url \"title\"",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 560,
+    "input_fragment": "[[bar [foo]\n\n[foo]: /url\n",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 561,
+    "input_fragment": "[Foo]\n\n[foo]: /url \"title\"\n",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 562,
+    "input_fragment": "[foo] bar\n\n[foo]: /url\n",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 563,
+    "input_fragment": "\\[foo]\n\n[foo]: /url \"title\"\n",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 564,
+    "input_fragment": "[foo*]: /url\n\n*[foo*]\n",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 565,
+    "input_fragment": "[foo][bar]\n\n[foo]: /url1\n[bar]: /url2\n",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 566,
+    "input_fragment": "[foo][]\n\n[foo]: /url1\n",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 567,
+    "input_fragment": "[foo]()\n\n[foo]: /url1\n",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 568,
+    "input_fragment": "[foo](not a link)\n\n[foo]: /url1\n",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 569,
+    "input_fragment": "[foo][bar][baz]\n\n[baz]: /url\n",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 570,
+    "input_fragment": "[foo][bar][baz]\n\n[baz]: /url1\n[bar]: /ur",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 571,
+    "input_fragment": "[foo][bar][baz]\n\n[baz]: /url1\n[foo]: /ur",
+    "reason": "tree-sitter link parsing divergence or reference link resolution not supported by AST"
+  },
+  {
+    "example": 572,
+    "input_fragment": "![foo](/url \"title\")\n",
+    "reason": "tree-sitter image parsing divergence or reference resolution not supported by AST"
+  },
+  {
+    "example": 573,
+    "input_fragment": "![foo *bar*]\n\n[foo *bar*]: train.jpg \"tr",
+    "reason": "tree-sitter image parsing divergence or reference resolution not supported by AST"
+  },
+  {
+    "example": 574,
+    "input_fragment": "![foo ![bar](/url)](/url2)\n",
+    "reason": "tree-sitter image parsing divergence or reference resolution not supported by AST"
+  },
+  {
+    "example": 575,
+    "input_fragment": "![foo [bar](/url)](/url2)\n",
+    "reason": "tree-sitter image parsing divergence or reference resolution not supported by AST"
+  },
+  {
+    "example": 576,
+    "input_fragment": "![foo *bar*][]\n\n[foo *bar*]: train.jpg \"",
+    "reason": "tree-sitter image parsing divergence or reference resolution not supported by AST"
+  },
+  {
+    "example": 577,
+    "input_fragment": "![foo *bar*][foobar]\n\n[FOOBAR]: train.jp",
+    "reason": "tree-sitter image parsing divergence or reference resolution not supported by AST"
+  },
+  {
+    "example": 578,
+    "input_fragment": "![foo](train.jpg)\n",
+    "reason": "tree-sitter image parsing divergence or reference resolution not supported by AST"
+  },
+  {
+    "example": 579,
+    "input_fragment": "My ![foo bar](/path/to/train.jpg  \"title",
+    "reason": "tree-sitter image parsing divergence or reference resolution not supported by AST"
+  },
+  {
+    "example": 580,
+    "input_fragment": "![foo](<url>)\n",
+    "reason": "tree-sitter image parsing divergence or reference resolution not supported by AST"
+  },
+  {
+    "example": 582,
+    "input_fragment": "![foo][bar]\n\n[bar]: /url\n",
+    "reason": "tree-sitter image parsing divergence or reference resolution not supported by AST"
+  },
+  {
+    "example": 583,
+    "input_fragment": "![foo][bar]\n\n[BAR]: /url\n",
+    "reason": "tree-sitter image parsing divergence or reference resolution not supported by AST"
+  },
+  {
+    "example": 584,
+    "input_fragment": "![foo][]\n\n[foo]: /url \"title\"\n",
+    "reason": "tree-sitter image parsing divergence or reference resolution not supported by AST"
+  },
+  {
+    "example": 585,
+    "input_fragment": "![*foo* bar][]\n\n[*foo* bar]: /url \"title",
+    "reason": "tree-sitter image parsing divergence or reference resolution not supported by AST"
+  },
+  {
+    "example": 586,
+    "input_fragment": "![Foo][]\n\n[foo]: /url \"title\"\n",
+    "reason": "tree-sitter image parsing divergence or reference resolution not supported by AST"
+  },
+  {
+    "example": 587,
+    "input_fragment": "![foo] \n[]\n\n[foo]: /url \"title\"\n",
+    "reason": "tree-sitter image parsing divergence or reference resolution not supported by AST"
+  },
+  {
+    "example": 588,
+    "input_fragment": "![foo]\n\n[foo]: /url \"title\"\n",
+    "reason": "tree-sitter image parsing divergence or reference resolution not supported by AST"
+  },
+  {
+    "example": 589,
+    "input_fragment": "![*foo* bar]\n\n[*foo* bar]: /url \"title\"\n",
+    "reason": "tree-sitter image parsing divergence or reference resolution not supported by AST"
+  },
+  {
+    "example": 590,
+    "input_fragment": "![[foo]]\n\n[[foo]]: /url \"title\"\n",
+    "reason": "tree-sitter image parsing divergence or reference resolution not supported by AST"
+  },
+  {
+    "example": 591,
+    "input_fragment": "![Foo]\n\n[foo]: /url \"title\"\n",
+    "reason": "tree-sitter image parsing divergence or reference resolution not supported by AST"
+  },
+  {
+    "example": 592,
+    "input_fragment": "!\\[foo]\n\n[foo]: /url \"title\"\n",
+    "reason": "tree-sitter image parsing divergence or reference resolution not supported by AST"
+  },
+  {
+    "example": 593,
+    "input_fragment": "\\![foo]\n\n[foo]: /url \"title\"\n",
+    "reason": "tree-sitter image parsing divergence or reference resolution not supported by AST"
+  },
+  {
+    "example": 597,
+    "input_fragment": "<MAILTO:FOO@BAR.BAZ>\n",
+    "reason": "tree-sitter autolink parsing divergence or test renderer URL encoding"
+  },
+  {
+    "example": 603,
+    "input_fragment": "<https://example.com/\\[\\>\n",
+    "reason": "tree-sitter autolink parsing divergence or test renderer URL encoding"
+  },
+  {
+    "example": 606,
+    "input_fragment": "<foo\\+@bar.example.com>\n",
+    "reason": "tree-sitter autolink parsing divergence or test renderer URL encoding"
+  },
+  {
+    "example": 616,
+    "input_fragment": "<a foo=\"bar\" bam = 'baz <em>\"</em>'\n_boo",
+    "reason": "tree-sitter inline HTML parsing divergence"
+  },
+  {
+    "example": 625,
+    "input_fragment": "foo <!-- this is a --\ncomment - with hyp",
+    "reason": "tree-sitter inline HTML parsing divergence"
+  },
+  {
+    "example": 626,
+    "input_fragment": "foo <!--> foo -->\n\nfoo <!---> foo -->\n",
+    "reason": "tree-sitter inline HTML parsing divergence"
+  },
+  {
+    "example": 632,
+    "input_fragment": "<a href=\"\\\"\">\n",
+    "reason": "tree-sitter inline HTML parsing divergence"
+  },
+  {
+    "example": 636,
+    "input_fragment": "foo  \n     bar\n",
+    "reason": "tree-sitter hard break detection or test renderer trailing space handling divergence"
+  },
+  {
+    "example": 637,
+    "input_fragment": "foo\\\n     bar\n",
+    "reason": "tree-sitter hard break detection or test renderer trailing space handling divergence"
+  },
+  {
+    "example": 640,
+    "input_fragment": "`code  \nspan`\n",
+    "reason": "tree-sitter hard break detection or test renderer trailing space handling divergence"
+  },
+  {
+    "example": 641,
+    "input_fragment": "`code\\\nspan`\n",
+    "reason": "tree-sitter hard break detection or test renderer trailing space handling divergence"
+  },
+  {
+    "example": 645,
+    "input_fragment": "foo  \n",
+    "reason": "tree-sitter hard break detection or test renderer trailing space handling divergence"
+  },
+  {
+    "example": 649,
+    "input_fragment": "foo \n baz\n",
+    "reason": "test renderer soft break handling divergence"
+  }
+]
