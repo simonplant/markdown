@@ -1,0 +1,85 @@
+{
+  "candidates": {
+    "A_piece_table": {
+      "description": "Piece table with BTreeMap<usize, Piece> over Original + Add buffers",
+      "median_metrics": {
+        "cold_startup_ms": 0.0000,
+        "open_small_ms": 0.0259,
+        "open_10k_ms": 0.0974,
+        "keystroke_ms": 0.0008,
+        "save_ms": 0.2159,
+        "memory_mb": 2.66
+      },
+      "runs": [
+        {"cold_startup_ms": 0.0000, "open_small_ms": 0.0288, "open_10k_ms": 0.0974, "keystroke_ms": 0.0014, "save_ms": 0.2197, "memory_mb": 2.66},
+        {"cold_startup_ms": 0.0000, "open_small_ms": 0.0233, "open_10k_ms": 0.0982, "keystroke_ms": 0.0008, "save_ms": 0.1902, "memory_mb": 2.66},
+        {"cold_startup_ms": 0.0000, "open_small_ms": 0.0218, "open_10k_ms": 0.0869, "keystroke_ms": 0.0007, "save_ms": 0.2063, "memory_mb": 2.66},
+        {"cold_startup_ms": 0.0001, "open_small_ms": 0.0259, "open_10k_ms": 0.0997, "keystroke_ms": 0.0009, "save_ms": 0.2159, "memory_mb": 2.66},
+        {"cold_startup_ms": 0.0000, "open_small_ms": 0.0268, "open_10k_ms": 0.0950, "keystroke_ms": 0.0006, "save_ms": 0.2169, "memory_mb": 2.66}
+      ],
+      "added_lines": 190,
+      "new_dependencies": 0,
+      "unsafe_blocks": 0,
+      "platform_specific_code": false
+    },
+    "B_rope": {
+      "description": "Rope via the ropey crate (v1.6.1)",
+      "median_metrics": {
+        "cold_startup_ms": 0.0003,
+        "open_small_ms": 0.0285,
+        "open_10k_ms": 0.2620,
+        "keystroke_ms": 0.0007,
+        "save_ms": 0.2397,
+        "memory_mb": 3.41
+      },
+      "runs": [
+        {"cold_startup_ms": 0.0003, "open_small_ms": 0.0284, "open_10k_ms": 0.2655, "keystroke_ms": 0.0008, "save_ms": 0.2397, "memory_mb": 3.41},
+        {"cold_startup_ms": 0.0003, "open_small_ms": 0.0308, "open_10k_ms": 0.2620, "keystroke_ms": 0.0007, "save_ms": 0.2456, "memory_mb": 3.41},
+        {"cold_startup_ms": 0.0003, "open_small_ms": 0.0280, "open_10k_ms": 0.2547, "keystroke_ms": 0.0007, "save_ms": 0.2367, "memory_mb": 3.41},
+        {"cold_startup_ms": 0.0003, "open_small_ms": 0.0293, "open_10k_ms": 0.2761, "keystroke_ms": 0.0009, "save_ms": 0.2590, "memory_mb": 3.41},
+        {"cold_startup_ms": 0.0003, "open_small_ms": 0.0285, "open_10k_ms": 0.2460, "keystroke_ms": 0.0007, "save_ms": 0.2240, "memory_mb": 3.41}
+      ],
+      "added_lines": 70,
+      "new_dependencies": 1,
+      "unsafe_blocks": 0,
+      "platform_specific_code": false
+    },
+    "C_string": {
+      "description": "M0 String-backed Document (control — no changes)",
+      "median_metrics": {
+        "cold_startup_ms": 0.0000,
+        "open_small_ms": 0.0257,
+        "open_10k_ms": 0.0899,
+        "keystroke_ms": 0.0005,
+        "save_ms": 0.1924,
+        "memory_mb": 2.56
+      },
+      "runs": [
+        {"cold_startup_ms": 0.0000, "open_small_ms": 0.0272, "open_10k_ms": 0.0880, "keystroke_ms": 0.0012, "save_ms": 0.2008, "memory_mb": 2.56},
+        {"cold_startup_ms": 0.0000, "open_small_ms": 0.0250, "open_10k_ms": 0.0890, "keystroke_ms": 0.0004, "save_ms": 0.2101, "memory_mb": 2.56},
+        {"cold_startup_ms": 0.0000, "open_small_ms": 0.0254, "open_10k_ms": 0.0963, "keystroke_ms": 0.0004, "save_ms": 0.1924, "memory_mb": 2.56},
+        {"cold_startup_ms": 0.0000, "open_small_ms": 0.0257, "open_10k_ms": 0.0924, "keystroke_ms": 0.0005, "save_ms": 0.1821, "memory_mb": 2.56},
+        {"cold_startup_ms": 0.0000, "open_small_ms": 0.0262, "open_10k_ms": 0.0899, "keystroke_ms": 0.0006, "save_ms": 0.1807, "memory_mb": 2.56}
+      ],
+      "added_lines": 0,
+      "new_dependencies": 0,
+      "unsafe_blocks": 0,
+      "platform_specific_code": false
+    }
+  },
+  "baseline": {
+    "cold_startup_ms": 0.0,
+    "open_small_ms": 0.0234,
+    "open_10k_ms": 0.0901,
+    "keystroke_ms": 0.0006,
+    "save_ms": 0.1693,
+    "memory_mb": 2.53
+  },
+  "regression_threshold": 1.1,
+  "measurement": {
+    "num_runs": 5,
+    "method": "median",
+    "build_profile": "release"
+  },
+  "winner": "C_string"
+}

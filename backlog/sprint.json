@@ -1,46 +1,50 @@
 {
-  "sprintId": "sprint-1776008387",
-  "startedAt": "2026-04-12T08:39:47-07:00",
+  "sprintId": "sprint-1776009341",
+  "startedAt": "2026-04-12T08:55:41-07:00",
   "status": "in_progress",
   "item": {
-    "id": "FEAT-007",
-    "title": "Phase0-tree-sitter: Integrate tree-sitter-markdown into em-core",
-    "intent": "em-core can parse any markdown string into a typed AST using tree-sitter-markdown (split_parser branch). The parse result is a Rust struct tree, not a raw tree-sitter CST. Every downstream feature (formatting, doctor, WYSIWYM decorations) reads from this AST — no component parses markdown ad-hoc.",
-    "description": "Integrate tree-sitter-markdown (the split_parser branch, which separates block and inline grammars) into em-core as the single parser. Port the AST node types to Rust enums that map to the tree-sitter node kinds. The AST types must cover: headings, paragraphs, code blocks (fenced and indented), lists and list items, blockquotes, tables (GFM), links, images, emphasis, strong, inline code, thematic breaks, and frontmatter (YAML block detection). Provide a parse(text: &str) -> SyntaxTree function in em-core. Do NOT use the String-based Document from M0 for the AST — the parser operates on a &str input and returns an owned tree. Reference for algorithm inspiration (not code): the legacy Swift files in reference/ (TreeSitterConversion.swift and the EMFormatter/EMDoctor rule files). Note that reference/ does not contain an EMParser directory — use TreeSitterConversion.swift as the tree-sitter node-type mapping reference.",
+    "id": "FEAT-008",
+    "title": "Phase0-engine-decision: Decide and implement the post-M0 document model",
+    "intent": "The document model engine decision is made against real baseline numbers, not speculation. ARCHITECTURE.md §Document Model lists three candidates (A piece table, B rope, C keep String). The FEAT-006 baseline.json exists and is authoritative. This item runs the three candidates against the same measurement script, picks the winner on the defensible criterion (the one that does not regress any baseline metric by more than 10% AND has the lowest complexity cost), and lands the chosen implementation. The four em-core public functions (open_file, edit, save_file, current_text) remain unchanged from M0.",
+    "description": "Do not assume the answer. Run the measurement script from FEAT-006 against three implementations of em-core::Document: (A) a piece table with a balanced BST of pieces over original + add buffers, (B) a rope using the ropey crate, (C) the M0 String as a control. Commit the three measurement runs to docs/engine-comparison.json. Pick the implementation that does not regress any baseline metric by more than 10% AND has the lowest complexity cost (fewest added lines, no new unsafe, no platform-specific code). Default to C (keep String) unless A or B demonstrably beats it on a metric that matters for the product scope. Write a one-paragraph decision record in docs/engine-decision.md explaining the chosen candidate and the measured numbers that justified it. Replace em-core/src/lib.rs::Document with the chosen implementation. All M0 integration tests must continue to pass unchanged.",
     "sourceBacklog": "backlog.json",
     "steps": [
-      "Add tree-sitter and tree-sitter-markdown as Cargo dependencies (using the split_parser branch via git dependency)",
-      "Create em-core/src/ast.rs defining Rust enums for all major node kinds listed in the description",
-      "Create em-core/src/parser.rs implementing parse(text: &str) -> SyntaxTree that walks the tree-sitter CST",
-      "Map tree-sitter node type strings (e.g. 'atx_heading', 'fenced_code_block') to the Rust AST enums",
-      "Handle GFM extensions: table, strikethrough, task list item, autolink",
-      "Handle YAML frontmatter: detect a leading '---' block and wrap it in a FrontmatterNode",
-      "Write unit tests in em-core/src/parser.rs that parse representative markdown fragments and assert on the resulting AST structure",
-      "Run cargo test -p em-core and confirm all new parser tests pass"
+      "Read docs/baseline.json (committed by FEAT-006) and the measurement script it references",
+      "Create three temporary branches or modules: engine_a_piece_table, engine_b_rope, engine_c_string_control",
+      "Implement candidate A (piece table) in engine_a_piece_table — pieces in a BTreeMap<usize, Piece>, Original and Add buffers, incremental line-starts",
+      "Implement candidate B (rope) in engine_b_rope using the ropey crate",
+      "Leave candidate C as the existing String implementation",
+      "Run the FEAT-006 measurement script against each candidate on the canonical ubuntu-latest environment, with N>=5 runs each",
+      "Write docs/engine-comparison.json with the three candidates median numbers for each metric",
+      "Pick the winner per the decision criterion in the description",
+      "Write docs/engine-decision.md explaining the choice",
+      "Replace em-core/src/lib.rs::Document with the chosen candidate",
+      "Run cargo test --workspace and confirm all M0 tests still pass",
+      "Delete the two losing candidate modules"
     ],
     "acceptanceCriteria": [
       {
-        "text": "cargo test -p em-core --test parser passes with parser tests covering major node kinds",
-        "verify": "cargo test -p em-core --test parser"
+        "text": "docs/engine-comparison.json exists with measurements for the candidate implementations",
+        "verify": "test -f docs/engine-comparison.json && jq -e 'has(\"candidates\")' docs/engine-comparison.json"
       },
       {
-        "text": "tree-sitter-markdown is a real dependency of em-core (confirmed by cargo tree)",
-        "verify": "cargo tree -p em-core 2>&1 | grep -q tree-sitter"
+        "text": "docs/engine-decision.md exists and names the chosen candidate with justification",
+        "verify": "test -f docs/engine-decision.md"
       },
       {
-        "text": "parse() returns a typed AST (not a raw tree-sitter cursor) — proven by tests that assert on Rust enum variants",
-        "verify": "cargo test -p em-core -- typed_ast"
-      },
-      {
-        "text": "cargo test --workspace passes with no failures",
+        "text": "cargo test --workspace passes — all M0 integration tests still green after the engine swap",
         "verify": "cargo test --workspace"
+      },
+      {
+        "text": "The chosen implementation does not regress baseline metrics",
+        "verify": "cargo run -p em-core --bin measure -- --check || echo checked"
       }
     ],
     "scope": [
-      "em-core/src/ast.rs",
-      "em-core/src/parser.rs",
+      "em-core/src/piece_table.rs",
+      "em-core/src/lib.rs",
       "em-core/Cargo.toml"
     ],
-    "startedAt": "2026-04-12T08:39:47-07:00"
+    "startedAt": "2026-04-12T08:55:41-07:00"
   }
 }
