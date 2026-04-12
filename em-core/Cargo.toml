@@ -3,5 +3,9 @@ name = "em-core"
 version = "0.1.0"
 edition = "2021"
 
+[dependencies]
+tree-sitter = "0.26"
+tree-sitter-md = { version = "0.5", features = ["parser"] }
+
 [dev-dependencies]
 tempfile = "3"
