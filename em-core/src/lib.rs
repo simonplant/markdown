@@ -2,6 +2,7 @@ use std::fs;
 use std::io;
 
 pub mod ast;
+pub mod doctor;
 pub mod formatter;
 pub mod parser;
 
