@@ -114,16 +114,16 @@
       ],
       "acceptanceCriteria": [
         {
-          "text": "src-tauri/src/main.rs registers all four tauri commands (open_file, edit, save_file, current_text)",
-          "verify": "grep -c 'tauri::command' src-tauri/src/main.rs | grep -qE '^[4-9]|^[1-9][0-9]'"
+          "text": "A Rust test exists in src-tauri that calls each of the four commands (open_file, edit, save_file, current_text) with a real AppState against a real temp file, and asserts each command returns the expected result",
+          "verify": "cargo test -p easy-markdown --test bridge 2>&1 | grep -qE 'test result: ok\\. [4-9]|test result: ok\\. [1-9][0-9]' || cargo test --workspace bridge 2>&1 | grep -qE 'test result: ok\\. [1-9]'"
         },
         {
-          "text": "cargo test --workspace passes all tests including bridge-level integration tests",
-          "verify": "cargo test --workspace 2>&1 | grep -qE 'test result: ok'"
+          "text": "cargo test --workspace exits 0 with no failures",
+          "verify": "cargo test --workspace 2>&1 | grep -qE 'test result: ok' && ! cargo test --workspace 2>&1 | grep -qE 'FAILED'"
         },
         {
-          "text": "The invoke_handler in main.rs includes all four command functions",
-          "verify": "grep -q 'generate_handler' src-tauri/src/main.rs"
+          "text": "A round-trip test asserts save_file writes bytes to disk that match what current_text returns",
+          "verify": "cargo test --workspace save_file_roundtrip 2>&1 | grep -qE 'test result: ok\\. [1-9]'"
         }
       ],
       "scope": [
@@ -155,16 +155,20 @@
       ],
       "acceptanceCriteria": [
         {
-          "text": "npm install and npm run build complete without errors",
-          "verify": "npm install && npm run build 2>&1 | grep -qcv 'ERROR'"
+          "text": "npm install exits 0",
+          "verify": "npm install"
         },
         {
-          "text": "The built output includes a JS bundle that contains CodeMirror references",
-          "verify": "test -f dist/index.html || test -f src/index.html"
+          "text": "npm run build exits 0 and produces a dist/ directory with an index.html entry point",
+          "verify": "npm run build && test -f dist/index.html"
         },
         {
-          "text": "src/editor.ts (or equivalent) imports from @codemirror packages and initializes an EditorView",
-          "verify": "grep -r 'EditorView' src/ | grep -qv 'node_modules'"
+          "text": "The built JS bundle contains CodeMirror EditorView code, proving @codemirror packages were imported and not tree-shaken away",
+          "verify": "grep -rql EditorView dist/ | head -1 | grep -q ."
+        },
+        {
+          "text": "The built bundle does NOT contain @codemirror/lang-markdown — M0 is explicitly plain-text-only per PRODUCT.md §7.1.6",
+          "verify": "! grep -rqlE 'lang-markdown|markdownLanguage' dist/"
         }
       ],
       "scope": [
@@ -287,20 +291,20 @@
       ],
       "acceptanceCriteria": [
         {
-          "text": "cargo test -p em-core passes including parser unit tests for headings, code blocks, lists, tables, and links",
-          "verify": "cargo test -p em-core 2>&1 | grep -qE 'test result: ok'"
+          "text": "cargo test -p em-core --test parser passes with at least 8 distinct test cases (heading, paragraph, fenced code, bullet list, ordered list, link, strong, emphasis)",
+          "verify": "cargo test -p em-core --test parser 2>&1 | grep -qE 'test result: ok\\. ([8-9]|[1-9][0-9])'"
         },
         {
-          "text": "em-core/src/ast.rs defines Rust enums covering the major node kinds",
-          "verify": "grep -q 'enum.*Node\\|NodeKind' em-core/src/ast.rs"
+          "text": "cargo tree lists tree-sitter and tree-sitter-md (or equivalent) as direct dependencies of em-core",
+          "verify": "cargo tree -p em-core 2>&1 | grep -qE 'tree-sitter( |-md)'"
         },
         {
-          "text": "em-core/src/parser.rs implements a pub fn parse(text: &str) function",
-          "verify": "grep -q 'pub fn parse' em-core/src/parser.rs"
+          "text": "parse() returns a typed AST with at least the major node kinds — not a raw tree-sitter cursor",
+          "verify": "cargo test -p em-core --test parser returns_typed_ast 2>&1 | grep -qE 'test result: ok\\. [1-9]'"
         },
         {
-          "text": "tree-sitter-markdown appears in em-core/Cargo.toml as a dependency",
-          "verify": "grep -q 'tree-sitter' em-core/Cargo.toml"
+          "text": "cargo test --workspace exits 0 with no failures after integrating the parser",
+          "verify": "cargo test --workspace 2>&1 | grep -qE 'test result: ok' && ! cargo test --workspace 2>&1 | grep -qE 'FAILED'"
         }
       ],
       "scope": [
@@ -317,38 +321,41 @@
     },
     {
       "id": "FEAT-008",
-      "title": "Phase0-piece-table: Replace String doc model with piece table",
-      "intent": "The Document struct in em-core uses a piece table (red-black tree of pieces over original + add buffers) instead of a plain String. All four public API functions (open_file, edit, save_file, current_text) work identically from the caller's perspective. The M0 integration tests still pass. A 100MB file can be opened and edited without copying the entire file into a new String on every keystroke.",
-      "description": "Replace the String-backed Document with a piece table implementation as specified in ARCHITECTURE.md. The piece table stores pieces in a red-black tree keyed by cumulative byte offset. Each piece references either the original buffer (read from disk, never mutated) or the append-only add buffer. Maintain an incremental line-starts index (Vec<usize> of byte offsets) updated on every edit. The public API surface (open_file, edit, save_file, current_text) must remain unchanged. Compaction triggers when piece count exceeds 10x line count or on save. All previous em-core integration tests must continue to pass after this replacement. Reference: ARCHITECTURE.md §Document Model for the full spec.",
+      "title": "Phase0-engine-decision: Decide and implement the post-M0 document model",
+      "intent": "The document model engine decision is made against real baseline numbers, not speculation. ARCHITECTURE.md §Document Model lists three candidates (A piece table, B rope, C keep String). The FEAT-006 baseline.json exists and is authoritative. This item runs the three candidates against the same measurement script, picks the winner on the defensible criterion (the one that does not regress any baseline metric by more than 10% AND has the lowest complexity cost), and lands the chosen implementation. The four em-core public functions (open_file, edit, save_file, current_text) remain unchanged from M0.",
+      "description": "Do not assume the answer. Run the measurement script from FEAT-006 against three implementations of em-core::Document: (A) a piece table with a balanced BST of pieces over original + add buffers, (B) a rope using the ropey crate, (C) the M0 String as a control. Commit the three measurement runs to docs/engine-comparison.json. Pick the implementation that does not regress any baseline metric by more than 10% AND has the lowest complexity cost (fewest added lines, no new unsafe, no platform-specific code). Default to C (keep String) unless A or B demonstrably beats it on a metric that matters for the product scope. Write a one-paragraph decision record in docs/engine-decision.md explaining the chosen candidate and the measured numbers that justified it. Replace em-core/src/lib.rs::Document with the chosen implementation. All M0 integration tests must continue to pass unchanged.",
       "priority": "must",
       "category": "core",
       "steps": [
-        "Create em-core/src/piece_table.rs with the PieceTable struct, Buffer enum (Original, Add), and Piece struct",
-        "Implement a red-black tree (use the 'rbtree' or 'btreemap' crate, or implement from scratch) keyed by cumulative offset",
-        "Implement insert(offset, text) and delete(offset, length) on PieceTable using piece splitting and insertion",
-        "Implement iter_text() -> impl Iterator<Item=&str> that yields text slices from pieces in order",
-        "Implement current_text() -> String by collecting iter_text()",
-        "Implement the line-starts index: a sorted Vec<usize> updated incrementally on each edit",
-        "Implement compaction: when piece_count > 10 * line_count or on save, rewrite into a fresh buffer",
-        "Replace the String field in Document with PieceTable",
-        "Run cargo test -p em-core and confirm all tests pass, including the M0 round-trip integration test"
+        "Read docs/baseline.json (committed by FEAT-006) and the measurement script it references",
+        "Create three temporary branches or modules: engine_a_piece_table, engine_b_rope, engine_c_string_control",
+        "Implement candidate A (piece table) in engine_a_piece_table — pieces in a BTreeMap<usize, Piece>, Original and Add buffers, incremental line-starts",
+        "Implement candidate B (rope) in engine_b_rope using the ropey crate",
+        "Leave candidate C as the existing String implementation",
+        "Run the FEAT-006 measurement script against each candidate on the canonical ubuntu-latest environment, with N>=5 runs each",
+        "Write docs/engine-comparison.json with the three candidates median numbers for each metric",
+        "Pick the winner per the decision criterion in the description",
+        "Write docs/engine-decision.md explaining the choice",
+        "Replace em-core/src/lib.rs::Document with the chosen candidate",
+        "Run cargo test --workspace and confirm all M0 tests still pass",
+        "Delete the two losing candidate modules"
       ],
       "acceptanceCriteria": [
         {
-          "text": "cargo test -p em-core passes including the M0 integration test (open, edit, save, reopen, assert)",
-          "verify": "cargo test -p em-core 2>&1 | grep -qE 'test result: ok'"
+          "text": "docs/engine-comparison.json exists and contains median measurements for all three candidates on all six baseline metrics",
+          "verify": "test -f docs/engine-comparison.json && jq -e '.candidates | length == 3 and (all(.metrics | length >= 6))' docs/engine-comparison.json"
         },
         {
-          "text": "em-core/src/piece_table.rs exists and defines a PieceTable struct",
-          "verify": "test -f em-core/src/piece_table.rs && grep -q 'struct PieceTable' em-core/src/piece_table.rs"
+          "text": "docs/engine-decision.md exists and names the chosen candidate with a justification referencing measured numbers",
+          "verify": "test -f docs/engine-decision.md && grep -qiE 'chosen|winner|decision' docs/engine-decision.md"
         },
         {
-          "text": "Document no longer holds a plain String — it delegates to PieceTable",
-          "verify": "grep -q 'PieceTable' em-core/src/lib.rs"
+          "text": "cargo test --workspace passes — every M0 integration test still green after the engine swap",
+          "verify": "cargo test --workspace 2>&1 | grep -qE 'test result: ok\\. [1-9]' && ! cargo test --workspace 2>&1 | grep -qE 'FAILED'"
         },
         {
-          "text": "cargo bench or a timing test shows editing a 100k-char document does not copy more than one piece worth of bytes",
-          "verify": "cargo test -p em-core 2>&1 | grep -qE 'test result: ok'"
+          "text": "The measurement run on the chosen candidate does not regress any baseline.json metric by more than 10%",
+          "verify": "cargo run -p em-core --example baseline_check 2>&1 | grep -qiE 'no regression|within budget'"
         }
       ],
       "scope": [
@@ -382,20 +389,20 @@
       ],
       "acceptanceCriteria": [
         {
-          "text": "cargo test -p em-core passes including formatter unit tests for all five rules",
-          "verify": "cargo test -p em-core 2>&1 | grep -qE 'test result: ok'"
+          "text": "cargo test -p em-core --test formatter passes with explicit test cases for list continuation, table alignment, heading spacing, blank-line separation, and trailing whitespace trim (5+ tests)",
+          "verify": "cargo test -p em-core --test formatter 2>&1 | grep -qE 'test result: ok\\. ([5-9]|[1-9][0-9])'"
         },
         {
-          "text": "em-core/src/formatter.rs exists and exports pub fn format()",
-          "verify": "test -f em-core/src/formatter.rs && grep -q 'pub fn format' em-core/src/formatter.rs"
+          "text": "format() is idempotent — running it twice on the same input produces the same output",
+          "verify": "cargo test -p em-core --test formatter format_is_idempotent 2>&1 | grep -qE 'test result: ok\\. [1-9]'"
         },
         {
-          "text": "The format() function returns Vec<Mutation> (not a mutated document)",
-          "verify": "grep -q 'Vec.*Mutation\\|Mutation.*Vec' em-core/src/formatter.rs"
+          "text": "format() does not change the semantic content — only whitespace, list markers, and alignment are adjusted",
+          "verify": "cargo test -p em-core --test formatter format_preserves_semantics 2>&1 | grep -qE 'test result: ok\\. [1-9]'"
         },
         {
-          "text": "Formatting a 10k-line document completes in under 50ms (per PRODUCT.md D-PERF-1)",
-          "verify": "cargo test -p em-core --test perf 2>&1 | grep -qE 'test result: ok' || cargo test -p em-core 2>&1 | grep -qE 'test result: ok'"
+          "text": "cargo test --workspace exits 0 with no failures and no baseline regression",
+          "verify": "cargo test --workspace 2>&1 | grep -qE 'test result: ok' && ! cargo test --workspace 2>&1 | grep -qE 'FAILED'"
         }
       ],
       "scope": [
@@ -430,20 +437,24 @@
       ],
       "acceptanceCriteria": [
         {
-          "text": "cargo test --workspace runs the CommonMark spec suite and produces a summary line with pass/skip/fail counts",
-          "verify": "cargo test --workspace -- commonmark 2>&1 | grep -qiE 'pass|skip|commonmark'"
+          "text": "em-core/tests/fixtures/spec.json exists (CommonMark 0.31.2 spec examples)",
+          "verify": "test -f em-core/tests/fixtures/spec.json && jq -e '. | length > 600' em-core/tests/fixtures/spec.json"
         },
         {
-          "text": "em-core/tests/commonmark_skip.json exists with at least structure (can be empty array for projects at 100%)",
-          "verify": "test -f em-core/tests/commonmark_skip.json"
+          "text": "em-core/tests/commonmark_skip.json exists listing known divergences, each with a reason",
+          "verify": "test -f em-core/tests/commonmark_skip.json && jq -e 'all(.[]; .reason != null)' em-core/tests/commonmark_skip.json"
         },
         {
-          "text": "docs/commonmark_status.md exists documenting the current pass rate",
-          "verify": "test -f docs/commonmark_status.md"
+          "text": "cargo test -p em-core --test commonmark runs the spec suite and reports pass/fail/skip counts",
+          "verify": "cargo test -p em-core --test commonmark 2>&1 | grep -qiE 'commonmark.*(pass|fail|skip).*[0-9]+'"
         },
         {
-          "text": "The GitHub Actions workflow includes a step that runs the CommonMark test suite",
-          "verify": "grep -r 'commonmark' .github/workflows/"
+          "text": "docs/commonmark_status.md exists and documents the current pass rate as a committed number",
+          "verify": "test -f docs/commonmark_status.md && grep -qE '[0-9]+%|[0-9]+/[0-9]+' docs/commonmark_status.md"
+        },
+        {
+          "text": "A GitHub Actions workflow job runs the commonmark test and fails if the pass rate drops below the committed number",
+          "verify": "grep -rqE 'commonmark' .github/workflows/ && yq '.jobs | to_entries | .[] | select(.value | tostring | test(\"commonmark\"))' .github/workflows/*.yml 2>/dev/null | grep -q ."
         }
       ],
       "scope": [
