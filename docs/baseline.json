@@ -1,0 +1,64 @@
+{
+  "metrics": {
+    "cold_startup_ms": 0.0,
+    "open_small_ms": 0.0234,
+    "open_10k_ms": 0.0901,
+    "keystroke_ms": 0.0006,
+    "save_ms": 0.1693,
+    "memory_mb": 2.53
+  },
+  "metadata": {
+    "hostname": "Simons-Macbook-Air.local",
+    "os_version": "macOS 26.3.1",
+    "uname": "Darwin Simons-Macbook-Air.local 25.3.0 Darwin Kernel Version 25.3.0: Wed Jan 28 20:56:34 PST 2026; root:xnu-12377.91.3~2/RELEASE_ARM64_T8112 arm64",
+    "cpu_model": "Apple M2",
+    "memory_total_mb": 16384
+  },
+  "measurement": {
+    "num_runs": 5,
+    "method": "median",
+    "regression_threshold": 1.1
+  },
+  "runs": [
+    {
+      "cold_startup_ms": 0.0,
+      "open_small_ms": 0.035,
+      "open_10k_ms": 0.0925,
+      "keystroke_ms": 0.0007,
+      "save_ms": 0.2008,
+      "memory_mb": 2.53
+    },
+    {
+      "cold_startup_ms": 0.0,
+      "open_small_ms": 0.0234,
+      "open_10k_ms": 0.0834,
+      "keystroke_ms": 0.0005,
+      "save_ms": 0.1445,
+      "memory_mb": 2.53
+    },
+    {
+      "cold_startup_ms": 0.0,
+      "open_small_ms": 0.0255,
+      "open_10k_ms": 0.0974,
+      "keystroke_ms": 0.0006,
+      "save_ms": 0.1693,
+      "memory_mb": 2.53
+    },
+    {
+      "cold_startup_ms": 0.0,
+      "open_small_ms": 0.021,
+      "open_10k_ms": 0.0901,
+      "keystroke_ms": 0.0006,
+      "save_ms": 0.1807,
+      "memory_mb": 2.53
+    },
+    {
+      "cold_startup_ms": 0.0,
+      "open_small_ms": 0.0203,
+      "open_10k_ms": 0.0747,
+      "keystroke_ms": 0.0006,
+      "save_ms": 0.138,
+      "memory_mb": 2.53
+    }
+  ]
+}

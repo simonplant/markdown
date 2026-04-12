@@ -1,0 +1,38 @@
+name: Capture Baseline
+
+on:
+  workflow_dispatch:
+
+jobs:
+  capture-baseline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ". -> target"
+
+      - name: Install Python 3
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Capture baseline
+        run: bash scripts/measure_baseline.sh --capture
+
+      - name: Show captured baseline
+        run: cat docs/baseline.json
+
+      - name: Commit baseline
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/baseline.json
+          git diff --cached --quiet && echo "No changes to commit" && exit 0
+          git commit -m "chore: capture canonical baseline on ubuntu-latest"
+          git push

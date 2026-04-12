@@ -36,3 +36,24 @@ jobs:
 
       - name: Verify .app bundle exists
         run: ls -la src-tauri/target/release/bundle/macos/*.app
+
+  baseline-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ". -> target"
+
+      - name: Install Python 3
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Run baseline regression check
+        run: bash scripts/measure_baseline.sh --check
