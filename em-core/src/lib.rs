@@ -6,6 +6,10 @@ pub struct Document {
 }
 
 impl Document {
+    pub fn from_content(content: String) -> Document {
+        Document { content }
+    }
+
     pub fn open_file(path: &str) -> Result<Document, io::Error> {
         let content = fs::read_to_string(path)?;
         Ok(Document { content })
