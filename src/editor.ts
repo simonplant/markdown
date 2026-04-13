@@ -3,8 +3,19 @@ import { EditorState, type Extension } from "@codemirror/state";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { searchKeymap, highlightSelectionMatches } from "@codemirror/search";
 import { themeExtension, setTheme, getSystemIsDark } from "./themes";
+import { countWords } from "./wordcount";
 
 let view: EditorView;
+
+function updateStatusBar(text: string): void {
+  const stats = countWords(text);
+  const wordsEl = document.getElementById("stat-words");
+  const charsEl = document.getElementById("stat-chars");
+  const readingEl = document.getElementById("stat-reading");
+  if (wordsEl) wordsEl.textContent = `${stats.words} words`;
+  if (charsEl) charsEl.textContent = `${stats.chars} characters`;
+  if (readingEl) readingEl.textContent = `${stats.readingTime} min read`;
+}
 
 export function initEditor(parent: HTMLElement, extraExtensions: Extension[] = []): EditorView {
   const isDark = getSystemIsDark();
@@ -20,6 +31,11 @@ export function initEditor(parent: HTMLElement, extraExtensions: Extension[] = [
       keymap.of([...searchKeymap, ...defaultKeymap, ...historyKeymap]),
       EditorView.lineWrapping,
       themeExtension(isDark),
+      EditorView.updateListener.of((update) => {
+        if (update.docChanged) {
+          updateStatusBar(update.state.doc.toString());
+        }
+      }),
       ...extraExtensions,
     ],
   });
