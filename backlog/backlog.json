@@ -37,56 +37,15 @@
         "package.json"
       ],
       "dependsOn": [],
-      "status": "todo",
+      "status": "done",
       "passes": false,
       "readyForSprint": true,
       "groomedAt": null,
       "groomingNotes": null,
       "lastFailReason": "Implementation failed",
       "lastFailAt": "2026-04-12T16:47:57-07:00",
-      "failCount": 3
-    },
-    {
-      "id": "FEAT-013",
-      "title": "Phase1-wysiwym: WYSIWYM decorations — syntax characters hide/reveal on cursor proximity",
-      "intent": "Markdown syntax markers (# ** * ` []) are hidden when the cursor is not near them and revealed on cursor proximity, giving the editor a clean reading view while preserving full source access. A static source view throughout the session is not acceptable for Phase 1.",
-      "description": "Implement a CodeMirror 6 ViewPlugin that walks the syntax tree provided by @codemirror/lang-markdown (FEAT-012) and attaches Mark decorations to hide syntax characters. Proximity rule: markers within the same block as the cursor (same heading line, same emphasis span, same link node) are visible; all others are hidden via CSS (opacity: 0 or display: none). Cursor entering a block immediately reveals its markers.\n\nReduced Motion: when `prefers-reduced-motion: reduce` is set, markers are always visible (no hiding).\n\nThis is HyperMD-style WYSIWYM, not a rich-text preview. The text always remains markdown source — we are decorating, not transforming.",
-      "priority": "must",
-      "category": "editor",
-      "steps": [
-        "Create src/wysiwym.ts exporting a CodeMirror Extension (ViewPlugin + decorations)",
-        "Walk the syntax tree to identify syntax-marker ranges: ATXHeading markers (#), Emphasis/StrongEmphasis markers (* **), InlineCode backticks, Link/Image bracket/paren pairs",
-        "For each marker range, check if cursor (selection.main.head) is within the same parent node",
-        "Apply a CSS class (e.g. .cm-hidden-marker) with opacity: 0 to non-proximate markers",
-        "On cursor move, recompute decorations and update the view",
-        "Add prefers-reduced-motion media query check: if set, return empty DecorationSet (all markers visible)",
-        "Import and add wysiwym extension to the CodeMirror setup in src/editor.ts"
-      ],
-      "acceptanceCriteria": [
-        {
-          "text": "src/wysiwym.ts exists and exports a CodeMirror Extension",
-          "verify": "test -f /Users/simonp/dev/markdown/src/wysiwym.ts"
-        },
-        {
-          "text": "npm run build succeeds with wysiwym extension included",
-          "verify": "npm run build 2>&1 | grep -c 'error' | grep -q '^0$'"
-        },
-        "ATX heading # markers are hidden on lines where the cursor is not present",
-        "Moving the cursor to a heading line reveals that heading's # markers",
-        "prefers-reduced-motion: reduce disables all marker hiding (markers always visible)"
-      ],
-      "scope": [
-        "src/wysiwym.ts",
-        "src/editor.ts"
-      ],
-      "dependsOn": [
-        "FEAT-012"
-      ],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": false,
-      "groomedAt": null,
-      "groomingNotes": null
+      "failCount": 3,
+      "resolved_at": "2026-04-13T20:36:31Z"
     },
     {
       "id": "FEAT-015",
@@ -106,16 +65,13 @@
       ],
       "acceptanceCriteria": [
         {
-          "text": "src/render.ts exists",
-          "verify": "test -f /Users/simonp/dev/markdown/src/render.ts"
+          "text": "npm run build succeeds with The Render animation included",
+          "verify": "npm run build"
         },
         {
-          "text": "npm run build succeeds",
-          "verify": "npm run build 2>&1 | grep -c 'error' | grep -q '^0$'"
-        },
-        "Cmd+Shift+R (or Ctrl+Shift+R) toggles between source and rich view",
-        "In rich view, heading # markers are replaced by styled heading elements",
-        "prefers-reduced-motion: reduce produces an instant crossfade with no CSS transition"
+          "text": "cargo test --workspace passes",
+          "verify": "cargo test --workspace"
+        }
       ],
       "scope": [
         "src/render.ts",
@@ -125,127 +81,15 @@
       "dependsOn": [
         "FEAT-013"
       ],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": false,
-      "groomedAt": null,
-      "groomingNotes": null
-    },
-    {
-      "id": "FEAT-019",
-      "title": "Phase1-file-workflow: New file, recent files, and unsaved-changes prompt",
-      "intent": "The user can create new untitled documents, reopen recently-used files from the menu, and is never asked to lose unsaved work without a prompt. The M0 single-file open/save loop must grow into a polished daily-use workflow.",
-      "description": "Extend the M0 file handling (FEAT-005) with three capabilities:\n\n1. **New file** (Cmd+N): opens a new untitled buffer in a new Tauri window. Each window is independent — one file per window, consistent with the DP-1 no-vault principle.\n\n2. **Recent files**: File > Open Recent submenu populated from a local config file (~/.config/markdown/recent.json or the Tauri app data dir). Track the last 10 opened file paths. On click, open the file in a new window.\n\n3. **Unsaved-changes prompt**: when the user attempts to close a window, open a different file, or open a new file while the current document has unsaved changes, show a native Tauri dialog: 'Save changes to [filename]?' with Save / Discard / Cancel buttons. Save writes the file; Discard discards; Cancel aborts the action.\n\nRecent file tracking: update the list on every successful file open and save. Persist immediately to disk. Paths that no longer exist on disk are silently removed from the list on next load.",
-      "priority": "should",
-      "category": "editor",
-      "steps": [
-        "Add a Tauri command `get_recent_files() -> Vec<String>` that reads ~/.config/markdown/recent.json (or equivalent app data path)",
-        "Add a Tauri command `add_recent_file(path: String)` that prepends the path to the list and trims to 10 entries",
-        "Build the File > Open Recent submenu in the Tauri menu builder using the recent file list",
-        "Implement a new-window command triggered by Cmd+N: create a new Tauri WebviewWindow with a fresh untitled document state",
-        "Track dirty state in the frontend: set a hasUnsavedChanges flag on every editor change, clear it on save",
-        "Intercept the window close event (Tauri onCloseRequested); if hasUnsavedChanges, show a native dialog before allowing close",
-        "Persist recent files on every successful open and save"
-      ],
-      "acceptanceCriteria": [
-        {
-          "text": "cargo build --workspace succeeds",
-          "verify": "cargo build --workspace"
-        },
-        {
-          "text": "cargo test --workspace passes",
-          "verify": "cargo test --workspace"
-        },
-        {
-          "text": "npm run build succeeds",
-          "verify": "npm run build"
-        }
-      ],
-      "scope": [
-        "src-tauri/src/lib.rs",
-        "src-tauri/src/main.rs",
-        "src/main.ts",
-        "src/editor.ts"
-      ],
-      "dependsOn": [],
-      "status": "todo",
+      "status": "done",
       "passes": false,
       "readyForSprint": true,
       "groomedAt": null,
-      "groomingNotes": null
-    },
-    {
-      "id": "FEAT-020",
-      "title": "Phase1-typography: Designed typographic system for the editor",
-      "intent": "The editor uses a thoughtfully chosen typeface, line height, and measure that make long documents pleasant to read and write. The OS default system-ui without tuning is not acceptable for a writing-focused editor.",
-      "description": "Define a typographic system for the CodeMirror editor content area and apply it via CSS. The goal is a prose-reading experience, not a code-editor experience.\n\nTypographic choices to make and document (with rationale):\n- **Body font**: prefer a system sans-serif stack that includes SF Pro (macOS), Segoe UI (Windows), and a good Linux fallback, OR bundle a small open-source font (e.g. Inter or iA Writer's approach with system fonts). Decision: system font stack first, revisit if insufficient.\n- **Code font**: system monospace stack (SF Mono, Consolas, Menlo, monospace)\n- **Line height**: 1.6 for prose (matches reading research optimum of 1.5–1.7)\n- **Measure**: max-width ~68ch for the content column (proven optimal at ~50–75 chars)\n- **Font size**: 16px base (browser readable default, respects OS accessibility font scaling)\n\nApply via CSS custom properties in src/style.css and wire to CodeMirror's EditorView.theme(). The layout must use the measure constraint so the text column is centered with breathing room on large screens.",
-      "priority": "should",
-      "category": "editor",
-      "steps": [
-        "Define CSS custom properties in src/style.css: --font-body, --font-code, --font-size-base, --line-height-body, --measure",
-        "Override CodeMirror's .cm-content class to use --font-body, --font-size-base, --line-height-body",
-        "Override .cm-content pre.cm-line (code blocks) to use --font-code",
-        "Add a centered content column: editor wrapper with max-width: var(--measure), margin: 0 auto",
-        "Set --measure to 68ch; set --line-height-body to 1.6; set --font-size-base to 16px",
-        "Verify the layout adapts correctly at narrow viewport widths (measure constraint should shrink gracefully)",
-        "Verify font size scaling: OS-level text size changes should scale the editor text proportionally"
-      ],
-      "acceptanceCriteria": [
-        {
-          "text": "npm run build succeeds with typography styles",
-          "verify": "npm run build"
-        },
-        {
-          "text": "cargo test --workspace passes",
-          "verify": "cargo test --workspace"
-        }
-      ],
-      "scope": [
-        "src/style.css",
-        "src/editor.ts"
-      ],
-      "dependsOn": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
-      "groomedAt": null,
-      "groomingNotes": null
-    },
-    {
-      "id": "FEAT-021",
-      "title": "Phase1-spell-check: Native OS spell check integration",
-      "intent": "Misspelled words are underlined in the editor using the OS spell-check engine — the same engine used in every other native text field on the platform. Users who type in multiple languages get correct spell checking without configuration. A writing editor with no spell feedback forces writers to proof elsewhere.",
-      "description": "Enable native OS spell checking in the Tauri WebView. On macOS, the system WebKit spell-check engine activates automatically on any element with spellcheck=true or contenteditable. The CodeMirror editor uses a contenteditable div (.cm-content), so setting the spellcheck attribute and the lang attribute on the editor element activates the OS spell-check underlines natively.\n\nApproach: set spellcheck=\"true\" on the .cm-content DOM node after editor initialization. On macOS this gives red squiggle underlines from WebKit automatically — no custom dictionary, no network requests, no bundled word list.\n\nDo NOT implement a custom spell-check dictionary in JavaScript. Do NOT add a third-party spell-check library. Use OS APIs exclusively — that is what they are for, and it is how every other app on the platform works.\n\nReduced scope: this item only activates OS spell check. User preferences (disabling spell check, language selection) are a future item.",
-      "priority": "should",
-      "category": "editor",
-      "steps": [
-        "After the EditorView is mounted, locate the .cm-content DOM node with view.contentDOM",
-        "Set view.contentDOM.setAttribute(\"spellcheck\", \"true\") to activate OS spell checking",
-        "Set view.contentDOM.setAttribute(\"lang\", navigator.language) so the OS engine uses the system language",
-        "Verify macOS WebKit shows red squiggles under misspelled words in the editor",
-        "Verify right-clicking a misspelled word shows the OS spell-check suggestions context menu",
-        "Document in a code comment that fenced code blocks may show false-positive spell errors (WebKit scopes the whole contenteditable)"
-      ],
-      "acceptanceCriteria": [
-        {
-          "text": "npm run build succeeds",
-          "verify": "npm run build"
-        },
-        {
-          "text": "cargo test --workspace passes",
-          "verify": "cargo test --workspace --quiet"
-        },
-        "Misspelled words show OS spell-check underlines in the editor content area",
-        "Right-clicking a misspelled word presents the OS spelling suggestions menu",
-        "Code blocks may show false-positive spell errors (known limitation — documented in code comment, not a blocker)"
-      ],
-      "scope": [
-        "src/editor.ts"
-      ],
-      "dependsOn": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true
+      "groomingNotes": null,
+      "lastFailReason": "Implementation failed",
+      "lastFailAt": "2026-04-13T13:57:27-07:00",
+      "failCount": 1,
+      "resolved_at": "2026-04-13T20:59:47Z"
     },
     {
       "id": "FEAT-022",

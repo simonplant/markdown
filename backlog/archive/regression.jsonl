@@ -49,3 +49,12 @@
 {"itemId":"FEAT-017","date":"2026-04-13","text":"cargo test --workspace passes","verify":"cargo test --workspace"}
 {"itemId":"FEAT-018","date":"2026-04-13","text":"npm run build succeeds","verify":"npm run build"}
 {"itemId":"FEAT-018","date":"2026-04-13","text":"cargo test --workspace passes","verify":"cargo test --workspace"}
+{"itemId":"FEAT-013","date":"2026-04-13","text":"npm run build succeeds with WYSIWYM decorations included","verify":"npm run build"}
+{"itemId":"FEAT-013","date":"2026-04-13","text":"cargo test --workspace passes","verify":"cargo test --workspace"}
+{"itemId":"FEAT-019","date":"2026-04-13","text":"cargo build --workspace succeeds","verify":"cargo build --workspace"}
+{"itemId":"FEAT-019","date":"2026-04-13","text":"cargo test --workspace passes","verify":"cargo test --workspace"}
+{"itemId":"FEAT-019","date":"2026-04-13","text":"npm run build succeeds","verify":"npm run build"}
+{"itemId":"FEAT-020","date":"2026-04-13","text":"npm run build succeeds with typography styles","verify":"npm run build"}
+{"itemId":"FEAT-020","date":"2026-04-13","text":"cargo test --workspace passes","verify":"cargo test --workspace"}
+{"itemId":"FEAT-021","date":"2026-04-13","text":"npm run build succeeds","verify":"npm run build"}
+{"itemId":"FEAT-021","date":"2026-04-13","text":"cargo test --workspace passes","verify":"cargo test --workspace --quiet"}
