@@ -7,6 +7,7 @@ import { toggleBold, toggleItalic } from "./markdown-commands";
 import { countWords } from "./wordcount";
 import { markdownExtension } from "./markdown-highlight";
 import { wysiwym } from "./wysiwym";
+import { theRender, toggleRender } from "./the-render";
 
 let view: EditorView;
 
@@ -34,6 +35,7 @@ export function initEditor(parent: HTMLElement, extraExtensions: Extension[] = [
       keymap.of([
         { key: "Mod-b", run: toggleBold },
         { key: "Mod-i", run: toggleItalic },
+        { key: "Mod-Shift-r", run: toggleRender },
         { key: "Mod-Shift-k", run: deleteLine },
         ...searchKeymap,
         ...defaultKeymap,
@@ -41,6 +43,7 @@ export function initEditor(parent: HTMLElement, extraExtensions: Extension[] = [
       ]),
       markdownExtension(),
       wysiwym(),
+      theRender(),
       EditorView.lineWrapping,
       themeExtension(isDark),
       EditorView.updateListener.of((update) => {
