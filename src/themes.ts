@@ -36,6 +36,21 @@ export const lightTheme = EditorView.theme(
     ".cm-activeLineGutter": {
       backgroundColor: "#F0F0F0",
     },
+    ".cm-searchMatch": {
+      backgroundColor: "#FFE08A",
+      outline: "1px solid #E0C060",
+    },
+    ".cm-searchMatch-selected": {
+      backgroundColor: "#FF9632",
+    },
+    ".cm-panels": {
+      backgroundColor: "#F5F5F5",
+      color: "#1A1A1A",
+      borderBottom: "1px solid #E0E0E0",
+    },
+    ".cm-panels input, .cm-panels button": {
+      color: "#1A1A1A",
+    },
   },
   { dark: false }
 );
@@ -66,6 +81,21 @@ export const darkTheme = EditorView.theme(
     },
     ".cm-activeLineGutter": {
       backgroundColor: "#2A2A2A",
+    },
+    ".cm-searchMatch": {
+      backgroundColor: "#515C6A",
+      outline: "1px solid #6A7585",
+    },
+    ".cm-searchMatch-selected": {
+      backgroundColor: "#51503A",
+    },
+    ".cm-panels": {
+      backgroundColor: "#252526",
+      color: "#D4D4D4",
+      borderBottom: "1px solid #333333",
+    },
+    ".cm-panels input, .cm-panels button": {
+      color: "#D4D4D4",
     },
   },
   { dark: true }

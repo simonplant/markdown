@@ -1,6 +1,7 @@
 import { EditorView, keymap, lineNumbers, drawSelection, highlightActiveLine } from "@codemirror/view";
 import { EditorState, type Extension } from "@codemirror/state";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
+import { searchKeymap, highlightSelectionMatches } from "@codemirror/search";
 import { themeExtension, setTheme, getSystemIsDark } from "./themes";
 
 let view: EditorView;
@@ -15,7 +16,8 @@ export function initEditor(parent: HTMLElement, extraExtensions: Extension[] = [
       drawSelection(),
       highlightActiveLine(),
       history(),
-      keymap.of([...defaultKeymap, ...historyKeymap]),
+      highlightSelectionMatches(),
+      keymap.of([...searchKeymap, ...defaultKeymap, ...historyKeymap]),
       EditorView.lineWrapping,
       themeExtension(isDark),
       ...extraExtensions,
