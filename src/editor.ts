@@ -6,6 +6,7 @@ import { themeExtension, setTheme, getSystemIsDark } from "./themes";
 import { toggleBold, toggleItalic } from "./markdown-commands";
 import { countWords } from "./wordcount";
 import { markdownExtension } from "./markdown-highlight";
+import { wysiwym } from "./wysiwym";
 
 let view: EditorView;
 
@@ -39,6 +40,7 @@ export function initEditor(parent: HTMLElement, extraExtensions: Extension[] = [
         ...historyKeymap,
       ]),
       markdownExtension(),
+      wysiwym(),
       EditorView.lineWrapping,
       themeExtension(isDark),
       EditorView.updateListener.of((update) => {
