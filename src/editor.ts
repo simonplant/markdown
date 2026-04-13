@@ -9,6 +9,23 @@ import { markdownExtension } from "./markdown-highlight";
 import { wysiwym } from "./wysiwym";
 import { theRender, toggleRender } from "./the-render";
 
+const typographyTheme = EditorView.theme({
+  ".cm-scroller": {
+    fontFamily: "var(--font-body)",
+    fontSize: "var(--font-size-base)",
+    lineHeight: "var(--line-height-body)",
+  },
+  ".cm-content": {
+    maxWidth: "var(--measure)",
+    marginLeft: "auto",
+    marginRight: "auto",
+    padding: "0 1rem",
+  },
+  ".cm-line": {
+    fontFamily: "inherit",
+  },
+});
+
 let view: EditorView;
 
 function updateStatusBar(text: string): void {
@@ -45,6 +62,7 @@ export function initEditor(parent: HTMLElement, extraExtensions: Extension[] = [
       wysiwym(),
       theRender(),
       EditorView.lineWrapping,
+      typographyTheme,
       themeExtension(isDark),
       EditorView.updateListener.of((update) => {
         if (update.docChanged) {
