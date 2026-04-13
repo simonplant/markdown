@@ -75,6 +75,14 @@ export function initEditor(parent: HTMLElement, extraExtensions: Extension[] = [
 
   view = new EditorView({ state, parent });
 
+  // Activate native OS spell checking on the contenteditable element.
+  // On macOS, WebKit provides red squiggle underlines and right-click suggestions
+  // automatically. No custom dictionary or third-party library needed.
+  // Known limitation: fenced code blocks may show false-positive spell errors
+  // because WebKit applies spell checking to the entire contenteditable scope.
+  view.contentDOM.setAttribute("spellcheck", "true");
+  view.contentDOM.setAttribute("lang", navigator.language);
+
   window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", (e) => {
     setTheme(view, e.matches);
   });
