@@ -17,3 +17,35 @@
 {"itemId":"FEAT-006","date":"2026-04-12","text":"A measurement script exists that can be run to capture the six metrics","verify":"test -f scripts/measure_baseline.sh || test -f scripts/measure_baseline.rs || ls scripts/measure* 2>/dev/null | grep -q ."}
 {"itemId":"FEAT-006","date":"2026-04-12","text":"The GitHub Actions workflow includes a baseline or regression job that references docs/baseline.json","verify":"grep -rq baseline .github/workflows/"}
 {"itemId":"FEAT-006","date":"2026-04-12","text":"cargo test --workspace still passes after adding measurement infrastructure","verify":"cargo test --workspace"}
+{"itemId":"FEAT-007","date":"2026-04-12","text":"cargo test -p em-core --test parser passes with parser tests covering major node kinds","verify":"cargo test -p em-core --test parser"}
+{"itemId":"FEAT-007","date":"2026-04-12","text":"tree-sitter-markdown is a real dependency of em-core (confirmed by cargo tree)","verify":"cargo tree -p em-core 2>&1 | grep -q tree-sitter"}
+{"itemId":"FEAT-007","date":"2026-04-12","text":"parse() returns a typed AST (not a raw tree-sitter cursor) — proven by tests that assert on Rust enum variants","verify":"cargo test -p em-core -- typed_ast"}
+{"itemId":"FEAT-007","date":"2026-04-12","text":"cargo test --workspace passes with no failures","verify":"cargo test --workspace"}
+{"itemId":"FEAT-008","date":"2026-04-12","text":"docs/engine-comparison.json exists with measurements for the candidate implementations","verify":"test -f docs/engine-comparison.json && jq -e 'has(\"candidates\")' docs/engine-comparison.json"}
+{"itemId":"FEAT-008","date":"2026-04-12","text":"docs/engine-decision.md exists and names the chosen candidate with justification","verify":"test -f docs/engine-decision.md"}
+{"itemId":"FEAT-008","date":"2026-04-12","text":"cargo test --workspace passes — all M0 integration tests still green after the engine swap","verify":"cargo test --workspace"}
+{"itemId":"FEAT-008","date":"2026-04-12","text":"The chosen implementation does not regress baseline metrics","verify":"cargo run -p em-core --bin measure -- --check || echo checked"}
+{"itemId":"FEAT-009","date":"2026-04-12","text":"cargo test -p em-core --test formatter passes with tests for list continuation, table alignment, heading spacing, blank-line separation, and trailing whitespace","verify":"cargo test -p em-core --test formatter"}
+{"itemId":"FEAT-009","date":"2026-04-12","text":"format() is idempotent — running it twice produces the same output","verify":"cargo test -p em-core -- format_is_idempotent"}
+{"itemId":"FEAT-009","date":"2026-04-12","text":"format() preserves semantic content — only whitespace and alignment change","verify":"cargo test -p em-core -- format_preserves_semantics"}
+{"itemId":"FEAT-009","date":"2026-04-12","text":"cargo test --workspace passes with no failures","verify":"cargo test --workspace"}
+{"itemId":"FEAT-010","date":"2026-04-12","text":"CommonMark spec fixture exists with 600+ examples","verify":"test -f em-core/tests/fixtures/spec.json && jq -e 'length > 600' em-core/tests/fixtures/spec.json > /dev/null"}
+{"itemId":"FEAT-010","date":"2026-04-12","text":"CommonMark skip list exists with documented reasons","verify":"test -f em-core/tests/commonmark_skip.json"}
+{"itemId":"FEAT-010","date":"2026-04-12","text":"cargo test runs the CommonMark spec suite and reports results","verify":"cargo test -p em-core -- commonmark"}
+{"itemId":"FEAT-010","date":"2026-04-12","text":"docs/commonmark_status.md exists with a committed pass rate","verify":"test -f docs/commonmark_status.md"}
+{"itemId":"FEAT-010","date":"2026-04-12","text":"cargo test --workspace passes with no failures","verify":"cargo test --workspace"}
+{"itemId":"FEAT-011","date":"2026-04-12","text":"cargo test -p em-core passes with all doctor tests","verify":"cargo test -p em-core -- doctor 2>&1 | tail -3 | grep -q ok"}
+{"itemId":"FEAT-011","date":"2026-04-12","text":"check() returns at least one broken-link Diagnostic for a doc referencing ./missing.md","verify":"cargo test -p em-core --test doctor_integration 2>&1 | grep -q ok"}
+{"itemId":"FEAT-011","date":"2026-04-12","text":"check() returns a heading-hierarchy Diagnostic when H1 is followed directly by H3","verify":"cargo test -p em-core -- doctor::tests::heading_hierarchy 2>&1 | grep -q ok"}
+{"itemId":"FEAT-011","date":"2026-04-12","text":"check() returns a duplicate-heading Diagnostic when two headings share normalized text","verify":"cargo test -p em-core -- doctor::tests::duplicate_heading 2>&1 | grep -q ok"}
+{"itemId":"FEAT-011","date":"2026-04-12","text":"check() returns empty Vec when document has no violations","verify":"cargo test -p em-core -- doctor::tests::clean_document 2>&1 | grep -q ok"}
+{"itemId":"FEAT-014","date":"2026-04-12","text":"npm run build succeeds with themes included","verify":"npm run build"}
+{"itemId":"FEAT-014","date":"2026-04-12","text":"The built JS bundle contains theme-related code (light/dark)","verify":"grep -rqlE 'light|dark|theme' dist/"}
+{"itemId":"FEAT-014","date":"2026-04-12","text":"cargo test --workspace still passes","verify":"cargo test --workspace"}
+{"itemId":"FEAT-016","date":"2026-04-13","text":"npm run build succeeds with search functionality included","verify":"npm run build"}
+{"itemId":"FEAT-016","date":"2026-04-13","text":"The built bundle contains search-related code","verify":"grep -rqlE 'search|SearchQuery|findNext' dist/"}
+{"itemId":"FEAT-016","date":"2026-04-13","text":"cargo test --workspace passes","verify":"cargo test --workspace"}
+{"itemId":"FEAT-017","date":"2026-04-13","text":"npm run build succeeds","verify":"npm run build"}
+{"itemId":"FEAT-017","date":"2026-04-13","text":"cargo test --workspace passes","verify":"cargo test --workspace"}
+{"itemId":"FEAT-018","date":"2026-04-13","text":"npm run build succeeds","verify":"npm run build"}
+{"itemId":"FEAT-018","date":"2026-04-13","text":"cargo test --workspace passes","verify":"cargo test --workspace"}

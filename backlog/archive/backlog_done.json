@@ -1,0 +1,50 @@
+[
+  {
+    "id": "FEAT-004",
+    "title": "M0-editor: CodeMirror 6 plain-text editor in the webview",
+    "intent": "The webview displays a CodeMirror 6 editor instance. The user can type characters and see them appear immediately in the editor. No IPC yet — this item proves CodeMirror 6 is mounted, receives keystrokes, and maintains a local buffer.",
+    "description": "Mount CodeMirror 6 in the Tauri webview with a minimal plain-text configuration. No markdown mode, no syntax highlighting, no decorations — raw text input only. The editor must be focusable, must accept keyboard input, and must maintain its content in a local JS buffer. Wire up a basic TypeScript/JS module that imports CodeMirror 6 packages via npm and initializes an EditorView. IPC bridge integration comes in M0-open-save-loop — this item ends when the editor is visible and accepts input.",
+    "priority": "must",
+    "category": "scaffolding",
+    "steps": [
+      "Add CodeMirror 6 packages as npm dependencies: @codemirror/view, @codemirror/state",
+      "Create src/editor.ts (or .js) that imports EditorView and EditorState from @codemirror/view and @codemirror/state",
+      "Initialize an EditorView with a minimal setup (basicSetup from codemirror package, or manual extensions list)",
+      "Mount the EditorView into a DOM element on index.html load",
+      "Verify the editor is visible in the webview and accepts keyboard input",
+      "Export a getContent() function from editor.ts that returns the current editor string content",
+      "Wire the build system (Vite or equivalent) to bundle the TypeScript/JS for the Tauri webview"
+    ],
+    "acceptanceCriteria": [
+      {
+        "text": "npm install and npm run build both exit 0",
+        "verify": "npm install && npm run build"
+      },
+      {
+        "text": "Built output includes an index.html entry point",
+        "verify": "test -f dist/index.html"
+      },
+      {
+        "text": "The built JS bundle contains CodeMirror EditorView code",
+        "verify": "grep -rql EditorView dist/"
+      },
+      {
+        "text": "The built bundle does NOT contain @codemirror/lang-markdown — M0 is plain-text-only",
+        "verify": "! grep -rqlE 'lang-markdown|markdownLanguage' dist/"
+      }
+    ],
+    "scope": [
+      "src/**",
+      "package.json",
+      "vite.config.*",
+      "tsconfig.*"
+    ],
+    "dependsOn": [
+      "FEAT-002"
+    ],
+    "status": "done",
+    "passes": false,
+    "readyForSprint": true,
+    "resolved_at": "2026-04-12T05:32:33Z"
+  }
+]

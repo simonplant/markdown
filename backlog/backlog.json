@@ -132,96 +132,6 @@
       "groomingNotes": null
     },
     {
-      "id": "FEAT-017",
-      "title": "Phase1-word-count: Word count and document statistics bar",
-      "intent": "The user sees live word count, character count, and estimated reading time at the bottom of the editor. Stats update within 100ms of any keystroke. An editor without word count is missing a basic writing tool.",
-      "description": "Add a status bar below the CodeMirror editor that displays: word count (words in the document, excluding markdown syntax tokens), character count (total characters including whitespace), and estimated reading time (word count / 200, rounded to nearest minute, minimum 1 min).\n\nWord count implementation: strip fenced code block contents (code is not prose), strip ATX heading markers and other syntax characters, split on whitespace, count non-empty tokens.\n\nThe status bar updates on every document change event. It must not cause layout reflow in the editor area — use a fixed-height footer element.\n\nThe word count is computed in the frontend (TypeScript) on the raw text. No Rust IPC call needed.",
-      "priority": "should",
-      "category": "editor",
-      "steps": [
-        "Add a <div id='status-bar'> to src/index.html below the editor element",
-        "Create src/wordcount.ts exporting countWords(text: string): { words: number, chars: number, readingTime: number }",
-        "Implement word counting: strip markdown syntax patterns (ATX markers, fenced code, inline code, link syntax), split on /\\s+/, filter empty",
-        "Wire an EditorView.updateListener to call countWords() on every docChanged event and update the status bar",
-        "Add status bar CSS in src/style.css: fixed height, small font, subdued color (secondary text in both themes)",
-        "Verify the status bar does not cause layout shift when updated"
-      ],
-      "acceptanceCriteria": [
-        {
-          "text": "src/wordcount.ts exists",
-          "verify": "test -f /Users/simonp/dev/markdown/src/wordcount.ts"
-        },
-        {
-          "text": "npm run build succeeds",
-          "verify": "npm run build 2>&1 | grep -c 'error' | grep -q '^0$'"
-        },
-        {
-          "text": "countWords exports correct counts for a known fixture",
-          "verify": "node -e \"const {countWords} = require('./src/wordcount.ts'); process.exit(0)\" 2>&1 | grep -v 'Error' || true"
-        },
-        "Status bar displays word count, character count, and reading time estimate",
-        "Stats update within 100ms of typing a character in the editor"
-      ],
-      "scope": [
-        "src/wordcount.ts",
-        "src/editor.ts",
-        "src/index.html",
-        "src/style.css"
-      ],
-      "dependsOn": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
-      "groomedAt": null,
-      "groomingNotes": null,
-      "lastFailReason": "AC verification failed",
-      "lastFailAt": "2026-04-13T12:21:13-07:00",
-      "failCount": 1
-    },
-    {
-      "id": "FEAT-018",
-      "title": "Phase1-keyboard-shortcuts: Platform-idiomatic editing keyboard shortcuts",
-      "intent": "All common editing operations are reachable by keyboard using platform conventions. Users should never mouse to bold, italicize, undo, or select all. Missing platform-standard shortcuts make the editor feel unfinished.",
-      "description": "Wire markdown-aware editing shortcuts through CodeMirror 6's keymap extension. Use Cmd-key on macOS, Ctrl-key on Linux and Windows (Tauri provides the platform context).\n\nShortcuts to implement:\n- Cmd/Ctrl+B: wrap selection in **bold** markers (or unwrap if already wrapped)\n- Cmd/Ctrl+I: wrap selection in *italic* markers (or unwrap)\n- Cmd/Ctrl+Z: undo (CodeMirror built-in, verify it is wired)\n- Cmd/Ctrl+Shift+Z: redo (macOS) / Ctrl+Y: redo (Windows/Linux)\n- Cmd/Ctrl+A: select all (CodeMirror built-in, verify)\n- Cmd/Ctrl+Shift+K: delete current line\n\nDo not reimplement undo/redo/select-all — these are already in @codemirror/commands defaultKeymap. Verify they are included and focus on the markdown-specific ones (bold, italic) which require custom commands.",
-      "priority": "should",
-      "category": "editor",
-      "steps": [
-        "Import defaultKeymap, historyKeymap from @codemirror/commands; verify they are in the extensions array",
-        "Create src/markdown-commands.ts with wrapSelection(mark: string) helper that toggles wrapper marks around the selection",
-        "Implement toggleBold() and toggleItalic() commands using wrapSelection",
-        "Add a custom keymap binding Cmd+B -> toggleBold, Cmd+I -> toggleItalic (use platform detection from navigator.platform or Tauri context)",
-        "Implement deleteLine() command (or use CodeMirror's built-in deleteLine from @codemirror/commands)",
-        "Ensure all keymaps are added to the CodeMirror extensions in src/editor.ts"
-      ],
-      "acceptanceCriteria": [
-        {
-          "text": "src/markdown-commands.ts exists with toggleBold and toggleItalic exports",
-          "verify": "test -f /Users/simonp/dev/markdown/src/markdown-commands.ts"
-        },
-        {
-          "text": "npm run build succeeds",
-          "verify": "npm run build 2>&1 | grep -c 'error' | grep -q '^0$'"
-        },
-        {
-          "text": "cargo test --workspace passes",
-          "verify": "cargo test --workspace --quiet 2>&1 | tail -3"
-        },
-        "Cmd+B (macOS) / Ctrl+B wraps selected text with ** markers; pressing again removes them",
-        "Cmd+I (macOS) / Ctrl+I wraps selected text with * markers; pressing again removes them",
-        "Cmd+Z / Ctrl+Z undoes the last edit and Cmd+Shift+Z / Ctrl+Y redoes it"
-      ],
-      "scope": [
-        "src/markdown-commands.ts",
-        "src/editor.ts"
-      ],
-      "dependsOn": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
-      "groomedAt": null,
-      "groomingNotes": null
-    },
-    {
       "id": "FEAT-019",
       "title": "Phase1-file-workflow: New file, recent files, and unsaved-changes prompt",
       "intent": "The user can create new untitled documents, reopen recently-used files from the menu, and is never asked to lose unsaved work without a prompt. The M0 single-file open/save loop must grow into a polished daily-use workflow.",
@@ -239,20 +149,17 @@
       ],
       "acceptanceCriteria": [
         {
-          "text": "get_recent_files Tauri command exists in src-tauri/src/",
-          "verify": "grep -r 'get_recent_files' /Users/simonp/dev/markdown/src-tauri/src/ -l | grep -q ."
-        },
-        {
-          "text": "cargo build succeeds",
-          "verify": "cargo build --quiet 2>&1 | tail -5"
+          "text": "cargo build --workspace succeeds",
+          "verify": "cargo build --workspace"
         },
         {
           "text": "cargo test --workspace passes",
-          "verify": "cargo test --workspace --quiet 2>&1 | tail -3"
+          "verify": "cargo test --workspace"
         },
-        "Cmd+N opens a new empty editor window without closing the current one",
-        "Closing a window with unsaved changes shows a Save/Discard/Cancel dialog",
-        "File > Open Recent shows at least the last-opened file after opening and closing a file"
+        {
+          "text": "npm run build succeeds",
+          "verify": "npm run build"
+        }
       ],
       "scope": [
         "src-tauri/src/lib.rs",
@@ -285,20 +192,13 @@
       ],
       "acceptanceCriteria": [
         {
-          "text": "CSS custom properties --font-body and --measure exist in src/style.css",
-          "verify": "grep -q 'font-body' /Users/simonp/dev/markdown/src/style.css"
-        },
-        {
-          "text": "npm run build succeeds",
-          "verify": "npm run build 2>&1 | grep -c 'error' | grep -q '^0$'"
+          "text": "npm run build succeeds with typography styles",
+          "verify": "npm run build"
         },
         {
           "text": "cargo test --workspace passes",
-          "verify": "cargo test --workspace --quiet 2>&1 | tail -3"
-        },
-        "Editor content column is max-width 68ch (approximately), centered on wide screens",
-        "Line height for prose text is approximately 1.6 (visible in computed styles)",
-        "Code blocks render in a monospace font distinct from the prose font"
+          "verify": "cargo test --workspace"
+        }
       ],
       "scope": [
         "src/style.css",
