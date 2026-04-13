@@ -1,3 +1,11 @@
 [workspace]
 members = ["em-core", "src-tauri"]
 resolver = "2"
+
+# Patch glib 0.18.x to fix RUSTSEC-2024-0429 (UB in VariantStrIter).
+# The fix (gtk-rs/gtk-rs-core#1343) only landed in glib 0.20+, which is
+# incompatible with the gtk 0.18 series that Tauri 2.x depends on.
+# This points to a backport of that one-line fix on the 0.18 branch.
+# Remove this patch when Tauri upgrades to gtk4-rs / glib 0.20+.
+[patch.crates-io]
+glib = { git = "https://github.com/simonplant/gtk-rs-core.git", branch = "fix/glib-variant-str-iter-soundness" }
