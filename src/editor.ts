@@ -5,6 +5,7 @@ import { searchKeymap, highlightSelectionMatches } from "@codemirror/search";
 import { themeExtension, setTheme, getSystemIsDark } from "./themes";
 import { toggleBold, toggleItalic } from "./markdown-commands";
 import { countWords } from "./wordcount";
+import { markdownExtension } from "./markdown-highlight";
 
 let view: EditorView;
 
@@ -37,6 +38,7 @@ export function initEditor(parent: HTMLElement, extraExtensions: Extension[] = [
         ...defaultKeymap,
         ...historyKeymap,
       ]),
+      markdownExtension(),
       EditorView.lineWrapping,
       themeExtension(isDark),
       EditorView.updateListener.of((update) => {
