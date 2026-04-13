@@ -1,8 +1,9 @@
 import { EditorView, keymap, lineNumbers, drawSelection, highlightActiveLine } from "@codemirror/view";
 import { EditorState, type Extension } from "@codemirror/state";
-import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
+import { defaultKeymap, history, historyKeymap, deleteLine } from "@codemirror/commands";
 import { searchKeymap, highlightSelectionMatches } from "@codemirror/search";
 import { themeExtension, setTheme, getSystemIsDark } from "./themes";
+import { toggleBold, toggleItalic } from "./markdown-commands";
 import { countWords } from "./wordcount";
 
 let view: EditorView;
@@ -28,7 +29,14 @@ export function initEditor(parent: HTMLElement, extraExtensions: Extension[] = [
       highlightActiveLine(),
       history(),
       highlightSelectionMatches(),
-      keymap.of([...searchKeymap, ...defaultKeymap, ...historyKeymap]),
+      keymap.of([
+        { key: "Mod-b", run: toggleBold },
+        { key: "Mod-i", run: toggleItalic },
+        { key: "Mod-Shift-k", run: deleteLine },
+        ...searchKeymap,
+        ...defaultKeymap,
+        ...historyKeymap,
+      ]),
       EditorView.lineWrapping,
       themeExtension(isDark),
       EditorView.updateListener.of((update) => {
