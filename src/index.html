@@ -30,6 +30,32 @@
       .cm-editor {
         height: 100%;
       }
+      #status-bar {
+        height: 24px;
+        line-height: 24px;
+        padding: 0 12px;
+        font-size: 12px;
+        color: #6E7781;
+        background: #F5F5F5;
+        border-top: 1px solid #E0E0E0;
+        flex-shrink: 0;
+        display: flex;
+        gap: 16px;
+      }
+      @media (prefers-color-scheme: dark) {
+        html, body {
+          background: #1E1E1E;
+        }
+        #toolbar {
+          background: #2A2A2A;
+          border-bottom-color: #333333;
+        }
+        #status-bar {
+          color: #858585;
+          background: #252526;
+          border-top-color: #333333;
+        }
+      }
     </style>
   </head>
   <body>
@@ -37,6 +63,11 @@
       <button id="btn-open">Open</button>
     </div>
     <div id="editor"></div>
+    <div id="status-bar">
+      <span id="stat-words">0 words</span>
+      <span id="stat-chars">0 characters</span>
+      <span id="stat-reading">0 min read</span>
+    </div>
     <script type="module" src="/main.ts"></script>
   </body>
 </html>
