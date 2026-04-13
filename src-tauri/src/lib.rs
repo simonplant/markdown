@@ -1,78 +1,268 @@
+use std::collections::HashMap;
+use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Mutex;
 
 use em_core::Document;
 use tauri::menu::{MenuBuilder, MenuItemBuilder, SubmenuBuilder};
-use tauri::{Emitter, State};
+use tauri::{Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder};
+
+static WINDOW_COUNTER: AtomicU32 = AtomicU32::new(1);
 
 pub struct AppState {
-    pub document: Mutex<Option<Document>>,
+    pub documents: Mutex<HashMap<String, Document>>,
+    pub pending_opens: Mutex<HashMap<String, String>>,
 }
 
 impl Default for AppState {
     fn default() -> Self {
         AppState {
-            document: Mutex::new(None),
+            documents: Mutex::new(HashMap::new()),
+            pending_opens: Mutex::new(HashMap::new()),
         }
     }
 }
 
+// ---------------------------------------------------------------------------
+// Recent files helpers
+// ---------------------------------------------------------------------------
+
+fn load_recent_files(app: &tauri::AppHandle) -> Vec<String> {
+    let Ok(data_dir) = app.path().app_data_dir() else {
+        return vec![];
+    };
+    let path = data_dir.join("recent.json");
+    let Ok(data) = std::fs::read_to_string(&path) else {
+        return vec![];
+    };
+    let mut files: Vec<String> = serde_json::from_str(&data).unwrap_or_default();
+    // Silently remove paths that no longer exist on disk
+    files.retain(|p| std::path::Path::new(p).exists());
+    files
+}
+
+fn save_recent_files(app: &tauri::AppHandle, files: &[String]) -> Result<(), String> {
+    let data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    std::fs::create_dir_all(&data_dir).map_err(|e| e.to_string())?;
+    let path = data_dir.join("recent.json");
+    let json = serde_json::to_string_pretty(files).map_err(|e| e.to_string())?;
+    std::fs::write(&path, json).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Menu builder
+// ---------------------------------------------------------------------------
+
+fn rebuild_menu(app: &tauri::AppHandle) -> Result<(), tauri::Error> {
+    let recent = load_recent_files(app);
+
+    let new_item = MenuItemBuilder::with_id("new", "New")
+        .accelerator("CmdOrCtrl+N")
+        .build(app)?;
+    let open_item = MenuItemBuilder::with_id("open", "Open\u{2026}")
+        .accelerator("CmdOrCtrl+O")
+        .build(app)?;
+    let save_item = MenuItemBuilder::with_id("save", "Save")
+        .accelerator("CmdOrCtrl+S")
+        .build(app)?;
+
+    let mut file_menu = SubmenuBuilder::new(app, "File")
+        .item(&new_item)
+        .item(&open_item);
+
+    if !recent.is_empty() {
+        let mut recent_sub = SubmenuBuilder::new(app, "Open Recent");
+        for file_path in &recent {
+            let display = std::path::Path::new(file_path)
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or(file_path);
+            let item = MenuItemBuilder::with_id(
+                &format!("recent:{}", file_path),
+                display,
+            )
+            .build(app)?;
+            recent_sub = recent_sub.item(&item);
+        }
+        let recent_menu = recent_sub.build()?;
+        file_menu = file_menu.item(&recent_menu);
+    }
+
+    let file_menu = file_menu.separator().item(&save_item).build()?;
+    let menu = MenuBuilder::new(app).item(&file_menu).build()?;
+    app.set_menu(menu)?;
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Existing IPC commands (updated for per-window document state)
+// ---------------------------------------------------------------------------
+
 #[tauri::command]
-fn open_file(state: State<'_, AppState>, path: String) -> Result<String, String> {
+fn open_file(state: State<'_, AppState>, window: tauri::Window, path: String) -> Result<String, String> {
     let doc = Document::open_file(&path).map_err(|e| e.to_string())?;
     let text = doc.current_text().to_string();
-    *state.document.lock().unwrap() = Some(doc);
+    state
+        .documents
+        .lock()
+        .unwrap()
+        .insert(window.label().to_string(), doc);
     Ok(text)
 }
 
 #[tauri::command]
-fn edit(state: State<'_, AppState>, offset: usize, delete: usize, insert: String) -> Result<(), String> {
-    let mut guard = state.document.lock().unwrap();
-    let doc = guard.as_mut().ok_or("No document open")?;
+fn edit(
+    state: State<'_, AppState>,
+    window: tauri::Window,
+    offset: usize,
+    delete: usize,
+    insert: String,
+) -> Result<(), String> {
+    let mut docs = state.documents.lock().unwrap();
+    let doc = docs
+        .get_mut(window.label())
+        .ok_or("No document open")?;
     doc.edit(offset, delete, &insert);
     Ok(())
 }
 
 #[tauri::command]
-fn save_file(state: State<'_, AppState>, path: String, content: String) -> Result<(), String> {
+fn save_file(
+    state: State<'_, AppState>,
+    window: tauri::Window,
+    path: String,
+    content: String,
+) -> Result<(), String> {
     std::fs::write(&path, &content).map_err(|e| e.to_string())?;
-    *state.document.lock().unwrap() = Some(Document::from_content(content));
+    state
+        .documents
+        .lock()
+        .unwrap()
+        .insert(window.label().to_string(), Document::from_content(content));
     Ok(())
 }
 
 #[tauri::command]
-fn current_text(state: State<'_, AppState>) -> Result<String, String> {
-    let guard = state.document.lock().unwrap();
-    let doc = guard.as_ref().ok_or("No document open")?;
+fn current_text(state: State<'_, AppState>, window: tauri::Window) -> Result<String, String> {
+    let docs = state.documents.lock().unwrap();
+    let doc = docs.get(window.label()).ok_or("No document open")?;
     Ok(doc.current_text().to_string())
 }
+
+// ---------------------------------------------------------------------------
+// New IPC commands for FEAT-019
+// ---------------------------------------------------------------------------
+
+#[tauri::command]
+fn get_recent_files(app: tauri::AppHandle) -> Vec<String> {
+    load_recent_files(&app)
+}
+
+#[tauri::command]
+fn add_recent_file(app: tauri::AppHandle, path: String) -> Result<(), String> {
+    let mut files = load_recent_files(&app);
+    files.retain(|p| p != &path);
+    files.insert(0, path);
+    files.truncate(10);
+    save_recent_files(&app, &files)?;
+    // Rebuild menu to show updated recent files
+    rebuild_menu(&app).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+fn create_window(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+    file_path: Option<String>,
+) -> Result<(), String> {
+    let n = WINDOW_COUNTER.fetch_add(1, Ordering::Relaxed);
+    let label = format!("window-{}", n);
+
+    if let Some(ref path) = file_path {
+        state
+            .pending_opens
+            .lock()
+            .unwrap()
+            .insert(label.clone(), path.clone());
+    }
+
+    WebviewWindowBuilder::new(&app, &label, WebviewUrl::App("index.html".into()))
+        .title("Easy Markdown")
+        .inner_size(900.0, 700.0)
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
+#[tauri::command]
+fn get_pending_open(state: State<'_, AppState>, window: tauri::Window) -> Option<String> {
+    state
+        .pending_opens
+        .lock()
+        .unwrap()
+        .remove(window.label())
+}
+
+#[tauri::command]
+fn close_current_window(window: tauri::Window) -> Result<(), String> {
+    window.destroy().map_err(|e| e.to_string())
+}
+
+// ---------------------------------------------------------------------------
+// App entry point
+// ---------------------------------------------------------------------------
 
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .manage(AppState::default())
-        .invoke_handler(tauri::generate_handler![open_file, edit, save_file, current_text])
+        .invoke_handler(tauri::generate_handler![
+            open_file,
+            edit,
+            save_file,
+            current_text,
+            get_recent_files,
+            add_recent_file,
+            create_window,
+            get_pending_open,
+            close_current_window,
+        ])
         .setup(|app| {
-            let open_item = MenuItemBuilder::with_id("open", "Open…")
-                .accelerator("CmdOrCtrl+O")
-                .build(app)?;
-            let save_item = MenuItemBuilder::with_id("save", "Save")
-                .accelerator("CmdOrCtrl+S")
-                .build(app)?;
-            let file_menu = SubmenuBuilder::new(app, "File")
-                .item(&open_item)
-                .item(&save_item)
-                .build()?;
-            let menu = MenuBuilder::new(app).item(&file_menu).build()?;
-            app.set_menu(menu)?;
+            rebuild_menu(app.handle())?;
             Ok(())
         })
         .on_menu_event(|app, event| {
-            match event.id().as_ref() {
+            let id = event.id().as_ref();
+            match id {
+                "new" => {
+                    let _ = app.emit("menu-new", ());
+                }
                 "open" => {
                     let _ = app.emit("menu-open", ());
                 }
                 "save" => {
                     let _ = app.emit("menu-save", ());
+                }
+                _ if id.starts_with("recent:") => {
+                    let path = &id["recent:".len()..];
+                    let state = app.state::<AppState>();
+                    let n = WINDOW_COUNTER.fetch_add(1, Ordering::Relaxed);
+                    let label = format!("window-{}", n);
+                    state
+                        .pending_opens
+                        .lock()
+                        .unwrap()
+                        .insert(label.clone(), path.to_string());
+                    let _ = WebviewWindowBuilder::new(
+                        app,
+                        &label,
+                        WebviewUrl::App("index.html".into()),
+                    )
+                    .title("Easy Markdown")
+                    .inner_size(900.0, 700.0)
+                    .build();
                 }
                 _ => {}
             }
@@ -85,6 +275,8 @@ pub fn run() {
 mod tests {
     use super::*;
     use std::io::Write;
+
+    const TEST_LABEL: &str = "test-window";
 
     #[test]
     fn bridge_open_edit_save_current_text() {
@@ -101,27 +293,31 @@ mod tests {
             let doc = Document::open_file(&path).unwrap();
             let text = doc.current_text().to_string();
             assert_eq!(text, "hello world");
-            *state.document.lock().unwrap() = Some(doc);
+            state
+                .documents
+                .lock()
+                .unwrap()
+                .insert(TEST_LABEL.to_string(), doc);
         }
 
         // edit: mutate the document through AppState
         {
-            let mut guard = state.document.lock().unwrap();
-            let doc = guard.as_mut().expect("document should be open");
+            let mut docs = state.documents.lock().unwrap();
+            let doc = docs.get_mut(TEST_LABEL).expect("document should be open");
             doc.edit(6, 5, "rust");
         }
 
         // current_text: read back the edited content
         {
-            let guard = state.document.lock().unwrap();
-            let doc = guard.as_ref().expect("document should be open");
+            let docs = state.documents.lock().unwrap();
+            let doc = docs.get(TEST_LABEL).expect("document should be open");
             assert_eq!(doc.current_text(), "hello rust");
         }
 
         // save_file: persist via em_core
         {
-            let guard = state.document.lock().unwrap();
-            let doc = guard.as_ref().expect("document should be open");
+            let docs = state.documents.lock().unwrap();
+            let doc = docs.get(TEST_LABEL).expect("document should be open");
             doc.save_file(&path).unwrap();
         }
 
@@ -147,7 +343,11 @@ mod tests {
         let text = {
             let doc = Document::open_file(&path).unwrap();
             let text = doc.current_text().to_string();
-            *state.document.lock().unwrap() = Some(doc);
+            state
+                .documents
+                .lock()
+                .unwrap()
+                .insert(TEST_LABEL.to_string(), doc);
             text
         };
         assert_eq!(text, "# Hello\n\nOriginal content.");
@@ -158,14 +358,16 @@ mod tests {
         // 4. Save with content from JS (simulates invoke('save_file', {path, content}))
         {
             std::fs::write(&path, &edited_content).unwrap();
-            *state.document.lock().unwrap() =
-                Some(Document::from_content(edited_content.clone()));
+            state.documents.lock().unwrap().insert(
+                TEST_LABEL.to_string(),
+                Document::from_content(edited_content.clone()),
+            );
         }
 
         // 5. Verify AppState is updated
         {
-            let guard = state.document.lock().unwrap();
-            let doc = guard.as_ref().unwrap();
+            let docs = state.documents.lock().unwrap();
+            let doc = docs.get(TEST_LABEL).unwrap();
             assert_eq!(doc.current_text(), "# Hello\n\nOriginal content. Edited!");
         }
 
@@ -175,5 +377,32 @@ mod tests {
             reopened.current_text(),
             "# Hello\n\nOriginal content. Edited!"
         );
+    }
+
+    #[test]
+    fn recent_files_ordering_and_trim() {
+        let mut files: Vec<String> = vec!["/a.md", "/b.md", "/c.md"]
+            .into_iter()
+            .map(String::from)
+            .collect();
+
+        // Add a new file — should prepend
+        let new_path = "/d.md".to_string();
+        files.retain(|p| p != &new_path);
+        files.insert(0, new_path);
+        files.truncate(10);
+
+        assert_eq!(files[0], "/d.md");
+        assert_eq!(files.len(), 4);
+
+        // Add existing file — should move to front
+        let existing = "/b.md".to_string();
+        files.retain(|p| p != &existing);
+        files.insert(0, existing);
+        files.truncate(10);
+
+        assert_eq!(files[0], "/b.md");
+        assert_eq!(files[1], "/d.md");
+        assert_eq!(files.len(), 4);
     }
 }

@@ -1,1 +1,42 @@
-{"sprintId": null, "status": "idle", "item": null}
+{
+  "sprintId": "sprint-1776114005",
+  "startedAt": "2026-04-13T14:00:05-07:00",
+  "status": "in_progress",
+  "item": {
+    "id": "FEAT-019",
+    "title": "Phase1-file-workflow: New file, recent files, and unsaved-changes prompt",
+    "intent": "The user can create new untitled documents, reopen recently-used files from the menu, and is never asked to lose unsaved work without a prompt. The M0 single-file open/save loop must grow into a polished daily-use workflow.",
+    "description": "Extend the M0 file handling (FEAT-005) with three capabilities:\n\n1. **New file** (Cmd+N): opens a new untitled buffer in a new Tauri window. Each window is independent — one file per window, consistent with the DP-1 no-vault principle.\n\n2. **Recent files**: File > Open Recent submenu populated from a local config file (~/.config/markdown/recent.json or the Tauri app data dir). Track the last 10 opened file paths. On click, open the file in a new window.\n\n3. **Unsaved-changes prompt**: when the user attempts to close a window, open a different file, or open a new file while the current document has unsaved changes, show a native Tauri dialog: 'Save changes to [filename]?' with Save / Discard / Cancel buttons. Save writes the file; Discard discards; Cancel aborts the action.\n\nRecent file tracking: update the list on every successful file open and save. Persist immediately to disk. Paths that no longer exist on disk are silently removed from the list on next load.",
+    "sourceBacklog": "backlog.json",
+    "steps": [
+      "Add a Tauri command `get_recent_files() -> Vec<String>` that reads ~/.config/markdown/recent.json (or equivalent app data path)",
+      "Add a Tauri command `add_recent_file(path: String)` that prepends the path to the list and trims to 10 entries",
+      "Build the File > Open Recent submenu in the Tauri menu builder using the recent file list",
+      "Implement a new-window command triggered by Cmd+N: create a new Tauri WebviewWindow with a fresh untitled document state",
+      "Track dirty state in the frontend: set a hasUnsavedChanges flag on every editor change, clear it on save",
+      "Intercept the window close event (Tauri onCloseRequested); if hasUnsavedChanges, show a native dialog before allowing close",
+      "Persist recent files on every successful open and save"
+    ],
+    "acceptanceCriteria": [
+      {
+        "text": "cargo build --workspace succeeds",
+        "verify": "cargo build --workspace"
+      },
+      {
+        "text": "cargo test --workspace passes",
+        "verify": "cargo test --workspace"
+      },
+      {
+        "text": "npm run build succeeds",
+        "verify": "npm run build"
+      }
+    ],
+    "scope": [
+      "src-tauri/src/lib.rs",
+      "src-tauri/src/main.rs",
+      "src/main.ts",
+      "src/editor.ts"
+    ],
+    "startedAt": "2026-04-13T14:00:05-07:00"
+  }
+}
