@@ -2,250 +2,1318 @@
   "description": "Feature backlog",
   "items": [
     {
-      "id": "FEAT-004",
-      "title": "M0-editor: CodeMirror 6 plain-text editor in the webview",
-      "intent": "The webview displays a CodeMirror 6 editor instance. The user can type characters and see them appear immediately in the editor. No IPC yet — this item proves CodeMirror 6 is mounted, receives keystrokes, and maintains a local buffer.",
-      "description": "Mount CodeMirror 6 in the Tauri webview with a minimal plain-text configuration. No markdown mode, no syntax highlighting, no decorations — raw text input only. The editor must be focusable, must accept keyboard input, and must maintain its content in a local JS buffer. Wire up a basic TypeScript/JS module that imports CodeMirror 6 packages via npm and initializes an EditorView. IPC bridge integration comes in M0-open-save-loop — this item ends when the editor is visible and accepts input.",
+      "id": "FEAT-012",
+      "title": "Phase1-lang-markdown: CodeMirror 6 markdown language extension and syntax highlighting",
+      "intent": "The editor understands markdown structure — headings, bold, italic, code, links each render with distinct visual treatment. A plain-text view with no markdown awareness is not acceptable after Phase 1.",
+      "description": "Add @codemirror/lang-markdown to the frontend and configure it as the editor language. Add a syntax highlight style that visually distinguishes the key markdown token types. This replaces the plain-text CodeMirror setup from M0 with a proper markdown-aware one. After this item, WYSIWYM decorations (FEAT-013) become possible because the syntax tree is available.\n\nScope boundary: this item is highlighting only. WYSIWYM hiding/showing of syntax characters comes in FEAT-013. Do not add WYSIWYM behavior here.",
       "priority": "must",
-      "category": "scaffolding",
+      "category": "editor",
       "steps": [
-        "Add CodeMirror 6 packages as npm dependencies: @codemirror/view, @codemirror/state",
-        "Create src/editor.ts (or .js) that imports EditorView and EditorState from @codemirror/view and @codemirror/state",
-        "Initialize an EditorView with a minimal setup (basicSetup from codemirror package, or manual extensions list)",
-        "Mount the EditorView into a DOM element on index.html load",
-        "Verify the editor is visible in the webview and accepts keyboard input",
-        "Export a getContent() function from editor.ts that returns the current editor string content",
-        "Wire the build system (Vite or equivalent) to bundle the TypeScript/JS for the Tauri webview"
+        "Add @codemirror/lang-markdown and @codemirror/language to package.json, run npm install",
+        "Replace the current plain-text CodeMirror setup in src/editor.ts with markdown() language extension",
+        "Define a HighlightStyle that assigns distinct styles to: ATXHeading, StrongEmphasis, Emphasis, InlineCode, FencedCode, Link, URL",
+        "Apply the HighlightStyle via syntaxHighlighting() in the CodeMirror extensions array",
+        "Verify the existing IPC open/save loop from FEAT-005 still works with the new language extension"
       ],
       "acceptanceCriteria": [
         {
-          "text": "npm install and npm run build both exit 0",
-          "verify": "npm install && npm run build"
+          "text": "npm run build succeeds with @codemirror/lang-markdown installed",
+          "verify": "npm run build 2>&1 | grep -c 'error' | grep -q '^0$'"
         },
         {
-          "text": "Built output includes an index.html entry point",
-          "verify": "test -f dist/index.html"
+          "text": "@codemirror/lang-markdown is present in package.json",
+          "verify": "grep -q 'lang-markdown' /Users/simonp/dev/markdown/package.json"
         },
         {
-          "text": "The built JS bundle contains CodeMirror EditorView code",
-          "verify": "grep -rql EditorView dist/"
+          "text": "cargo test --workspace passes — Rust core unaffected",
+          "verify": "cargo test --workspace --quiet 2>&1 | tail -3"
         },
-        {
-          "text": "The built bundle does NOT contain @codemirror/lang-markdown — M0 is plain-text-only",
-          "verify": "! grep -rqlE 'lang-markdown|markdownLanguage' dist/"
-        }
+        "Bold (**text**) and italic (*text*) tokens have distinct visual styling from plain text",
+        "Inline code and fenced code blocks are visually distinguished from prose"
       ],
       "scope": [
-        "src/**",
-        "package.json",
-        "vite.config.*",
-        "tsconfig.*"
+        "src/editor.ts",
+        "src/main.ts",
+        "package.json"
       ],
-      "dependsOn": [
-        "FEAT-002"
-      ],
-      "status": "done",
+      "dependsOn": [],
+      "status": "todo",
       "passes": false,
       "readyForSprint": true,
-      "resolved_at": "2026-04-12T05:32:33Z"
+      "groomedAt": null,
+      "groomingNotes": null,
+      "lastFailReason": "Implementation failed",
+      "lastFailAt": "2026-04-12T16:47:57-07:00",
+      "failCount": 3
     },
     {
-      "id": "FEAT-007",
-      "title": "Phase0-tree-sitter: Integrate tree-sitter-markdown into em-core",
-      "intent": "em-core can parse any markdown string into a typed AST using tree-sitter-markdown (split_parser branch). The parse result is a Rust struct tree, not a raw tree-sitter CST. Every downstream feature (formatting, doctor, WYSIWYM decorations) reads from this AST — no component parses markdown ad-hoc.",
-      "description": "Integrate tree-sitter-markdown (the split_parser branch, which separates block and inline grammars) into em-core as the single parser. Port the AST node types to Rust enums that map to the tree-sitter node kinds. The AST types must cover: headings, paragraphs, code blocks (fenced and indented), lists and list items, blockquotes, tables (GFM), links, images, emphasis, strong, inline code, thematic breaks, and frontmatter (YAML block detection). Provide a parse(text: &str) -> SyntaxTree function in em-core. Do NOT use the String-based Document from M0 for the AST — the parser operates on a &str input and returns an owned tree. Reference for algorithm inspiration (not code): the legacy Swift files in reference/ (TreeSitterConversion.swift and the EMFormatter/EMDoctor rule files). Note that reference/ does not contain an EMParser directory — use TreeSitterConversion.swift as the tree-sitter node-type mapping reference.",
+      "id": "FEAT-013",
+      "title": "Phase1-wysiwym: WYSIWYM decorations — syntax characters hide/reveal on cursor proximity",
+      "intent": "Markdown syntax markers (# ** * ` []) are hidden when the cursor is not near them and revealed on cursor proximity, giving the editor a clean reading view while preserving full source access. A static source view throughout the session is not acceptable for Phase 1.",
+      "description": "Implement a CodeMirror 6 ViewPlugin that walks the syntax tree provided by @codemirror/lang-markdown (FEAT-012) and attaches Mark decorations to hide syntax characters. Proximity rule: markers within the same block as the cursor (same heading line, same emphasis span, same link node) are visible; all others are hidden via CSS (opacity: 0 or display: none). Cursor entering a block immediately reveals its markers.\n\nReduced Motion: when `prefers-reduced-motion: reduce` is set, markers are always visible (no hiding).\n\nThis is HyperMD-style WYSIWYM, not a rich-text preview. The text always remains markdown source — we are decorating, not transforming.",
       "priority": "must",
-      "category": "core",
+      "category": "editor",
       "steps": [
-        "Add tree-sitter and tree-sitter-markdown as Cargo dependencies (using the split_parser branch via git dependency)",
-        "Create em-core/src/ast.rs defining Rust enums for all major node kinds listed in the description",
-        "Create em-core/src/parser.rs implementing parse(text: &str) -> SyntaxTree that walks the tree-sitter CST",
-        "Map tree-sitter node type strings (e.g. 'atx_heading', 'fenced_code_block') to the Rust AST enums",
-        "Handle GFM extensions: table, strikethrough, task list item, autolink",
-        "Handle YAML frontmatter: detect a leading '---' block and wrap it in a FrontmatterNode",
-        "Write unit tests in em-core/src/parser.rs that parse representative markdown fragments and assert on the resulting AST structure",
-        "Run cargo test -p em-core and confirm all new parser tests pass"
+        "Create src/wysiwym.ts exporting a CodeMirror Extension (ViewPlugin + decorations)",
+        "Walk the syntax tree to identify syntax-marker ranges: ATXHeading markers (#), Emphasis/StrongEmphasis markers (* **), InlineCode backticks, Link/Image bracket/paren pairs",
+        "For each marker range, check if cursor (selection.main.head) is within the same parent node",
+        "Apply a CSS class (e.g. .cm-hidden-marker) with opacity: 0 to non-proximate markers",
+        "On cursor move, recompute decorations and update the view",
+        "Add prefers-reduced-motion media query check: if set, return empty DecorationSet (all markers visible)",
+        "Import and add wysiwym extension to the CodeMirror setup in src/editor.ts"
       ],
       "acceptanceCriteria": [
         {
-          "text": "cargo test -p em-core --test parser passes with at least 8 distinct test cases (heading, paragraph, fenced code, bullet list, ordered list, link, strong, emphasis)",
-          "verify": "cargo test -p em-core --test parser 2>&1 | grep -qE 'test result: ok\\. ([8-9]|[1-9][0-9])'"
+          "text": "src/wysiwym.ts exists and exports a CodeMirror Extension",
+          "verify": "test -f /Users/simonp/dev/markdown/src/wysiwym.ts"
         },
         {
-          "text": "cargo tree lists tree-sitter and tree-sitter-md (or equivalent) as direct dependencies of em-core",
-          "verify": "cargo tree -p em-core 2>&1 | grep -qE 'tree-sitter( |-md)'"
+          "text": "npm run build succeeds with wysiwym extension included",
+          "verify": "npm run build 2>&1 | grep -c 'error' | grep -q '^0$'"
         },
-        {
-          "text": "parse() returns a typed AST with at least the major node kinds — not a raw tree-sitter cursor",
-          "verify": "cargo test -p em-core --test parser returns_typed_ast 2>&1 | grep -qE 'test result: ok\\. [1-9]'"
-        },
-        {
-          "text": "cargo test --workspace exits 0 with no failures after integrating the parser",
-          "verify": "cargo test --workspace 2>&1 | grep -qE 'test result: ok' && ! cargo test --workspace 2>&1 | grep -qE 'FAILED'"
-        }
+        "ATX heading # markers are hidden on lines where the cursor is not present",
+        "Moving the cursor to a heading line reveals that heading's # markers",
+        "prefers-reduced-motion: reduce disables all marker hiding (markers always visible)"
       ],
       "scope": [
-        "em-core/src/ast.rs",
-        "em-core/src/parser.rs",
-        "em-core/Cargo.toml"
+        "src/wysiwym.ts",
+        "src/editor.ts"
       ],
       "dependsOn": [
-        "FEAT-006"
+        "FEAT-012"
       ],
       "status": "todo",
       "passes": false,
-      "readyForSprint": false
+      "readyForSprint": false,
+      "groomedAt": null,
+      "groomingNotes": null
     },
     {
-      "id": "FEAT-008",
-      "title": "Phase0-engine-decision: Decide and implement the post-M0 document model",
-      "intent": "The document model engine decision is made against real baseline numbers, not speculation. ARCHITECTURE.md §Document Model lists three candidates (A piece table, B rope, C keep String). The FEAT-006 baseline.json exists and is authoritative. This item runs the three candidates against the same measurement script, picks the winner on the defensible criterion (the one that does not regress any baseline metric by more than 10% AND has the lowest complexity cost), and lands the chosen implementation. The four em-core public functions (open_file, edit, save_file, current_text) remain unchanged from M0.",
-      "description": "Do not assume the answer. Run the measurement script from FEAT-006 against three implementations of em-core::Document: (A) a piece table with a balanced BST of pieces over original + add buffers, (B) a rope using the ropey crate, (C) the M0 String as a control. Commit the three measurement runs to docs/engine-comparison.json. Pick the implementation that does not regress any baseline metric by more than 10% AND has the lowest complexity cost (fewest added lines, no new unsafe, no platform-specific code). Default to C (keep String) unless A or B demonstrably beats it on a metric that matters for the product scope. Write a one-paragraph decision record in docs/engine-decision.md explaining the chosen candidate and the measured numbers that justified it. Replace em-core/src/lib.rs::Document with the chosen implementation. All M0 integration tests must continue to pass unchanged.",
-      "priority": "must",
-      "category": "core",
+      "id": "FEAT-015",
+      "title": "Phase1-the-render: Source-to-rich toggle animation (The Render)",
+      "intent": "Toggling between source and rich view transforms the document — syntax characters animate out, styled content materializes. This is the single most important demo moment in the product. A mode swap without transition is not acceptable.",
+      "description": "Implement a source/rich toggle that, when activated, animates markdown syntax characters fading out while rendered elements (styled headings, bold text, rendered links) fade in. Target: ~400ms, spring-eased CSS transitions at 60fps.\n\nRich view is still CodeMirror — we use Mark and Replace decorations to hide/replace syntax characters with styled equivalents. This is not a renderer switch (no separate preview pane). It is a decoration pass on top of the same editor.\n\nReduced Motion alternative: instant crossfade (no animation, just state swap).\n\nTrigger: Cmd+Shift+R (macOS) / Ctrl+Shift+R (other), or a visible toggle button in the UI.\n\nDependency: FEAT-013 (WYSIWYM) must land first since The Render extends the same decoration architecture.",
+      "priority": "should",
+      "category": "editor",
       "steps": [
-        "Read docs/baseline.json (committed by FEAT-006) and the measurement script it references",
-        "Create three temporary branches or modules: engine_a_piece_table, engine_b_rope, engine_c_string_control",
-        "Implement candidate A (piece table) in engine_a_piece_table — pieces in a BTreeMap<usize, Piece>, Original and Add buffers, incremental line-starts",
-        "Implement candidate B (rope) in engine_b_rope using the ropey crate",
-        "Leave candidate C as the existing String implementation",
-        "Run the FEAT-006 measurement script against each candidate on the canonical ubuntu-latest environment, with N>=5 runs each",
-        "Write docs/engine-comparison.json with the three candidates median numbers for each metric",
-        "Pick the winner per the decision criterion in the description",
-        "Write docs/engine-decision.md explaining the choice",
-        "Replace em-core/src/lib.rs::Document with the chosen candidate",
-        "Run cargo test --workspace and confirm all M0 tests still pass",
-        "Delete the two losing candidate modules"
+        "Add a richMode boolean state and a Compartment in src/editor.ts",
+        "Create src/render.ts: a DecorationSet builder that in rich mode replaces heading markers with styled spans, collapses ** ** markers and applies font-weight: bold via widget decorations, renders links as styled text",
+        "Add CSS transitions in src/style.css for .cm-rich-* classes (opacity, transform, ~400ms spring)",
+        "Implement a toggleRender() command that flips richMode and reconfigures the compartment",
+        "Wire Cmd+Shift+R / Ctrl+Shift+R keymap to toggleRender()",
+        "Add a toolbar button that calls toggleRender() and shows current mode",
+        "Check prefers-reduced-motion: if set, apply changes without transition (instant swap)"
       ],
       "acceptanceCriteria": [
         {
-          "text": "docs/engine-comparison.json exists and contains median measurements for all three candidates on all six baseline metrics",
-          "verify": "test -f docs/engine-comparison.json && jq -e '.candidates | length == 3 and (all(.metrics | length >= 6))' docs/engine-comparison.json"
+          "text": "src/render.ts exists",
+          "verify": "test -f /Users/simonp/dev/markdown/src/render.ts"
         },
         {
-          "text": "docs/engine-decision.md exists and names the chosen candidate with a justification referencing measured numbers",
-          "verify": "test -f docs/engine-decision.md && grep -qiE 'chosen|winner|decision' docs/engine-decision.md"
+          "text": "npm run build succeeds",
+          "verify": "npm run build 2>&1 | grep -c 'error' | grep -q '^0$'"
         },
-        {
-          "text": "cargo test --workspace passes — every M0 integration test still green after the engine swap",
-          "verify": "cargo test --workspace 2>&1 | grep -qE 'test result: ok\\. [1-9]' && ! cargo test --workspace 2>&1 | grep -qE 'FAILED'"
-        },
-        {
-          "text": "The measurement run on the chosen candidate does not regress any baseline.json metric by more than 10%",
-          "verify": "cargo run -p em-core --example baseline_check 2>&1 | grep -qiE 'no regression|within budget'"
-        }
+        "Cmd+Shift+R (or Ctrl+Shift+R) toggles between source and rich view",
+        "In rich view, heading # markers are replaced by styled heading elements",
+        "prefers-reduced-motion: reduce produces an instant crossfade with no CSS transition"
       ],
       "scope": [
-        "em-core/src/piece_table.rs",
+        "src/render.ts",
+        "src/editor.ts",
+        "src/style.css"
+      ],
+      "dependsOn": [
+        "FEAT-013"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": false,
+      "groomedAt": null,
+      "groomingNotes": null
+    },
+    {
+      "id": "FEAT-017",
+      "title": "Phase1-word-count: Word count and document statistics bar",
+      "intent": "The user sees live word count, character count, and estimated reading time at the bottom of the editor. Stats update within 100ms of any keystroke. An editor without word count is missing a basic writing tool.",
+      "description": "Add a status bar below the CodeMirror editor that displays: word count (words in the document, excluding markdown syntax tokens), character count (total characters including whitespace), and estimated reading time (word count / 200, rounded to nearest minute, minimum 1 min).\n\nWord count implementation: strip fenced code block contents (code is not prose), strip ATX heading markers and other syntax characters, split on whitespace, count non-empty tokens.\n\nThe status bar updates on every document change event. It must not cause layout reflow in the editor area — use a fixed-height footer element.\n\nThe word count is computed in the frontend (TypeScript) on the raw text. No Rust IPC call needed.",
+      "priority": "should",
+      "category": "editor",
+      "steps": [
+        "Add a <div id='status-bar'> to src/index.html below the editor element",
+        "Create src/wordcount.ts exporting countWords(text: string): { words: number, chars: number, readingTime: number }",
+        "Implement word counting: strip markdown syntax patterns (ATX markers, fenced code, inline code, link syntax), split on /\\s+/, filter empty",
+        "Wire an EditorView.updateListener to call countWords() on every docChanged event and update the status bar",
+        "Add status bar CSS in src/style.css: fixed height, small font, subdued color (secondary text in both themes)",
+        "Verify the status bar does not cause layout shift when updated"
+      ],
+      "acceptanceCriteria": [
+        {
+          "text": "src/wordcount.ts exists",
+          "verify": "test -f /Users/simonp/dev/markdown/src/wordcount.ts"
+        },
+        {
+          "text": "npm run build succeeds",
+          "verify": "npm run build 2>&1 | grep -c 'error' | grep -q '^0$'"
+        },
+        {
+          "text": "countWords exports correct counts for a known fixture",
+          "verify": "node -e \"const {countWords} = require('./src/wordcount.ts'); process.exit(0)\" 2>&1 | grep -v 'Error' || true"
+        },
+        "Status bar displays word count, character count, and reading time estimate",
+        "Stats update within 100ms of typing a character in the editor"
+      ],
+      "scope": [
+        "src/wordcount.ts",
+        "src/editor.ts",
+        "src/index.html",
+        "src/style.css"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomedAt": null,
+      "groomingNotes": null,
+      "lastFailReason": "AC verification failed",
+      "lastFailAt": "2026-04-13T12:21:13-07:00",
+      "failCount": 1
+    },
+    {
+      "id": "FEAT-018",
+      "title": "Phase1-keyboard-shortcuts: Platform-idiomatic editing keyboard shortcuts",
+      "intent": "All common editing operations are reachable by keyboard using platform conventions. Users should never mouse to bold, italicize, undo, or select all. Missing platform-standard shortcuts make the editor feel unfinished.",
+      "description": "Wire markdown-aware editing shortcuts through CodeMirror 6's keymap extension. Use Cmd-key on macOS, Ctrl-key on Linux and Windows (Tauri provides the platform context).\n\nShortcuts to implement:\n- Cmd/Ctrl+B: wrap selection in **bold** markers (or unwrap if already wrapped)\n- Cmd/Ctrl+I: wrap selection in *italic* markers (or unwrap)\n- Cmd/Ctrl+Z: undo (CodeMirror built-in, verify it is wired)\n- Cmd/Ctrl+Shift+Z: redo (macOS) / Ctrl+Y: redo (Windows/Linux)\n- Cmd/Ctrl+A: select all (CodeMirror built-in, verify)\n- Cmd/Ctrl+Shift+K: delete current line\n\nDo not reimplement undo/redo/select-all — these are already in @codemirror/commands defaultKeymap. Verify they are included and focus on the markdown-specific ones (bold, italic) which require custom commands.",
+      "priority": "should",
+      "category": "editor",
+      "steps": [
+        "Import defaultKeymap, historyKeymap from @codemirror/commands; verify they are in the extensions array",
+        "Create src/markdown-commands.ts with wrapSelection(mark: string) helper that toggles wrapper marks around the selection",
+        "Implement toggleBold() and toggleItalic() commands using wrapSelection",
+        "Add a custom keymap binding Cmd+B -> toggleBold, Cmd+I -> toggleItalic (use platform detection from navigator.platform or Tauri context)",
+        "Implement deleteLine() command (or use CodeMirror's built-in deleteLine from @codemirror/commands)",
+        "Ensure all keymaps are added to the CodeMirror extensions in src/editor.ts"
+      ],
+      "acceptanceCriteria": [
+        {
+          "text": "src/markdown-commands.ts exists with toggleBold and toggleItalic exports",
+          "verify": "test -f /Users/simonp/dev/markdown/src/markdown-commands.ts"
+        },
+        {
+          "text": "npm run build succeeds",
+          "verify": "npm run build 2>&1 | grep -c 'error' | grep -q '^0$'"
+        },
+        {
+          "text": "cargo test --workspace passes",
+          "verify": "cargo test --workspace --quiet 2>&1 | tail -3"
+        },
+        "Cmd+B (macOS) / Ctrl+B wraps selected text with ** markers; pressing again removes them",
+        "Cmd+I (macOS) / Ctrl+I wraps selected text with * markers; pressing again removes them",
+        "Cmd+Z / Ctrl+Z undoes the last edit and Cmd+Shift+Z / Ctrl+Y redoes it"
+      ],
+      "scope": [
+        "src/markdown-commands.ts",
+        "src/editor.ts"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomedAt": null,
+      "groomingNotes": null
+    },
+    {
+      "id": "FEAT-019",
+      "title": "Phase1-file-workflow: New file, recent files, and unsaved-changes prompt",
+      "intent": "The user can create new untitled documents, reopen recently-used files from the menu, and is never asked to lose unsaved work without a prompt. The M0 single-file open/save loop must grow into a polished daily-use workflow.",
+      "description": "Extend the M0 file handling (FEAT-005) with three capabilities:\n\n1. **New file** (Cmd+N): opens a new untitled buffer in a new Tauri window. Each window is independent — one file per window, consistent with the DP-1 no-vault principle.\n\n2. **Recent files**: File > Open Recent submenu populated from a local config file (~/.config/markdown/recent.json or the Tauri app data dir). Track the last 10 opened file paths. On click, open the file in a new window.\n\n3. **Unsaved-changes prompt**: when the user attempts to close a window, open a different file, or open a new file while the current document has unsaved changes, show a native Tauri dialog: 'Save changes to [filename]?' with Save / Discard / Cancel buttons. Save writes the file; Discard discards; Cancel aborts the action.\n\nRecent file tracking: update the list on every successful file open and save. Persist immediately to disk. Paths that no longer exist on disk are silently removed from the list on next load.",
+      "priority": "should",
+      "category": "editor",
+      "steps": [
+        "Add a Tauri command `get_recent_files() -> Vec<String>` that reads ~/.config/markdown/recent.json (or equivalent app data path)",
+        "Add a Tauri command `add_recent_file(path: String)` that prepends the path to the list and trims to 10 entries",
+        "Build the File > Open Recent submenu in the Tauri menu builder using the recent file list",
+        "Implement a new-window command triggered by Cmd+N: create a new Tauri WebviewWindow with a fresh untitled document state",
+        "Track dirty state in the frontend: set a hasUnsavedChanges flag on every editor change, clear it on save",
+        "Intercept the window close event (Tauri onCloseRequested); if hasUnsavedChanges, show a native dialog before allowing close",
+        "Persist recent files on every successful open and save"
+      ],
+      "acceptanceCriteria": [
+        {
+          "text": "get_recent_files Tauri command exists in src-tauri/src/",
+          "verify": "grep -r 'get_recent_files' /Users/simonp/dev/markdown/src-tauri/src/ -l | grep -q ."
+        },
+        {
+          "text": "cargo build succeeds",
+          "verify": "cargo build --quiet 2>&1 | tail -5"
+        },
+        {
+          "text": "cargo test --workspace passes",
+          "verify": "cargo test --workspace --quiet 2>&1 | tail -3"
+        },
+        "Cmd+N opens a new empty editor window without closing the current one",
+        "Closing a window with unsaved changes shows a Save/Discard/Cancel dialog",
+        "File > Open Recent shows at least the last-opened file after opening and closing a file"
+      ],
+      "scope": [
+        "src-tauri/src/lib.rs",
+        "src-tauri/src/main.rs",
+        "src/main.ts",
+        "src/editor.ts"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomedAt": null,
+      "groomingNotes": null
+    },
+    {
+      "id": "FEAT-020",
+      "title": "Phase1-typography: Designed typographic system for the editor",
+      "intent": "The editor uses a thoughtfully chosen typeface, line height, and measure that make long documents pleasant to read and write. The OS default system-ui without tuning is not acceptable for a writing-focused editor.",
+      "description": "Define a typographic system for the CodeMirror editor content area and apply it via CSS. The goal is a prose-reading experience, not a code-editor experience.\n\nTypographic choices to make and document (with rationale):\n- **Body font**: prefer a system sans-serif stack that includes SF Pro (macOS), Segoe UI (Windows), and a good Linux fallback, OR bundle a small open-source font (e.g. Inter or iA Writer's approach with system fonts). Decision: system font stack first, revisit if insufficient.\n- **Code font**: system monospace stack (SF Mono, Consolas, Menlo, monospace)\n- **Line height**: 1.6 for prose (matches reading research optimum of 1.5–1.7)\n- **Measure**: max-width ~68ch for the content column (proven optimal at ~50–75 chars)\n- **Font size**: 16px base (browser readable default, respects OS accessibility font scaling)\n\nApply via CSS custom properties in src/style.css and wire to CodeMirror's EditorView.theme(). The layout must use the measure constraint so the text column is centered with breathing room on large screens.",
+      "priority": "should",
+      "category": "editor",
+      "steps": [
+        "Define CSS custom properties in src/style.css: --font-body, --font-code, --font-size-base, --line-height-body, --measure",
+        "Override CodeMirror's .cm-content class to use --font-body, --font-size-base, --line-height-body",
+        "Override .cm-content pre.cm-line (code blocks) to use --font-code",
+        "Add a centered content column: editor wrapper with max-width: var(--measure), margin: 0 auto",
+        "Set --measure to 68ch; set --line-height-body to 1.6; set --font-size-base to 16px",
+        "Verify the layout adapts correctly at narrow viewport widths (measure constraint should shrink gracefully)",
+        "Verify font size scaling: OS-level text size changes should scale the editor text proportionally"
+      ],
+      "acceptanceCriteria": [
+        {
+          "text": "CSS custom properties --font-body and --measure exist in src/style.css",
+          "verify": "grep -q 'font-body' /Users/simonp/dev/markdown/src/style.css"
+        },
+        {
+          "text": "npm run build succeeds",
+          "verify": "npm run build 2>&1 | grep -c 'error' | grep -q '^0$'"
+        },
+        {
+          "text": "cargo test --workspace passes",
+          "verify": "cargo test --workspace --quiet 2>&1 | tail -3"
+        },
+        "Editor content column is max-width 68ch (approximately), centered on wide screens",
+        "Line height for prose text is approximately 1.6 (visible in computed styles)",
+        "Code blocks render in a monospace font distinct from the prose font"
+      ],
+      "scope": [
+        "src/style.css",
+        "src/editor.ts"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomedAt": null,
+      "groomingNotes": null
+    },
+    {
+      "id": "FEAT-021",
+      "title": "Phase1-spell-check: Native OS spell check integration",
+      "intent": "Misspelled words are underlined in the editor using the OS spell-check engine — the same engine used in every other native text field on the platform. Users who type in multiple languages get correct spell checking without configuration. A writing editor with no spell feedback forces writers to proof elsewhere.",
+      "description": "Enable native OS spell checking in the Tauri WebView. On macOS, the system WebKit spell-check engine activates automatically on any element with spellcheck=true or contenteditable. The CodeMirror editor uses a contenteditable div (.cm-content), so setting the spellcheck attribute and the lang attribute on the editor element activates the OS spell-check underlines natively.\n\nApproach: set spellcheck=\"true\" on the .cm-content DOM node after editor initialization. On macOS this gives red squiggle underlines from WebKit automatically — no custom dictionary, no network requests, no bundled word list.\n\nDo NOT implement a custom spell-check dictionary in JavaScript. Do NOT add a third-party spell-check library. Use OS APIs exclusively — that is what they are for, and it is how every other app on the platform works.\n\nReduced scope: this item only activates OS spell check. User preferences (disabling spell check, language selection) are a future item.",
+      "priority": "should",
+      "category": "editor",
+      "steps": [
+        "After the EditorView is mounted, locate the .cm-content DOM node with view.contentDOM",
+        "Set view.contentDOM.setAttribute(\"spellcheck\", \"true\") to activate OS spell checking",
+        "Set view.contentDOM.setAttribute(\"lang\", navigator.language) so the OS engine uses the system language",
+        "Verify macOS WebKit shows red squiggles under misspelled words in the editor",
+        "Verify right-clicking a misspelled word shows the OS spell-check suggestions context menu",
+        "Document in a code comment that fenced code blocks may show false-positive spell errors (WebKit scopes the whole contenteditable)"
+      ],
+      "acceptanceCriteria": [
+        {
+          "text": "npm run build succeeds",
+          "verify": "npm run build"
+        },
+        {
+          "text": "cargo test --workspace passes",
+          "verify": "cargo test --workspace --quiet"
+        },
+        "Misspelled words show OS spell-check underlines in the editor content area",
+        "Right-clicking a misspelled word presents the OS spelling suggestions menu",
+        "Code blocks may show false-positive spell errors (known limitation — documented in code comment, not a blocker)"
+      ],
+      "scope": [
+        "src/editor.ts"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true
+    },
+    {
+      "id": "FEAT-022",
+      "title": "Phase2-linux-shell: Linux Tauri shell with WebKitGTK",
+      "intent": "Markdown runs on Linux as a first-class citizen — native file dialogs via GTK, XDG desktop integration, .desktop file, and AppStream metadata. A macOS-only editor violates D-PLAT-1.",
+      "description": "Create the Linux Tauri shell. The Tauri project already builds for macOS; this item extends it to produce a Linux binary using WebKitGTK. Add a .desktop file for application launcher integration, AppStream metadata for software center discoverability, and verify GTK file dialogs work correctly.\n\nScope boundary: this item produces a working Linux build with desktop integration. Flatpak packaging is a separate concern within this phase but can be a follow-up item if needed.",
+      "priority": "must",
+      "category": "shell",
+      "steps": [
+        "Configure Tauri to build for Linux target with WebKitGTK backend",
+        "Add a .desktop file (XDG Desktop Entry) to the project with correct categories, icon, and MIME type associations for .md files",
+        "Add AppStream metadata XML for software center integration",
+        "Verify the Linux build produces a runnable binary that opens a window with the CodeMirror editor",
+        "Verify GTK file dialogs (open/save) work correctly on Linux",
+        "Test that all existing features (open, edit, save, themes, find/replace) work identically on Linux",
+        "Add Linux build target to CI"
+      ],
+      "acceptanceCriteria": [
+        {
+          "text": "cargo tauri build --target linux produces a binary",
+          "verify": "cargo tauri build 2>&1 | tail -5"
+        },
+        {
+          "text": ".desktop file exists with correct MIME type for .md files",
+          "verify": "grep -q 'text/markdown' src-tauri/*.desktop || grep -rq 'text/markdown' src-tauri/"
+        },
+        {
+          "text": "AppStream metadata XML exists",
+          "verify": "find src-tauri -name '*.metainfo.xml' -o -name '*.appdata.xml' | grep -q ."
+        },
+        {
+          "text": "cargo test --workspace passes on Linux",
+          "verify": "cargo test --workspace --quiet 2>&1 | tail -3"
+        },
+        "GTK file dialogs open and return selected file paths correctly",
+        "Editor renders and accepts input identically to the macOS build"
+      ],
+      "scope": [
+        "src-tauri/tauri.conf.json",
+        "src-tauri/Cargo.toml",
+        ".github/workflows/"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": false,
+      "groomedAt": null,
+      "groomingNotes": null
+    },
+    {
+      "id": "FEAT-023",
+      "title": "Phase2-windows-shell: Windows Tauri shell with WebView2",
+      "intent": "Markdown runs on Windows as a first-class citizen — native file dialogs, MSI installer, and WinGet manifest. Windows is the largest desktop platform and must be supported before the first public pre-release.",
+      "description": "Create the Windows Tauri shell. Tauri uses WebView2 (Edge Chromium) on Windows. This item produces a Windows build with an MSI installer and a WinGet manifest for package manager distribution.\n\nScope boundary: this item produces a working Windows build with installer. Microsoft Store submission is a future item.",
+      "priority": "must",
+      "category": "shell",
+      "steps": [
+        "Configure Tauri to build for Windows target with WebView2 backend",
+        "Configure the MSI installer bundle in tauri.conf.json (app name, icon, file associations for .md)",
+        "Create a WinGet manifest for community submission",
+        "Verify the Windows build produces a runnable .exe and .msi",
+        "Verify Windows native file dialogs work correctly",
+        "Test that all existing features work identically on Windows",
+        "Add Windows build target to CI"
+      ],
+      "acceptanceCriteria": [
+        {
+          "text": "cargo tauri build produces an MSI installer on Windows",
+          "verify": "ls src-tauri/target/release/bundle/msi/*.msi 2>/dev/null | grep -q ."
+        },
+        {
+          "text": "File association for .md is configured in tauri.conf.json",
+          "verify": "grep -q 'md' src-tauri/tauri.conf.json"
+        },
+        {
+          "text": "cargo test --workspace passes on Windows",
+          "verify": "cargo test --workspace --quiet 2>&1 | tail -3"
+        },
+        "Windows native file dialogs open and return selected file paths correctly",
+        "Editor renders and accepts input identically to macOS and Linux builds",
+        "WinGet manifest exists and is syntactically valid"
+      ],
+      "scope": [
+        "src-tauri/tauri.conf.json",
+        "src-tauri/Cargo.toml",
+        ".github/workflows/"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": false,
+      "groomedAt": null,
+      "groomingNotes": null
+    },
+    {
+      "id": "FEAT-024",
+      "title": "Phase2-web-shell: Web / PWA shell with File System Access API",
+      "intent": "Markdown runs in the browser as a progressive web app — no install required. Users can open local files via the File System Access API where supported, and fall back to file upload/download where not. A web shell makes Markdown accessible on any platform with a browser.",
+      "description": "Create a web build of the CodeMirror 6 editor that runs standalone in a browser without Tauri. Use the File System Access API (Chromium browsers) for native-like open/save of local files. For browsers without File System Access API (Firefox, Safari), fall back to <input type='file'> for open and download-as-file for save.\n\nDeploy as a PWA with a service worker for offline capability and an app manifest for install-to-home-screen.\n\nScope boundary: this is the editor only — no Rust core in the browser (no WASM compilation of em-core yet). File operations are JS-only. Formatting and doctor features that depend on em-core are not available in the web shell until a WASM build of em-core is created (future item).",
+      "priority": "should",
+      "category": "shell",
+      "steps": [
+        "Create a web build configuration (Vite) that produces a standalone web app without Tauri dependencies",
+        "Implement file open using File System Access API (showOpenFilePicker) with fallback to <input type='file'>",
+        "Implement file save using File System Access API (showSaveFilePicker / FileSystemWritableFileStream) with fallback to download",
+        "Add a PWA manifest (manifest.json) with app name, icons, and display: standalone",
+        "Add a service worker for offline caching of the app shell",
+        "Verify the web app loads in Chrome, Firefox, and Safari",
+        "Verify open/save works in Chrome (File System Access) and Firefox (fallback)"
+      ],
+      "acceptanceCriteria": [
+        {
+          "text": "Web build produces a deployable static site",
+          "verify": "npm run build:web 2>&1 | tail -5"
+        },
+        {
+          "text": "PWA manifest exists",
+          "verify": "test -f public/manifest.json || test -f src/manifest.json"
+        },
+        {
+          "text": "Service worker file exists",
+          "verify": "find dist-web src public -name 'sw.*' -o -name 'service-worker.*' 2>/dev/null | grep -q ."
+        },
+        "File open works in Chrome via File System Access API",
+        "File open falls back to file input in Firefox/Safari",
+        "File save works in Chrome via File System Access API",
+        "The app can be installed as a PWA from Chrome"
+      ],
+      "scope": [
+        "vite.config.web.ts",
+        "src/main-web.ts",
+        "public/manifest.json",
+        "src/sw.ts"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": false,
+      "groomedAt": null,
+      "groomingNotes": null
+    },
+    {
+      "id": "FEAT-025",
+      "title": "Phase2-autosave: Auto-save with content-hash skip",
+      "intent": "The user's work is saved automatically without explicit action. Auto-save only writes when the content has actually changed (content-hash skip), avoiding unnecessary disk writes and preserving file modification timestamps. Users should never lose work because they forgot to press Cmd+S.",
+      "description": "Implement auto-save in the Tauri app. After any document change, start a debounce timer (e.g. 2 seconds of idle). When the timer fires, compute a hash of the current document content and compare it to the hash of the last saved version. If different, save. If identical, skip.\n\nAuto-save writes to the same file path the document was opened from. Untitled (never-saved) documents are NOT auto-saved — they require an explicit first save to establish a file path.\n\nAuto-save is on by default. When auto-save fires, show a subtle, non-modal indicator (e.g. a brief status bar message).\n\nScope boundary: this item does not handle external file changes or conflicts — that is FEAT-026.",
+      "priority": "must",
+      "category": "editor",
+      "steps": [
+        "Add a content hash (e.g. FNV or xxhash) computation to em-core or the frontend",
+        "Track the hash of the last-saved content in the editor state",
+        "Implement a debounce timer (2s idle after last change) in the frontend",
+        "On timer fire, compute current hash, compare to saved hash, save if different",
+        "Show a brief status bar indicator when auto-save completes (e.g. 'Saved' that fades after 2s)",
+        "Skip auto-save for untitled documents (no file path yet)",
+        "Ensure auto-save does not interfere with explicit Cmd+S save"
+      ],
+      "acceptanceCriteria": [
+        {
+          "text": "npm run build succeeds",
+          "verify": "npm run build 2>&1 | grep -c 'error' | grep -q '^0$'"
+        },
+        {
+          "text": "cargo test --workspace passes",
+          "verify": "cargo test --workspace --quiet 2>&1 | tail -3"
+        },
+        "After typing and waiting 2+ seconds, the file on disk contains the new content without pressing Cmd+S",
+        "If the user types but the content hash matches the saved version (e.g. undo back to saved state), no disk write occurs",
+        "Untitled documents are not auto-saved",
+        "A brief 'Saved' indicator appears in the status bar after each auto-save"
+      ],
+      "scope": [
+        "src/editor.ts",
+        "src/main.ts",
+        "src-tauri/src/lib.rs"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": false,
+      "groomedAt": null,
+      "groomingNotes": null
+    },
+    {
+      "id": "FEAT-026",
+      "title": "Phase2-file-watching: External file change detection and conflict resolution",
+      "intent": "When an external process modifies the file the user has open (e.g. git pull, another editor, a cloud drive sync), the editor detects the change and offers a clear resolution: reload the external version, keep the editor version, or diff. The user never silently overwrites external changes or loses their own edits.",
+      "description": "Use the notify crate in Rust to watch the open file's path for modifications. When an external change is detected:\n\n1. If the editor has no unsaved changes: silently reload the file.\n2. If the editor has unsaved changes: show a dialog — 'This file was changed externally. Reload external version / Keep your version / Show diff.'\n\nThe file watcher should handle common edge cases: file renamed, file deleted, file replaced (atomic save pattern where the file is deleted and recreated).\n\nScope boundary: this item handles single-file watching. Directory-level watching for file tree updates is a future item.",
+      "priority": "must",
+      "category": "core",
+      "steps": [
+        "Add the notify crate to em-core dependencies",
+        "Create a file watcher module in em-core that watches a single file path and emits change events",
+        "Expose a Tauri command to start/stop watching a file path",
+        "In the frontend, listen for file-change events from the Tauri backend",
+        "If no unsaved changes: reload the file silently and update the editor content",
+        "If unsaved changes exist: show a native Tauri dialog with Reload / Keep / Show Diff options",
+        "Handle edge cases: file deleted (show warning), file renamed (stop watching), atomic save pattern (debounce rapid delete+create events)"
+      ],
+      "acceptanceCriteria": [
+        {
+          "text": "notify crate is in em-core Cargo.toml",
+          "verify": "grep -q 'notify' em-core/Cargo.toml"
+        },
+        {
+          "text": "cargo test --workspace passes",
+          "verify": "cargo test --workspace --quiet 2>&1 | tail -3"
+        },
+        {
+          "text": "npm run build succeeds",
+          "verify": "npm run build 2>&1 | grep -c 'error' | grep -q '^0$'"
+        },
+        "External modification of the open file with no unsaved editor changes reloads the file silently",
+        "External modification with unsaved editor changes shows a Reload/Keep/Diff dialog",
+        "File deletion while open shows a warning to the user"
+      ],
+      "scope": [
         "em-core/src/lib.rs",
-        "em-core/Cargo.toml"
+        "em-core/Cargo.toml",
+        "src-tauri/src/lib.rs",
+        "src/editor.ts"
       ],
-      "dependsOn": [
-        "FEAT-006"
-      ],
+      "dependsOn": [],
       "status": "todo",
       "passes": false,
-      "readyForSprint": false
+      "readyForSprint": false,
+      "groomedAt": null,
+      "groomingNotes": null
     },
     {
-      "id": "FEAT-009",
-      "title": "Phase0-formatting-engine: Rule-based formatting engine in Rust",
-      "intent": "em-core can format any markdown document in under 50ms for a 10k-line file, applying the five core rules. Every rule is implemented from scratch in Rust using the EMFormatter Swift algorithms as reference. No Swift code transfers. The output is a Vec<Mutation> describing byte-range replacements — the caller (CodeMirror bridge) applies them, the engine does not mutate documents directly.",
-      "description": "Implement the formatting engine in em-core/src/formatter.rs. The engine runs five ordered rules ported from the algorithm logic in reference/EMFormatter/: (1) list continuation — auto-indent on Enter at list item, (2) table alignment — normalize column widths and separator row dashes, (3) heading spacing — ensure blank line before each heading unless at document start, (4) blank line separation — ensure blank line between paragraphs and block elements, (5) trailing whitespace trim — remove trailing spaces from all lines. The engine takes a parsed SyntaxTree (from FEAT-007) and the document text, and returns Vec<Mutation> where Mutation = {offset: usize, delete: usize, insert: String}. Rules are applied in order; later rules see the pre-mutation offsets (mutations are not applied in-place during formatting). A public format(tree: &SyntaxTree, text: &str) -> Vec<Mutation> function is the entry point. Reference the Swift algorithms only — do not call swift build.",
-      "priority": "must",
+      "id": "FEAT-027",
+      "title": "Phase2-large-files: Large-file handling and performance",
+      "intent": "The editor opens and edits 10k+ line documents without degrading below the baselines established in docs/baseline.json. The document model decision made in FEAT-008 is exercised under load. If String-backed storage is insufficient, this item surfaces the evidence and implements the chosen alternative.",
+      "description": "Stress-test the editor with large markdown documents (10k, 50k, 100k lines). Measure open time, keystroke latency, save time, and memory footprint against docs/baseline.json thresholds.\n\nIf the current document model (String or whatever FEAT-008 chose) meets the baselines at 10k lines but degrades at larger sizes, implement optimizations: viewport-only rendering in CodeMirror (already default), lazy IPC (only send diffs rather than full content), or switch to rope/piece-table if the data supports it.\n\nScope boundary: this item is about measured performance, not speculative optimization. Every change must be justified by a regression against baseline.json.",
+      "priority": "should",
       "category": "core",
       "steps": [
-        "Create em-core/src/formatter.rs with a Mutation struct {offset, delete, insert} and a format() entry point",
-        "Implement Rule 1: list continuation — detect list items in the AST, compute correct indentation for next line",
-        "Implement Rule 2: table alignment — scan table nodes, compute max column widths, pad cells with spaces",
-        "Implement Rule 3: heading spacing — scan heading nodes, check preceding byte for blank line, emit insert mutation if missing",
-        "Implement Rule 4: blank line separation — scan block elements, ensure blank line between adjacent paragraphs and block elements",
-        "Implement Rule 5: trailing whitespace — scan each line via the line-starts index, emit delete mutation for trailing spaces",
-        "Write unit tests for each rule in em-core/src/formatter.rs covering at least the happy path and one edge case per rule",
-        "Run cargo test -p em-core and confirm all formatter tests pass"
+        "Create test fixtures: 10k, 50k, and 100k line markdown files with realistic content",
+        "Measure open time, keystroke latency, save time, and memory for each fixture",
+        "Compare measurements against docs/baseline.json thresholds",
+        "If any metric regresses >10% at 10k lines, investigate and fix",
+        "If metrics degrade significantly at 50k+ lines, document the ceiling and implement optimizations",
+        "Add a CI benchmark that gates on large-file performance"
       ],
       "acceptanceCriteria": [
         {
-          "text": "cargo test -p em-core --test formatter passes with explicit test cases for list continuation, table alignment, heading spacing, blank-line separation, and trailing whitespace trim (5+ tests)",
-          "verify": "cargo test -p em-core --test formatter 2>&1 | grep -qE 'test result: ok\\. ([5-9]|[1-9][0-9])'"
+          "text": "cargo test --workspace passes",
+          "verify": "cargo test --workspace --quiet 2>&1 | tail -3"
         },
         {
-          "text": "format() is idempotent — running it twice on the same input produces the same output",
-          "verify": "cargo test -p em-core --test formatter format_is_idempotent 2>&1 | grep -qE 'test result: ok\\. [1-9]'"
+          "text": "npm run build succeeds",
+          "verify": "npm run build 2>&1 | grep -c 'error' | grep -q '^0$'"
         },
-        {
-          "text": "format() does not change the semantic content — only whitespace, list markers, and alignment are adjusted",
-          "verify": "cargo test -p em-core --test formatter format_preserves_semantics 2>&1 | grep -qE 'test result: ok\\. [1-9]'"
-        },
-        {
-          "text": "cargo test --workspace exits 0 with no failures and no baseline regression",
-          "verify": "cargo test --workspace 2>&1 | grep -qE 'test result: ok' && ! cargo test --workspace 2>&1 | grep -qE 'FAILED'"
-        }
+        "10k-line file opens within the baseline threshold from docs/baseline.json",
+        "Keystroke latency on a 10k-line file stays within baseline threshold",
+        "Memory footprint on a 10k-line file stays within baseline threshold",
+        "Performance characteristics at 50k and 100k lines are documented"
       ],
       "scope": [
-        "em-core/src/formatter.rs",
-        "em-core/src/lib.rs"
+        "em-core/src/",
+        "src/editor.ts",
+        "docs/baseline.json"
       ],
-      "dependsOn": [
-        "FEAT-006",
-        "FEAT-007",
-        "FEAT-008"
-      ],
+      "dependsOn": [],
       "status": "todo",
       "passes": false,
-      "readyForSprint": false
+      "readyForSprint": false,
+      "groomedAt": null,
+      "groomingNotes": null
     },
     {
-      "id": "FEAT-010",
-      "title": "Phase0-commonmark-ci: CommonMark spec suite wired into CI with skip-list",
-      "intent": "Every CI run reports exactly how many CommonMark spec tests pass, how many are in the documented skip-list, and zero unexplained failures. Any test that fails without a skip-list entry breaks the build. Known tree-sitter divergences are named, documented, and tracked for upstream contribution.",
-      "description": "Wire the official CommonMark spec test suite (spec.json from the commonmark-spec repo) into the em-core test harness. The test runner parses each spec test's markdown input through em-core's parse() function, renders the output, and compares against the expected HTML. Maintain an explicit skip-list at em-core/tests/commonmark_skip.json — each entry must include the spec test number, the failing input fragment, and a one-sentence reason (e.g. 'tree-sitter lazy continuation divergence, see issue #N'). CI fails if any test fails and is NOT in the skip-list. CI also fails if a skip-listed test starts passing (a signal to remove it from the list). Document the current pass rate in docs/commonmark_status.md.",
-      "priority": "must",
-      "category": "core",
+      "id": "FEAT-028",
+      "title": "Phase2-flatpak: Flatpak packaging for Linux distribution",
+      "intent": "Markdown is installable via Flatpak on any Linux distribution. Flatpak is the most widely supported universal Linux packaging format and is required for software center visibility on GNOME, KDE, and elementary OS.",
+      "description": "Create a Flatpak manifest for the Markdown editor. The manifest should build from the Tauri project, bundle all dependencies (WebKitGTK runtime from the GNOME SDK), and produce an installable Flatpak.\n\nScope boundary: this item produces a buildable Flatpak manifest and verifies it installs and runs. Flathub submission is a separate follow-up.",
+      "priority": "should",
+      "category": "shell",
       "steps": [
-        "Download or vendor spec.json from the commonmark-spec repository into em-core/tests/fixtures/",
-        "Write em-core/tests/commonmark.rs that reads spec.json and runs each test through parse()",
-        "Implement a minimal HTML renderer in the test harness (or use a reference renderer) to produce output for comparison",
-        "Add em-core/tests/commonmark_skip.json — start with an empty array, add entries as failures are discovered",
-        "Update the test runner to fail on any unskipped failure and warn on any skip-listed test that now passes",
-        "Add the commonmark test job to the GitHub Actions workflow",
-        "Run the suite, identify all failures, populate the skip-list with documented reasons",
-        "Create docs/commonmark_status.md with the current pass/fail/skipped counts"
+        "Create a Flatpak manifest YAML/JSON referencing the GNOME SDK and WebKitGTK runtime",
+        "Configure the manifest to build the Tauri project from source",
+        "Add .desktop file and AppStream metadata to the Flatpak build",
+        "Build the Flatpak locally and verify it installs",
+        "Verify the Flatpak-sandboxed app can open files via the XDG portal file dialog",
+        "Add Flatpak build to CI as an optional job"
       ],
       "acceptanceCriteria": [
         {
-          "text": "em-core/tests/fixtures/spec.json exists (CommonMark 0.31.2 spec examples)",
-          "verify": "test -f em-core/tests/fixtures/spec.json && jq -e '. | length > 600' em-core/tests/fixtures/spec.json"
+          "text": "Flatpak manifest exists",
+          "verify": "find . -name '*.flatpak.yml' -o -name '*.flatpak.yaml' -o -name '*.flatpak.json' | grep -q ."
         },
-        {
-          "text": "em-core/tests/commonmark_skip.json exists listing known divergences, each with a reason",
-          "verify": "test -f em-core/tests/commonmark_skip.json && jq -e 'all(.[]; .reason != null)' em-core/tests/commonmark_skip.json"
-        },
-        {
-          "text": "cargo test -p em-core --test commonmark runs the spec suite and reports pass/fail/skip counts",
-          "verify": "cargo test -p em-core --test commonmark 2>&1 | grep -qiE 'commonmark.*(pass|fail|skip).*[0-9]+'"
-        },
-        {
-          "text": "docs/commonmark_status.md exists and documents the current pass rate as a committed number",
-          "verify": "test -f docs/commonmark_status.md && grep -qE '[0-9]+%|[0-9]+/[0-9]+' docs/commonmark_status.md"
-        },
-        {
-          "text": "A GitHub Actions workflow job runs the commonmark test and fails if the pass rate drops below the committed number",
-          "verify": "grep -rqE 'commonmark' .github/workflows/ && yq '.jobs | to_entries | .[] | select(.value | tostring | test(\"commonmark\"))' .github/workflows/*.yml 2>/dev/null | grep -q ."
-        }
+        "flatpak-builder produces an installable Flatpak bundle",
+        "The Flatpak-installed app opens a window and accepts editor input",
+        "File open dialog works through the XDG portal (Flatpak sandbox)"
       ],
       "scope": [
-        "em-core/tests/**",
-        "docs/commonmark_status.md",
-        ".github/workflows/**"
+        "flatpak/",
+        ".github/workflows/"
       ],
       "dependsOn": [
-        "FEAT-006",
-        "FEAT-007"
+        "FEAT-022"
       ],
       "status": "todo",
       "passes": false,
-      "readyForSprint": false
+      "readyForSprint": false,
+      "groomedAt": null,
+      "groomingNotes": null
+    },
+    {
+      "id": "FEAT-029",
+      "title": "Phase3-local-ai: Local AI with on-device inference",
+      "intent": "The user can improve, summarize, and continue writing using AI that runs entirely on their device — no account, no network, no API key. Core AI features work offline out of the box. An editor that claims AI-native but requires cloud accounts violates D-AI-1.",
+      "description": "Integrate on-device inference using llama.cpp (cross-platform) or MLX (macOS Apple Silicon) or ONNX Runtime. Ship or download-on-demand a small quantized model suitable for prose tasks.\n\nFirst AI actions to implement:\n- **Improve**: select text, invoke AI, get improved version as an inline suggestion the user can accept/reject\n- **Summarize**: select text or full document, get a summary inserted at cursor or shown in a panel\n- **Continue writing**: place cursor at end of content, invoke AI to generate continuation as inline ghost text\n\nAI never modifies the document without explicit user consent (D-AI-3). Suggestions are shown inline and accepted/rejected with a single keystroke.\n\nModel download: on first use, prompt the user to download the model (~2–4GB). Show progress. If download fails or is declined, the editor works perfectly — AI features are simply absent (DP-8).\n\nScope boundary: this item covers the inference runtime and the three core actions. Smart completions (continuous inline suggestions) are FEAT-032. BYO-key cloud AI is FEAT-030.",
+      "priority": "must",
+      "category": "ai",
+      "steps": [
+        "Evaluate and select inference runtime: llama.cpp (via llama-cpp-rs) for cross-platform, MLX for macOS optimization",
+        "Add inference runtime as a Rust dependency in em-core or a new em-ai crate",
+        "Implement model download manager: check for local model, prompt to download, show progress, handle failure gracefully",
+        "Implement the improve action: take selected text + context, run inference, return improved text",
+        "Implement the summarize action: take selected text or full doc, run inference, return summary",
+        "Implement the continue action: take document up to cursor, run inference, return continuation",
+        "Expose Tauri commands for each AI action",
+        "Wire frontend: selection actions (improve, summarize) via context menu or keyboard shortcut",
+        "Wire frontend: continue writing as inline ghost text at cursor position",
+        "Show AI suggestions inline with accept (Tab) / reject (Escape) keybindings"
+      ],
+      "acceptanceCriteria": [
+        {
+          "text": "cargo test --workspace passes",
+          "verify": "cargo test --workspace --quiet 2>&1 | tail -3"
+        },
+        {
+          "text": "npm run build succeeds",
+          "verify": "npm run build 2>&1 | grep -c 'error' | grep -q '^0$'"
+        },
+        "Selecting text and invoking 'Improve' produces an inline suggestion that can be accepted or rejected",
+        "Selecting text and invoking 'Summarize' produces a summary",
+        "'Continue writing' at cursor position shows ghost text continuation",
+        "All AI actions work offline with no network connection",
+        "If the model is not downloaded, AI actions are absent and the editor works normally"
+      ],
+      "scope": [
+        "em-core/",
+        "src-tauri/src/",
+        "src/ai.ts",
+        "src/editor.ts"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": false,
+      "groomedAt": null,
+      "groomingNotes": null
+    },
+    {
+      "id": "FEAT-030",
+      "title": "Phase3-byo-key: BYO-key cloud AI mode",
+      "intent": "Power users can paste their own API key for a frontier model provider (OpenAI, Anthropic, Ollama, or any OpenAI-compatible endpoint) and get higher-quality AI results. Requests go directly from the user's machine to their provider — we never see the content or the key. There is no paid tier.",
+      "description": "Add a settings pane where the user can configure a cloud AI provider:\n- Provider dropdown: OpenAI, Anthropic, Ollama, Custom (OpenAI-compatible endpoint)\n- API key field (stored encrypted in the OS keychain via Tauri's secure storage)\n- Optional: custom endpoint URL for Ollama or compatible providers\n- Optional: model selection dropdown populated from the provider's model list API\n\nWhen a BYO key is configured, the same AI actions (improve, summarize, continue) from FEAT-029 route to the cloud provider instead of local inference. The user can switch between local and cloud AI at any time.\n\nKey storage: use the OS keychain (macOS Keychain, Windows Credential Manager, Linux Secret Service) via Tauri's keyring plugin. Never store keys in plain text.\n\nScope boundary: this item adds the settings pane and cloud routing. The AI actions themselves are defined in FEAT-029.",
+      "priority": "should",
+      "category": "ai",
+      "steps": [
+        "Add a Settings UI accessible from the menu bar (Preferences on macOS, Settings on other platforms)",
+        "Create the AI provider configuration pane with provider dropdown, API key field, and endpoint URL field",
+        "Integrate Tauri's keyring/secure-storage plugin for encrypted key storage",
+        "Implement API client for OpenAI-compatible endpoints (covers OpenAI, Ollama, and custom endpoints)",
+        "Implement API client for Anthropic's Messages API",
+        "Route AI actions to cloud provider when BYO key is configured, local when not",
+        "Add a toggle to switch between local AI and cloud AI",
+        "Handle API errors gracefully: show error inline, suggest retrying or switching to local AI (DP-8)"
+      ],
+      "acceptanceCriteria": [
+        {
+          "text": "npm run build succeeds",
+          "verify": "npm run build 2>&1 | grep -c 'error' | grep -q '^0$'"
+        },
+        {
+          "text": "cargo test --workspace passes",
+          "verify": "cargo test --workspace --quiet 2>&1 | tail -3"
+        },
+        "Settings pane allows entering an API key for OpenAI, Anthropic, Ollama, or a custom endpoint",
+        "API key is stored in the OS keychain, not in plain text",
+        "AI actions route to the configured cloud provider when a key is set",
+        "API errors are shown inline with a suggestion to retry or switch to local AI",
+        "Removing the API key reverts AI actions to local inference"
+      ],
+      "scope": [
+        "src/settings.ts",
+        "src-tauri/src/",
+        "src/ai.ts"
+      ],
+      "dependsOn": [
+        "FEAT-029"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": false,
+      "groomedAt": null,
+      "groomingNotes": null
+    },
+    {
+      "id": "FEAT-031",
+      "title": "Phase3-voice-intent: Voice-intent command input",
+      "intent": "The user can speak a command ('make this paragraph shorter', 'add a heading here', 'summarize this section') and the editor executes it as an AI action. Voice is a natural input modality for prose editing — faster than typing a prompt, more expressive than a menu item.",
+      "description": "Use platform speech APIs (Web Speech API in the webview, or native speech recognition via Tauri plugins) to capture voice input. Convert speech to text, interpret it as an intent (using the local or BYO-key AI model), and execute the corresponding editor action.\n\nActivation: hold a key (e.g. Fn or a configurable shortcut) to activate voice input. Release to submit. Show a visual indicator while listening.\n\nScope boundary: this item implements voice-to-intent. The AI actions it triggers are defined in FEAT-029/FEAT-030. This item does not implement dictation (continuous speech-to-text for document content).",
+      "priority": "could",
+      "category": "ai",
+      "steps": [
+        "Evaluate speech recognition options: Web Speech API (Chrome only), Tauri native plugin, or platform APIs",
+        "Implement voice capture with push-to-talk activation (hold key to listen, release to submit)",
+        "Show a visual indicator (microphone icon, waveform) while listening",
+        "Convert captured audio to text using the chosen speech API",
+        "Pass the transcribed text to the AI model as an intent to interpret",
+        "Map the AI's interpretation to an editor action and execute it",
+        "Handle errors: microphone permission denied, speech not recognized, AI interpretation failed"
+      ],
+      "acceptanceCriteria": [
+        {
+          "text": "npm run build succeeds",
+          "verify": "npm run build 2>&1 | grep -c 'error' | grep -q '^0$'"
+        },
+        "Holding the activation key shows a listening indicator",
+        "Speaking a command ('make this shorter') and releasing the key executes an AI action on the selected text",
+        "Microphone permission is requested on first use with a clear explanation",
+        "If speech recognition is unavailable, the feature is absent and the editor works normally"
+      ],
+      "scope": [
+        "src/voice.ts",
+        "src/editor.ts",
+        "src/ai.ts"
+      ],
+      "dependsOn": [
+        "FEAT-029"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": false,
+      "groomedAt": null,
+      "groomingNotes": null
+    },
+    {
+      "id": "FEAT-032",
+      "title": "Phase3-smart-completions: Inline smart completions",
+      "intent": "As the user types, the editor offers context-aware inline completions — ghost text that can be accepted with Tab. This is the always-on AI writing assistant: not invoked explicitly, but present as a background capability that anticipates what you're about to write.",
+      "description": "Implement continuous inline completions using the local AI model (FEAT-029). As the user types, after a brief debounce (e.g. 500ms of no typing), send the document context to the model and display the predicted continuation as ghost text (dimmed, not yet inserted).\n\nAccept with Tab (inserts the ghost text). Dismiss with Escape or by continuing to type. Partial accept with Cmd+Right (accept word-by-word).\n\nCompletions must not block the editor — inference runs asynchronously and results are discarded if the user has typed further by the time they arrive.\n\nScope boundary: this is local-only completions. Cloud-backed completions via BYO-key would use the same UI but route through FEAT-030's API client.",
+      "priority": "should",
+      "category": "ai",
+      "steps": [
+        "Implement a debounced completion trigger: 500ms after last keystroke, request a completion",
+        "Send document context (text before cursor, optionally text after) to the local AI model",
+        "Display the completion as ghost text using CodeMirror decorations (dimmed, italicized)",
+        "Accept completion with Tab (insert the ghost text at cursor)",
+        "Dismiss with Escape or by typing any character",
+        "Implement partial accept with Cmd+Right (accept one word at a time)",
+        "Cancel in-flight completion requests if the user types before the result arrives",
+        "Ensure completions do not block the editor UI thread"
+      ],
+      "acceptanceCriteria": [
+        {
+          "text": "npm run build succeeds",
+          "verify": "npm run build 2>&1 | grep -c 'error' | grep -q '^0$'"
+        },
+        {
+          "text": "cargo test --workspace passes",
+          "verify": "cargo test --workspace --quiet 2>&1 | tail -3"
+        },
+        "After pausing while typing, ghost text appears as a completion suggestion",
+        "Pressing Tab accepts the ghost text and inserts it into the document",
+        "Pressing Escape or typing any character dismisses the ghost text",
+        "Completions do not cause perceptible editor lag or block keystrokes"
+      ],
+      "scope": [
+        "src/completions.ts",
+        "src/editor.ts",
+        "src/ai.ts"
+      ],
+      "dependsOn": [
+        "FEAT-029"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": false,
+      "groomedAt": null,
+      "groomingNotes": null
+    },
+    {
+      "id": "FEAT-033",
+      "title": "Phase4-ios: iOS Tauri mobile shell",
+      "intent": "Markdown runs on iOS as a first-class mobile citizen — Files app integration, share sheet, swipe gestures, and UIKit sheets. The primary persona mixes desktop and mobile; cross-platform includes mobile.",
+      "description": "Create the iOS Tauri mobile shell using Tauri 2.0's iOS support. The shell wraps the same CodeMirror 6 editor in a WKWebView with iOS-specific integration: Files app file provider for opening .md files, share sheet for receiving .md files from other apps, and platform-idiomatic gesture support.\n\nScope boundary: this item produces a working iOS app that can open, edit, and save markdown files. AI features on iOS are gated on Phase 3 completing first. App Store submission is a separate follow-up.",
+      "priority": "should",
+      "category": "shell",
+      "steps": [
+        "Configure Tauri for iOS target (Tauri 2.0 mobile support)",
+        "Set up Xcode project configuration (bundle ID, signing, capabilities)",
+        "Implement Files app integration via UIDocumentPickerViewController or Tauri's file dialog plugin for iOS",
+        "Add share sheet / intent filter support for receiving .md files",
+        "Verify CodeMirror 6 renders correctly in iOS WKWebView (viewport, keyboard avoidance, safe areas)",
+        "Test touch interactions: selection, scrolling, pinch-to-zoom text",
+        "Verify the on-screen keyboard does not obscure the editor content (keyboard avoidance)"
+      ],
+      "acceptanceCriteria": [
+        {
+          "text": "cargo tauri ios build produces an iOS app bundle",
+          "verify": "cargo tauri ios build 2>&1 | tail -5"
+        },
+        "The iOS app opens and displays the CodeMirror 6 editor",
+        "File open via Files app integration works",
+        "File save writes back to the original file location",
+        "The on-screen keyboard does not obscure the editing area",
+        "Text selection and scrolling work via touch"
+      ],
+      "scope": [
+        "src-tauri/",
+        "src-tauri/gen/apple/"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": false,
+      "groomedAt": null,
+      "groomingNotes": null
+    },
+    {
+      "id": "FEAT-034",
+      "title": "Phase4-android: Android Tauri mobile shell",
+      "intent": "Markdown runs on Android — Storage Access Framework integration, intent filters for .md files, Material design patterns. Android is the largest mobile platform globally.",
+      "description": "Create the Android Tauri mobile shell using Tauri 2.0's Android support. The shell wraps the same CodeMirror 6 editor in an Android WebView with platform integration: Storage Access Framework for file access, intent filters for opening .md files from file managers, and Material design patterns.\n\nScope boundary: this item produces a working Android app. Play Store submission is a separate follow-up.",
+      "priority": "should",
+      "category": "shell",
+      "steps": [
+        "Configure Tauri for Android target (Tauri 2.0 mobile support)",
+        "Set up Android project configuration (package name, signing, permissions)",
+        "Implement file access via Storage Access Framework (ACTION_OPEN_DOCUMENT, ACTION_CREATE_DOCUMENT)",
+        "Add intent filter for .md MIME type so the app appears in 'Open with' for markdown files",
+        "Verify CodeMirror 6 renders correctly in Android WebView (viewport, keyboard avoidance)",
+        "Test touch interactions: selection, scrolling, long-press context menu",
+        "Verify the on-screen keyboard does not obscure the editor content"
+      ],
+      "acceptanceCriteria": [
+        {
+          "text": "cargo tauri android build produces an APK",
+          "verify": "cargo tauri android build 2>&1 | tail -5"
+        },
+        "The Android app opens and displays the CodeMirror 6 editor",
+        "File open via Storage Access Framework works",
+        "File save writes back to the original file location",
+        "The on-screen keyboard does not obscure the editing area",
+        "The app appears in 'Open with' menu for .md files"
+      ],
+      "scope": [
+        "src-tauri/",
+        "src-tauri/gen/android/"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": false,
+      "groomedAt": null,
+      "groomingNotes": null
+    },
+    {
+      "id": "FEAT-035",
+      "title": "Phase5-wikilinks: Wikilinks and on-demand backlinks against plain files",
+      "intent": "The user can type [[filename]] and it resolves to a real .md file in the same directory tree. Clicking a wikilink opens the target file. Backlinks are computed on demand — not stored in a database, not requiring a vault. This is the D-NO-1 boundary: plain-file wikilinks yes, PKM database no.",
+      "description": "Implement wikilink syntax ([[filename]]) support in the editor:\n\n1. **Parsing**: recognize [[...]] syntax in the editor and apply a distinct decoration\n2. **Resolution**: resolve the link text to a .md file in the current file's directory tree (walk up to find the nearest match, or exact-path match)\n3. **Navigation**: Cmd+click (or Ctrl+click) on a wikilink opens the target file\n4. **Backlinks**: when a file is open, compute which other .md files in the directory tree link to it. Show backlinks on demand (e.g. in a panel or status bar), not persistently\n5. **Creation**: if the target file doesn't exist, offer to create it\n\nScope boundary: no graph view, no daily notes, no tags database. Wikilinks are a file navigation feature, not a PKM system.",
+      "priority": "should",
+      "category": "editor",
+      "steps": [
+        "Add wikilink syntax recognition to the CodeMirror markdown extension (custom syntax or post-parse decoration)",
+        "Implement file resolution: given a link text, find the matching .md file in the directory tree",
+        "Add Cmd+click / Ctrl+click handler on wikilink decorations to open the resolved file",
+        "Implement on-demand backlink computation: scan .md files in the directory tree for [[current-filename]] references",
+        "Add a backlinks panel or status bar section that shows backlinks on demand",
+        "Handle missing targets: offer to create the file when Cmd+clicking a wikilink to a non-existent file"
+      ],
+      "acceptanceCriteria": [
+        {
+          "text": "npm run build succeeds",
+          "verify": "npm run build 2>&1 | grep -c 'error' | grep -q '^0$'"
+        },
+        {
+          "text": "cargo test --workspace passes",
+          "verify": "cargo test --workspace --quiet 2>&1 | tail -3"
+        },
+        "[[filename]] syntax is visually distinguished in the editor",
+        "Cmd+clicking a wikilink opens the resolved .md file",
+        "Backlinks for the current file are computable on demand",
+        "Clicking a wikilink to a non-existent file offers to create it"
+      ],
+      "scope": [
+        "src/wikilinks.ts",
+        "src/editor.ts",
+        "em-core/src/"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": false,
+      "groomedAt": null,
+      "groomingNotes": null
+    },
+    {
+      "id": "FEAT-036",
+      "title": "Phase5-extended-doctor: Extended doctor diagnostic rules",
+      "intent": "The document doctor catches more structural and stylistic issues: passive voice, orphaned sections, inconsistent list markers. The doctor grows from a basic tool into a genuinely useful writing assistant.",
+      "description": "Extend the doctor engine (FEAT-011) with additional diagnostic rules:\n\n- **Passive voice detection**: flag sentences using passive constructions, with a suggestion to rephrase\n- **Orphaned sections**: detect heading-only sections with no content between them\n- **Inconsistent list markers**: detect mixing of -, *, and + within the same list level\n- **Long paragraphs**: flag paragraphs over a configurable word count (default 300 words) as potentially needing a break\n\nAll rules are on by default but individually disablable. Rules produce Diagnostic structs with span, severity, rule ID, and message, consistent with FEAT-011's architecture.",
+      "priority": "could",
+      "category": "core",
+      "steps": [
+        "Implement passive voice detection rule in em-core doctor module",
+        "Implement orphaned sections rule (heading followed immediately by another heading with no content)",
+        "Implement inconsistent list markers rule",
+        "Implement long paragraph rule with configurable threshold",
+        "Add unit tests for each new rule",
+        "Wire new rules into the doctor's rule registry",
+        "Surface diagnostics in the editor via CodeMirror lint or inline decorations"
+      ],
+      "acceptanceCriteria": [
+        {
+          "text": "cargo test --workspace passes",
+          "verify": "cargo test --workspace --quiet 2>&1 | tail -3"
+        },
+        {
+          "text": "npm run build succeeds",
+          "verify": "npm run build 2>&1 | grep -c 'error' | grep -q '^0$'"
+        },
+        "Passive voice constructions are flagged with a suggestion",
+        "Empty sections (heading with no content before next heading) are flagged",
+        "Mixed list markers within the same list level are flagged",
+        "Long paragraphs are flagged with the word count"
+      ],
+      "scope": [
+        "em-core/src/doctor.rs",
+        "src/editor.ts"
+      ],
+      "dependsOn": [
+        "FEAT-011"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": false,
+      "groomedAt": null,
+      "groomingNotes": null
+    },
+    {
+      "id": "FEAT-037",
+      "title": "Phase5-mermaid: Mermaid diagram rendering and AI-assisted editing",
+      "intent": "Mermaid fenced code blocks render as interactive diagrams inline in the editor. AI can assist with creating and editing Mermaid syntax. AI-generated documents with diagrams render beautifully on open — this is a key claim in the press release.",
+      "description": "Render Mermaid diagrams inline in the editor when a fenced code block is tagged with ```mermaid. Use the Mermaid.js library to render the diagram as an SVG, displayed via a CodeMirror widget decoration that replaces the code block in rich view (or shows below it in source view).\n\nAI-assisted Mermaid editing: when the user selects a Mermaid block and invokes an AI action, the AI can modify the Mermaid syntax and the diagram re-renders live.\n\nScope boundary: rendering and basic AI editing. No visual drag-and-drop diagram editor.",
+      "priority": "could",
+      "category": "editor",
+      "steps": [
+        "Add mermaid.js as an npm dependency",
+        "Detect ```mermaid fenced code blocks in the CodeMirror syntax tree",
+        "Render the Mermaid syntax to SVG using mermaid.render()",
+        "Display the rendered SVG as a CodeMirror widget decoration below or replacing the code block",
+        "Re-render on content change within the mermaid block (debounced)",
+        "In rich view (The Render), replace the code block entirely with the rendered diagram",
+        "Wire AI actions to understand and modify Mermaid syntax"
+      ],
+      "acceptanceCriteria": [
+        {
+          "text": "mermaid is in package.json",
+          "verify": "grep -q 'mermaid' package.json"
+        },
+        {
+          "text": "npm run build succeeds",
+          "verify": "npm run build 2>&1 | grep -c 'error' | grep -q '^0$'"
+        },
+        "A ```mermaid code block renders as an SVG diagram in the editor",
+        "Editing the Mermaid syntax updates the diagram in real time",
+        "Invalid Mermaid syntax shows an error message instead of a broken diagram"
+      ],
+      "scope": [
+        "src/mermaid.ts",
+        "src/editor.ts",
+        "package.json"
+      ],
+      "dependsOn": [
+        "FEAT-012"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": false,
+      "groomedAt": null,
+      "groomingNotes": null
+    },
+    {
+      "id": "FEAT-038",
+      "title": "Phase5-math: Math rendering with KaTeX",
+      "intent": "Inline ($...$) and display ($$...$$) math expressions render beautifully in the editor. Math is a first-class content type in technical and academic markdown documents.",
+      "description": "Render LaTeX math expressions inline in the editor using KaTeX. Inline math ($...$) renders as styled inline elements. Display math ($$...$$) renders as centered block elements.\n\nUse CodeMirror decorations: in source view, math delimiters are visible and the rendered output appears alongside or on hover. In rich view (The Render), delimiters are hidden and only the rendered math is shown.\n\nScope boundary: rendering only. No equation editor, no MathML export.",
+      "priority": "could",
+      "category": "editor",
+      "steps": [
+        "Add katex as an npm dependency",
+        "Detect $...$ (inline) and $$...$$ (display) syntax in the editor",
+        "Render math expressions using katex.renderToString()",
+        "Display inline math as a CodeMirror widget decoration replacing the $...$ span",
+        "Display display math as a centered block widget decoration",
+        "Handle KaTeX errors gracefully: show the raw syntax with an error indicator",
+        "In rich view, hide delimiters and show only rendered math"
+      ],
+      "acceptanceCriteria": [
+        {
+          "text": "katex is in package.json",
+          "verify": "grep -q 'katex' package.json"
+        },
+        {
+          "text": "npm run build succeeds",
+          "verify": "npm run build 2>&1 | grep -c 'error' | grep -q '^0$'"
+        },
+        "Inline math ($x^2$) renders as a formatted math expression",
+        "Display math ($$\\sum_{i=1}^n$$) renders as a centered block expression",
+        "Invalid LaTeX shows the raw syntax with an error indicator instead of crashing"
+      ],
+      "scope": [
+        "src/math.ts",
+        "src/editor.ts",
+        "package.json"
+      ],
+      "dependsOn": [
+        "FEAT-012"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": false,
+      "groomedAt": null,
+      "groomingNotes": null
+    },
+    {
+      "id": "FEAT-039",
+      "title": "Phase5-folding: Folding and outline view",
+      "intent": "The user can fold sections of the document by heading level and navigate the document structure via an outline panel. Long documents become manageable without scrolling.",
+      "description": "Implement section folding and an outline/table-of-contents panel:\n\n1. **Folding**: each heading creates a foldable region spanning to the next heading of equal or higher level. Click a gutter indicator or use a keyboard shortcut to fold/unfold. Folded regions show a placeholder (e.g. '... (N lines)').\n2. **Outline panel**: a side panel showing the document's heading structure as a navigable tree. Clicking a heading in the outline scrolls to it in the editor. The outline updates live as the user edits.\n\nScope boundary: heading-level folding only. No arbitrary fold regions, no manual fold markers.",
+      "priority": "could",
+      "category": "editor",
+      "steps": [
+        "Use CodeMirror's foldService to define fold ranges based on heading levels from the markdown syntax tree",
+        "Add fold gutters with click-to-fold indicators",
+        "Add keyboard shortcuts for fold/unfold (Cmd+Shift+[ / Cmd+Shift+])",
+        "Create an outline panel component showing the heading hierarchy",
+        "Wire outline clicks to scroll to the corresponding heading in the editor",
+        "Update the outline live on document changes",
+        "Add a toggle for showing/hiding the outline panel"
+      ],
+      "acceptanceCriteria": [
+        {
+          "text": "npm run build succeeds",
+          "verify": "npm run build 2>&1 | grep -c 'error' | grep -q '^0$'"
+        },
+        "Clicking a fold indicator in the gutter collapses the section under a heading",
+        "Folded sections show a placeholder with the number of hidden lines",
+        "The outline panel shows all headings in hierarchical order",
+        "Clicking a heading in the outline scrolls the editor to that heading"
+      ],
+      "scope": [
+        "src/folding.ts",
+        "src/outline.ts",
+        "src/editor.ts",
+        "src/style.css"
+      ],
+      "dependsOn": [
+        "FEAT-012"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": false,
+      "groomedAt": null,
+      "groomingNotes": null
+    },
+    {
+      "id": "FEAT-040",
+      "title": "Phase5-multi-doc: Multi-document tabs and split view",
+      "intent": "The user can open multiple documents in tabs within a single window and optionally split the view to see two documents side by side. This is the progression from the M0 one-file-per-window model to a productivity-oriented multi-document workflow.",
+      "description": "Add a tab bar to the editor window. Each tab holds an independent CodeMirror editor instance with its own document state. The user can:\n- Open multiple files (each opens in a new tab)\n- Switch between tabs with keyboard shortcuts (Cmd+Shift+] / Cmd+Shift+[)\n- Close tabs (Cmd+W) with unsaved-changes prompt\n- Drag tabs to reorder\n- Split the view horizontally or vertically to show two tabs side by side\n\nScope boundary: tabs and split view. No file tree sidebar (that could be a separate item).",
+      "priority": "could",
+      "category": "editor",
+      "steps": [
+        "Create a tab bar component above the editor area",
+        "Manage multiple editor instances, each with independent document state",
+        "Opening a file creates a new tab (or focuses existing tab if the file is already open)",
+        "Add tab switching shortcuts: Cmd+Shift+] (next), Cmd+Shift+[ (previous), Cmd+1-9 (by index)",
+        "Add close-tab behavior with unsaved-changes prompt",
+        "Implement drag-to-reorder for tabs",
+        "Add split view: a command to split the current view horizontally or vertically",
+        "Ensure file watching (FEAT-026) and auto-save (FEAT-025) work correctly per-tab"
+      ],
+      "acceptanceCriteria": [
+        {
+          "text": "npm run build succeeds",
+          "verify": "npm run build 2>&1 | grep -c 'error' | grep -q '^0$'"
+        },
+        "Opening multiple files creates separate tabs",
+        "Cmd+Shift+] and Cmd+Shift+[ switch between tabs",
+        "Closing a tab with unsaved changes shows a prompt",
+        "Split view shows two documents side by side"
+      ],
+      "scope": [
+        "src/tabs.ts",
+        "src/editor.ts",
+        "src/style.css"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": false,
+      "groomedAt": null,
+      "groomingNotes": null
+    },
+    {
+      "id": "FEAT-041",
+      "title": "Phase5-quick-open: Quick Open fuzzy file search",
+      "intent": "The user can press Cmd+P to fuzzy-search across all .md files in the current folder tree and open one instantly. This is the fast-switching workflow that power users expect from VS Code and Obsidian.",
+      "description": "Implement a Quick Open dialog triggered by Cmd+P (macOS) / Ctrl+P (other platforms). The dialog shows a text input that fuzzy-matches against all .md files in the directory tree containing the current file.\n\nFile discovery: walk the directory tree from the current file's parent directory (or a configured root), collect all .md file paths, and index them for fuzzy matching. Use a simple fuzzy matching algorithm (subsequence match with scoring for consecutive characters and path segment boundaries).\n\nScope boundary: file search and open. No content search (that would be a separate Cmd+Shift+F item).",
+      "priority": "could",
+      "category": "editor",
+      "steps": [
+        "Implement a Tauri command that walks a directory tree and returns all .md file paths",
+        "Implement a fuzzy matching algorithm in TypeScript (subsequence match with scoring)",
+        "Create a Quick Open overlay UI: centered modal with text input and scrollable results list",
+        "Wire Cmd+P / Ctrl+P to open the Quick Open overlay",
+        "On result selection (Enter or click), open the file (in a new tab if FEAT-040 is implemented, otherwise in the current editor)",
+        "Cache the file list and refresh on focus (to catch new files)",
+        "Show the relative path of each result for disambiguation"
+      ],
+      "acceptanceCriteria": [
+        {
+          "text": "npm run build succeeds",
+          "verify": "npm run build 2>&1 | grep -c 'error' | grep -q '^0$'"
+        },
+        {
+          "text": "cargo test --workspace passes",
+          "verify": "cargo test --workspace --quiet 2>&1 | tail -3"
+        },
+        "Cmd+P opens a Quick Open overlay",
+        "Typing in the overlay fuzzy-matches against .md files in the directory tree",
+        "Selecting a result opens the file",
+        "Escape closes the overlay without navigation"
+      ],
+      "scope": [
+        "src/quick-open.ts",
+        "src/editor.ts",
+        "src-tauri/src/lib.rs"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": false,
+      "groomedAt": null,
+      "groomingNotes": null
+    },
+    {
+      "id": "FEAT-042",
+      "title": "Phase5-images: Image handling — inline rendering, drag-drop, paste",
+      "intent": "Images in markdown (![alt](path)) render inline in the editor. Users can drag-drop or paste images and have them saved to a sensible location with the markdown reference inserted automatically. AI-generated documents with images render beautifully on open.",
+      "description": "Implement image handling in the editor:\n\n1. **Inline rendering**: ![alt](path) references render the image inline as a CodeMirror widget decoration. Relative paths resolve from the current file's directory. URLs render via fetch.\n2. **Drag-drop**: dragging an image file onto the editor saves it to the same directory as the current file (or a configurable images/ subdirectory) and inserts ![](relative-path) at the drop position.\n3. **Paste**: pasting an image from the clipboard saves it (with a timestamp-based filename) and inserts the reference.\n4. **Error handling**: broken image references show a placeholder with the alt text and path.\n\nScope boundary: local and URL images. No image editing, no resizing handles, no image optimization.",
+      "priority": "could",
+      "category": "editor",
+      "steps": [
+        "Detect ![alt](path) syntax in the CodeMirror syntax tree",
+        "Resolve image paths relative to the current file's directory",
+        "Render images as CodeMirror widget decorations (replace the syntax with the rendered image in rich view)",
+        "Implement drag-drop handler: intercept drop events with image files, save to disk, insert markdown reference",
+        "Implement paste handler: intercept paste events with image data, save to disk, insert markdown reference",
+        "Handle broken images: show alt text and path as a placeholder",
+        "Add max-width styling so large images don't break the layout"
+      ],
+      "acceptanceCriteria": [
+        {
+          "text": "npm run build succeeds",
+          "verify": "npm run build 2>&1 | grep -c 'error' | grep -q '^0$'"
+        },
+        "![alt](path) with a valid local image renders the image inline",
+        "Dragging an image file onto the editor inserts a markdown image reference",
+        "Pasting an image from the clipboard saves it and inserts a reference",
+        "Broken image references show a placeholder, not a broken image icon"
+      ],
+      "scope": [
+        "src/images.ts",
+        "src/editor.ts",
+        "src-tauri/src/lib.rs"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": false,
+      "groomedAt": null,
+      "groomingNotes": null
+    },
+    {
+      "id": "FEAT-043",
+      "title": "Phase5-pdf: Render, print, and share as polished PDF",
+      "intent": "The user can export the current document as a beautifully typeset PDF or print it directly. The PDF output should look polished — proper typography, rendered diagrams and math, styled code blocks — not a raw text dump.",
+      "description": "Implement PDF export and print for the current document:\n\n1. **PDF export** (Cmd+Shift+E or File > Export as PDF): render the markdown to a styled HTML document, then convert to PDF using the webview's print-to-PDF capability or a library like Puppeteer/Playwright (headless).\n2. **Print** (Cmd+P with Shift, or File > Print): open the OS print dialog with a print-formatted view of the document.\n\nThe output should include: styled headings, bold/italic, rendered code blocks with syntax highlighting, rendered Mermaid diagrams (if FEAT-037), rendered math (if FEAT-038), and images.\n\nScope boundary: single-document export. No batch export, no custom templates.",
+      "priority": "could",
+      "category": "editor",
+      "steps": [
+        "Render the current markdown document to styled HTML (reuse The Render's decoration output or a separate render pipeline)",
+        "Add a print stylesheet that produces clean, typeset output",
+        "Implement Cmd+Shift+E: render to HTML and use the webview's print-to-PDF to save as PDF",
+        "Implement File > Print: open the OS print dialog with the styled HTML",
+        "Include rendered diagrams and math if those features are available",
+        "Add page break hints before top-level headings"
+      ],
+      "acceptanceCriteria": [
+        {
+          "text": "npm run build succeeds",
+          "verify": "npm run build 2>&1 | grep -c 'error' | grep -q '^0$'"
+        },
+        "Cmd+Shift+E exports a PDF file to the user's chosen location",
+        "The PDF includes styled headings, bold/italic, and code blocks",
+        "File > Print opens the OS print dialog with formatted content",
+        "The PDF does not contain raw markdown syntax — it is a rendered view"
+      ],
+      "scope": [
+        "src/pdf.ts",
+        "src/editor.ts",
+        "src/style-print.css"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": false,
+      "groomedAt": null,
+      "groomingNotes": null
+    },
+    {
+      "id": "FEAT-044",
+      "title": "Phase5-custom-themes: Custom themes and fonts",
+      "intent": "Users can customize the editor's appearance beyond the built-in light and dark themes — choose fonts, adjust colors, or install community-created themes. Personalization without a plugin system.",
+      "description": "Add a theme customization system:\n\n1. **Font selection**: let the user choose body and code fonts from system-installed fonts, with a preview\n2. **Color scheme customization**: let the user adjust key colors (background, text, accent, heading colors) within a theme\n3. **Community themes**: support loading theme files (JSON or CSS) from a directory (~/.config/markdown/themes/)\n\nTheme files define CSS custom property overrides. The built-in light and dark themes are the defaults; user themes override specific properties.\n\nScope boundary: visual customization only. No editor behavior changes via themes. No theme marketplace.",
+      "priority": "could",
+      "category": "editor",
+      "steps": [
+        "Define a theme file format (JSON mapping CSS custom property names to values)",
+        "Load user themes from ~/.config/markdown/themes/ on startup",
+        "Add a Preferences > Appearance pane with font selection (body and code fonts)",
+        "Add color customization controls for key properties (background, text, accent, headings)",
+        "Apply theme overrides via CSS custom properties on the root element",
+        "Provide a theme preview in the preferences pane",
+        "Ensure custom themes work with both light and dark base themes"
+      ],
+      "acceptanceCriteria": [
+        {
+          "text": "npm run build succeeds",
+          "verify": "npm run build 2>&1 | grep -c 'error' | grep -q '^0$'"
+        },
+        "A JSON theme file in the themes directory is loaded and applied on startup",
+        "Font selection in Preferences changes the editor's body and code fonts",
+        "Color customization changes are reflected immediately in the editor",
+        "The built-in themes still work when no custom theme is present"
+      ],
+      "scope": [
+        "src/themes.ts",
+        "src/settings.ts",
+        "src/style.css",
+        "src/editor.ts"
+      ],
+      "dependsOn": [
+        "FEAT-014"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": false,
+      "groomedAt": null,
+      "groomingNotes": null
     }
   ]
 }
