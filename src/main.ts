@@ -5,8 +5,10 @@ import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { initEditor, getContent, setContent } from "./editor";
 import { initPreview, togglePreview, updatePreview } from "./preview";
+import { updateCurrentFilePath } from "./wikilinks";
 
 let currentPath: string | null = null;
+let editorView: EditorView;
 let hasUnsavedChanges = false;
 let closingConfirmed = false;
 let suppressDirtyTracking = false;
@@ -81,6 +83,7 @@ async function handleSaveAs(): Promise<boolean> {
   lastSavedHash = fnv1aHash(content);
   if (autoSaveTimer !== null) { clearTimeout(autoSaveTimer); autoSaveTimer = null; }
   updateTitle();
+  updateCurrentFilePath(editorView, currentPath);
   await invoke("add_recent_file", { path });
   return true;
 }
@@ -137,6 +140,7 @@ async function handleOpen(): Promise<void> {
   if (autoSaveTimer !== null) { clearTimeout(autoSaveTimer); autoSaveTimer = null; }
   updateTitle();
   updatePreview(text);
+  updateCurrentFilePath(editorView, currentPath);
 
   await invoke("add_recent_file", { path: selected });
 }
@@ -177,7 +181,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
-  initEditor(editorEl, [saveKeymap, dirtyTracker]);
+  editorView = initEditor(editorEl, [saveKeymap, dirtyTracker]);
 
   // Check for a pending file open (e.g. from Open Recent creating this window)
   try {
@@ -192,6 +196,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       lastSavedHash = fnv1aHash(text);
       updateTitle();
       updatePreview(text);
+      updateCurrentFilePath(editorView, currentPath);
     }
   } catch {
     // No pending open — start with empty document
@@ -205,6 +210,28 @@ document.addEventListener("DOMContentLoaded", async () => {
   listen("menu-open", handleOpen);
   listen("menu-save", handleSave);
   listen("menu-new", handleNew);
+
+  // Handle wikilink navigation events from wikilinks.ts.
+  // This fires synchronously BEFORE the view.dispatch that changes content,
+  // so we set suppressDirtyTracking here and clear it in a microtask after
+  // the synchronous dispatch completes.
+  window.addEventListener("wikilink-navigate", ((event: CustomEvent) => {
+    const path = event.detail?.path;
+    if (path) {
+      suppressDirtyTracking = true;
+      currentPath = path;
+      hasUnsavedChanges = false;
+      if (autoSaveTimer !== null) { clearTimeout(autoSaveTimer); autoSaveTimer = null; }
+      updateTitle();
+      // Re-enable dirty tracking after the synchronous view.dispatch completes
+      queueMicrotask(() => {
+        const content = getContent();
+        lastSavedHash = fnv1aHash(content);
+        updatePreview(content);
+        suppressDirtyTracking = false;
+      });
+    }
+  }) as EventListener);
 
   // Intercept window close to prompt for unsaved changes
   getCurrentWindow().onCloseRequested(async (event) => {
