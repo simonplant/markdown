@@ -249,6 +249,204 @@ fn close_current_window(app: tauri::AppHandle, window: tauri::Window) -> Result<
 }
 
 // ---------------------------------------------------------------------------
+// Wikilink commands (FEAT-035)
+// ---------------------------------------------------------------------------
+
+/// Resolve a wikilink target to a real .md file path.
+/// Searches the directory tree starting from the current file's directory,
+/// walking upward to find the nearest match.
+#[tauri::command]
+fn resolve_wikilink(link_text: String, current_file_path: String) -> Option<String> {
+    let current = std::path::Path::new(&current_file_path);
+    let parent = current.parent()?;
+
+    // Normalize: strip .md extension if present, we'll add it back
+    let base_name = link_text.strip_suffix(".md").unwrap_or(&link_text);
+    let target_filename = format!("{}.md", base_name);
+
+    // If link_text contains path separators, try as a relative path from current dir
+    if link_text.contains('/') || link_text.contains('\\') {
+        let relative = if link_text.ends_with(".md") {
+            parent.join(&link_text)
+        } else {
+            parent.join(&target_filename)
+        };
+        if relative.is_file() {
+            return relative.canonicalize().ok()?.to_str().map(String::from);
+        }
+    }
+
+    // Walk the directory tree starting from parent, searching for the file.
+    // First check the current directory, then walk upward (max 5 levels).
+    let mut search_dir = Some(parent);
+    let mut depth = 0;
+    while let Some(dir) = search_dir {
+        if depth > 5 {
+            break;
+        }
+        if let Some(found) = find_md_file_recursive(dir, &target_filename) {
+            return found.to_str().map(String::from);
+        }
+        search_dir = dir.parent();
+        depth += 1;
+    }
+
+    None
+}
+
+/// Recursively search a directory for a .md file matching the given filename.
+/// Returns the first match found (depth-first).
+fn find_md_file_recursive(dir: &std::path::Path, filename: &str) -> Option<std::path::PathBuf> {
+    // Check immediate children first (breadth-first for locality)
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return None;
+    };
+
+    let mut subdirs = Vec::new();
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.is_file() {
+            if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+                if name.eq_ignore_ascii_case(filename) {
+                    return Some(path);
+                }
+            }
+        } else if path.is_dir() {
+            // Skip hidden directories and common non-content directories
+            if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+                if !name.starts_with('.') && name != "node_modules" && name != "target" {
+                    subdirs.push(path);
+                }
+            }
+        }
+    }
+
+    // Then recurse into subdirectories
+    for subdir in subdirs {
+        if let Some(found) = find_md_file_recursive(&subdir, filename) {
+            return Some(found);
+        }
+    }
+
+    None
+}
+
+/// Compute backlinks: find all .md files in the directory tree that link to the given file.
+#[tauri::command]
+fn compute_backlinks(file_path: String) -> Result<Vec<BacklinkEntry>, String> {
+    let target = std::path::Path::new(&file_path);
+    let target_stem = target
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .ok_or("Invalid file path")?;
+
+    // Build the pattern to search for: [[filename]] (with or without .md)
+    let patterns: Vec<String> = vec![
+        format!("[[{}]]", target_stem),
+        format!("[[{}.md]]", target_stem),
+    ];
+
+    // Find the project root by walking up to find a directory that contains .md files
+    let search_root = target.parent().ok_or("No parent directory")?;
+
+    let mut backlinks = Vec::new();
+    scan_for_backlinks(search_root, &file_path, &patterns, &mut backlinks);
+
+    Ok(backlinks)
+}
+
+#[derive(serde::Serialize)]
+struct BacklinkEntry {
+    path: String,
+    line: usize,
+    context: String,
+}
+
+fn scan_for_backlinks(
+    dir: &std::path::Path,
+    exclude_path: &str,
+    patterns: &[String],
+    results: &mut Vec<BacklinkEntry>,
+) {
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return;
+    };
+
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.is_file() {
+            if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
+                if ext.eq_ignore_ascii_case("md") {
+                    let path_str = path.to_str().unwrap_or_default();
+                    // Skip the file itself
+                    if path_str == exclude_path {
+                        continue;
+                    }
+                    if let Ok(content) = std::fs::read_to_string(&path) {
+                        for (line_num, line) in content.lines().enumerate() {
+                            let line_lower = line.to_lowercase();
+                            for pattern in patterns {
+                                if line_lower.contains(&pattern.to_lowercase()) {
+                                    results.push(BacklinkEntry {
+                                        path: path_str.to_string(),
+                                        line: line_num + 1,
+                                        context: line.chars().take(120).collect(),
+                                    });
+                                    break; // One match per line is enough
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } else if path.is_dir() {
+            if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+                if !name.starts_with('.') && name != "node_modules" && name != "target" {
+                    scan_for_backlinks(&path, exclude_path, patterns, results);
+                }
+            }
+        }
+    }
+}
+
+/// Create a new .md file for a wikilink target that doesn't exist yet.
+/// Returns the path of the created file.
+#[tauri::command]
+fn create_wikilink_target(link_text: String, current_file_path: String) -> Result<String, String> {
+    let current = std::path::Path::new(&current_file_path);
+    let parent = current.parent().ok_or("No parent directory")?;
+
+    let base_name = link_text.strip_suffix(".md").unwrap_or(&link_text);
+    let target_filename = format!("{}.md", base_name);
+
+    let target_path = if link_text.contains('/') || link_text.contains('\\') {
+        // Relative path — create in the specified location
+        let p = if link_text.ends_with(".md") {
+            parent.join(&link_text)
+        } else {
+            parent.join(&target_filename)
+        };
+        // Ensure parent directories exist
+        if let Some(target_parent) = p.parent() {
+            std::fs::create_dir_all(target_parent).map_err(|e| e.to_string())?;
+        }
+        p
+    } else {
+        // Simple name — create in the same directory as the current file
+        parent.join(&target_filename)
+    };
+
+    // Create with a heading matching the link text
+    let initial_content = format!("# {}\n", base_name);
+    std::fs::write(&target_path, &initial_content).map_err(|e| e.to_string())?;
+
+    target_path
+        .to_str()
+        .map(String::from)
+        .ok_or_else(|| "Invalid path".to_string())
+}
+
+// ---------------------------------------------------------------------------
 // App entry point
 // ---------------------------------------------------------------------------
 
@@ -266,6 +464,9 @@ pub fn run() {
             create_window,
             get_pending_open,
             close_current_window,
+            resolve_wikilink,
+            compute_backlinks,
+            create_wikilink_target,
         ])
         .setup(|app| {
             rebuild_menu(app.handle())?;

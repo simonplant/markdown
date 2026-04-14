@@ -28,6 +28,7 @@
         flex: 1;
         display: flex;
         overflow: hidden;
+        position: relative;
       }
       #editor {
         flex: 1;
@@ -98,6 +99,73 @@
         display: flex;
         gap: 16px;
       }
+      .cm-backlinks-btn {
+        text-decoration: underline;
+        text-decoration-color: rgba(110, 119, 129, 0.4);
+      }
+      .cm-backlinks-btn:hover {
+        color: #0969DA;
+      }
+      .cm-backlinks-panel {
+        position: absolute;
+        right: 0;
+        top: 0;
+        bottom: 0;
+        width: 280px;
+        background: #FAFAFA;
+        border-left: 1px solid #E0E0E0;
+        flex-direction: column;
+        z-index: 10;
+        overflow-y: auto;
+      }
+      .cm-backlinks-header {
+        padding: 8px 12px;
+        font-size: 13px;
+        font-weight: 600;
+        color: #24292F;
+        border-bottom: 1px solid #E0E0E0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .cm-backlinks-close {
+        background: none;
+        border: none;
+        font-size: 18px;
+        cursor: pointer;
+        color: #6E7781;
+        padding: 0 4px;
+      }
+      .cm-backlinks-close:hover { color: #24292F; }
+      .cm-backlinks-list { padding: 4px 0; }
+      .cm-backlinks-item {
+        padding: 6px 12px;
+        cursor: pointer;
+        font-size: 13px;
+      }
+      .cm-backlinks-item:hover { background: #F0F0F0; }
+      .cm-backlinks-filename {
+        color: #0969DA;
+        font-weight: 500;
+      }
+      .cm-backlinks-line {
+        color: #8B949E;
+        font-size: 12px;
+      }
+      .cm-backlinks-context {
+        color: #57606A;
+        font-size: 12px;
+        margin-top: 2px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .cm-backlinks-empty, .cm-backlinks-loading {
+        padding: 12px;
+        color: #8B949E;
+        font-size: 13px;
+        text-align: center;
+      }
       @media (prefers-color-scheme: dark) {
         html, body {
           background: #1E1E1E;
@@ -128,6 +196,22 @@
         #preview a { color: #4FC1FF; }
         #preview th, #preview td { border-color: #444C56; }
         #preview h1, #preview h2, #preview h3 { color: #7EB6FF; }
+        .cm-backlinks-btn:hover { color: #4FC1FF; }
+        .cm-backlinks-panel {
+          background: #252526;
+          border-left-color: #333333;
+        }
+        .cm-backlinks-header {
+          color: #D4D4D4;
+          border-bottom-color: #333333;
+        }
+        .cm-backlinks-close { color: #858585; }
+        .cm-backlinks-close:hover { color: #D4D4D4; }
+        .cm-backlinks-item:hover { background: #2A2A2A; }
+        .cm-backlinks-filename { color: #4FC1FF; }
+        .cm-backlinks-line { color: #858585; }
+        .cm-backlinks-context { color: #9DA5B4; }
+        .cm-backlinks-empty, .cm-backlinks-loading { color: #858585; }
       }
     </style>
   </head>
