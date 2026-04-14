@@ -170,6 +170,12 @@ fi
 if [[ "$MODE" == "--check" ]]; then
     echo "=== Check mode: comparing against baseline ===" >&2
 
+    # Run large-file performance tests (gates on 10k baseline, characterizes 50k/100k)
+    echo "Running large-file performance gate..." >&2
+    cargo test -p markdown-core --test large_file_perf --release -- --nocapture 2>&1 >&2
+    echo "Large-file performance tests passed." >&2
+    echo "" >&2
+
     if [[ ! -f "$BASELINE_FILE" ]]; then
         echo "ERROR: Baseline file not found at $BASELINE_FILE" >&2
         echo "Run '$0 --capture' first to establish a baseline." >&2

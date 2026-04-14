@@ -14,6 +14,21 @@
     "cpu_model": "Apple M2",
     "memory_total_mb": 16384
   },
+  "large_file_characteristics": {
+    "note": "Measured in FEAT-027. Not regression-gated — documented for tracking.",
+    "50k_lines": {
+      "open_ms": 0.885,
+      "keystroke_ms": 0.795,
+      "save_ms": 1.307,
+      "content_mb": 5.5
+    },
+    "100k_lines": {
+      "open_ms": 2.039,
+      "keystroke_ms": 1.362,
+      "save_ms": 3.142,
+      "content_mb": 11.0
+    }
+  },
   "measurement": {
     "num_runs": 5,
     "method": "median",
