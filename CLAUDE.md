@@ -29,36 +29,20 @@ Three layers, one codebase per layer:
 - Not per-platform native UI (per `docs/PRODUCT.md` D-PLAT-2, reversed from the legacy doc)
 - Not a CLI-first architecture with the editor as an afterthought
 
-## Current priorities
+## How to find current priorities
 
-**Phase 2 — platform expansion.** M0 (FEAT-001–006), Phase 0 foundations (FEAT-007–010), and Phase 1 editor polish (FEAT-011–021) are all complete. The macOS app is functional with tree-sitter parsing, formatting, diagnostics, WYSIWYM, themes, and file workflow.
+**`backlog/backlog.json`** is the source of truth for what to work on next. Items are ordered by phase and priority. Do not hard-code feature lists in docs — check the backlog.
 
-Current work targets cross-platform reach and reliability:
-
-1. **FEAT-022** — Linux Tauri shell (WebKitGTK)
-2. **FEAT-023** — Windows Tauri shell (WebView2)
-3. **FEAT-024** — Web/PWA shell (File System Access API)
-4. **FEAT-025** — Auto-save with content-hash skip
-5. **FEAT-026** — File watching and conflict resolution
-6. **FEAT-027** — Large-file performance (>10k lines)
-7. **FEAT-028** — Flatpak packaging for Linux distribution
-
-See `backlog/backlog.json` for the full backlog including Phase 3–5 items.
-
-**Document model decision is made.** FEAT-008 measured all three candidates (piece table, rope, String) against the baseline. Piece table and rope both regressed beyond the 10% threshold. The project stays with `String`. See `docs/engine-decision.md` and `docs/engine-comparison.json` for the data.
-
-**Baseline regression gate is active.** `docs/baseline.json` contains 5-run median measurements. Every merge is checked against a 1.1x regression threshold via CI.
+**Key constraints that don't change:**
+- **Baseline regression gate is active.** `docs/baseline.json` contains 5-run median measurements. Every merge is checked against a 1.1x regression threshold via CI.
+- **Document model is `String`.** FEAT-008 measured all three candidates against baseline; piece table and rope both regressed beyond threshold. See `docs/engine-decision.md`. Revisit only if large-file performance data demands it.
+- **Phase ordering is not negotiable.** Dependencies in the backlog enforce this. Don't skip ahead.
 
 ## Legacy Swift prototype
 
-The `reference/` directory contains an older Swift prototype (EMFormatter, EMDoctor, EMParser, TextMutation). **None of this code transfers** — TextKit, NSAttributedString, UIKit, and SwiftUI are Apple-only and would contradict the cross-platform mission.
+The `reference/` directory contains an older Swift prototype. **None of this code transfers** — it's Apple-only. The core formatting, doctor, and parser algorithms have already been ported to Rust in `em-core/`. The Swift code remains as read-only reference for any future rules.
 
-What transfers is **algorithm logic as reference** when porting to Rust:
-- Formatting rules (list continuation, table alignment, heading spacing, etc.)
-- Doctor rules (broken links, heading hierarchy, duplicate headings)
-- Tree-sitter node type mapping
-
-Do not run Swift tooling on this repo. Do not add Swift targets. Do not write "port this Swift file" in the backlog — write "implement the heading-spacing rule in Rust; reference: `reference/EMFormatter/…`".
+Do not run Swift tooling on this repo. Do not add Swift targets.
 
 ## Non-goals (reminders)
 
