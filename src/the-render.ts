@@ -1,5 +1,5 @@
 /**
- * The Render — Easy Markdown's signature interaction (DP-9).
+ * The Render — Markdown's signature interaction (DP-9).
  *
  * When the user toggles between source and rich view (Cmd+Shift+R),
  * markdown syntax characters don't just swap visibility — they

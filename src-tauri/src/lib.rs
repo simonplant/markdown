@@ -188,7 +188,7 @@ fn create_window(
     }
 
     WebviewWindowBuilder::new(&app, &label, WebviewUrl::App("index.html".into()))
-        .title("Easy Markdown")
+        .title("Markdown")
         .inner_size(900.0, 700.0)
         .build()
         .map_err(|e| e.to_string())?;
@@ -206,8 +206,13 @@ fn get_pending_open(state: State<'_, AppState>, window: tauri::Window) -> Option
 }
 
 #[tauri::command]
-fn close_current_window(window: tauri::Window) -> Result<(), String> {
-    window.destroy().map_err(|e| e.to_string())
+fn close_current_window(app: tauri::AppHandle, window: tauri::Window) -> Result<(), String> {
+    let is_last = app.webview_windows().len() <= 1;
+    window.destroy().map_err(|e| e.to_string())?;
+    if is_last {
+        app.exit(0);
+    }
+    Ok(())
 }
 
 // ---------------------------------------------------------------------------
@@ -232,6 +237,14 @@ pub fn run() {
         .setup(|app| {
             rebuild_menu(app.handle())?;
             Ok(())
+        })
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::Destroyed = event {
+                let app = window.app_handle();
+                if app.webview_windows().len() == 0 {
+                    app.exit(0);
+                }
+            }
         })
         .on_menu_event(|app, event| {
             let id = event.id().as_ref();
@@ -260,7 +273,7 @@ pub fn run() {
                         &label,
                         WebviewUrl::App("index.html".into()),
                     )
-                    .title("Easy Markdown")
+                    .title("Markdown")
                     .inner_size(900.0, 700.0)
                     .build();
                 }

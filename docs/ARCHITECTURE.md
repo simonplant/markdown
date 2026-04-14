@@ -1,8 +1,8 @@
-# Easy Markdown — Architecture
+# Markdown — Architecture
 
 ## Overview
 
-Easy Markdown is a cross-platform markdown editor. Three layers, one codebase per layer:
+Markdown is a cross-platform markdown editor. Three layers, one codebase per layer:
 
 ```
 +------------------------------------------------------------------+

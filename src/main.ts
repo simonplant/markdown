@@ -8,11 +8,12 @@ import { initEditor, getContent, setContent } from "./editor";
 let currentPath: string | null = null;
 let hasUnsavedChanges = false;
 let closingConfirmed = false;
+let suppressDirtyTracking = false;
 
 function updateTitle(): void {
   const filename = currentPath ? currentPath.split("/").pop() : "Untitled";
   const prefix = hasUnsavedChanges ? "\u25CF " : "";
-  document.title = `${prefix}${filename} \u2014 Easy Markdown`;
+  document.title = `${prefix}${filename} \u2014 Markdown`;
 }
 
 async function handleSaveAs(): Promise<boolean> {
@@ -68,7 +69,9 @@ async function handleOpen(): Promise<void> {
   if (!selected) return;
 
   const text = await invoke<string>("open_file", { path: selected });
+  suppressDirtyTracking = true;
   setContent(text);
+  suppressDirtyTracking = false;
   currentPath = selected;
   hasUnsavedChanges = false;
   updateTitle();
@@ -95,7 +98,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Track dirty state via an editor update listener
   const dirtyTracker = EditorView.updateListener.of((update) => {
-    if (update.docChanged) {
+    if (update.docChanged && !suppressDirtyTracking) {
       hasUnsavedChanges = true;
       updateTitle();
     }
@@ -108,7 +111,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     const pendingPath = await invoke<string | null>("get_pending_open");
     if (pendingPath) {
       const text = await invoke<string>("open_file", { path: pendingPath });
+      suppressDirtyTracking = true;
       setContent(text);
+      suppressDirtyTracking = false;
       currentPath = pendingPath;
       hasUnsavedChanges = false;
       updateTitle();
