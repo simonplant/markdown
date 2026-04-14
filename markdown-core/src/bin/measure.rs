@@ -1,4 +1,4 @@
-use em_core::Document;
+use markdown_core::Document;
 use std::fs;
 use std::io::Write;
 use std::time::Instant;
@@ -74,7 +74,7 @@ fn memory_mb() -> f64 {
 }
 
 fn main() {
-    let tmp_dir = std::env::temp_dir().join("em-measure");
+    let tmp_dir = std::env::temp_dir().join("markdown-measure");
     fs::create_dir_all(&tmp_dir).expect("failed to create temp dir");
 
     // Generate test files

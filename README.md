@@ -10,7 +10,7 @@ The macOS desktop app is functional with:
 
 - **Rust core** — tree-sitter-markdown parser, 5-rule formatting engine, 5-rule diagnostic doctor, String-backed document model (53 passing tests)
 - **Tauri 2 shell** — multi-window support, native file dialogs, recent files menu, unsaved-changes prompts
-- **CodeMirror 6 editor** — markdown syntax highlighting, WYSIWYM decorations (syntax markers hide when cursor moves away), light/dark themes following system preference, word count status bar, spell check (OS-native), bold/italic/delete-line shortcuts, find and replace
+- **CodeMirror 6 editor** — markdown syntax highlighting, WYSIWYM decorations (syntax markers hide when cursor moves away), rendered markdown decorations (blockquotes, code blocks, horizontal rules, task checkboxes, images), live preview panel (Cmd+Shift+P), light/dark themes following system preference, word count status bar, spell check (OS-native), bold/italic/delete-line shortcuts, find and replace
 - **The Render** — source-to-rich toggle animation (Cmd+Shift+R) with reduced-motion support
 - **CI** — macOS build + test, CommonMark spec suite (305 passing, 347 in documented skip-list), baseline performance regression gate
 
@@ -50,14 +50,14 @@ cargo tauri build                    # build the release app bundle
 ### Test
 
 ```bash
-cargo test --workspace               # run all Rust tests (em-core + src-tauri)
-cargo test -p em-core --test commonmark -- --nocapture   # CommonMark spec suite
+cargo test --workspace               # run all Rust tests (markdown-core + src-tauri)
+cargo test -p markdown-core --test commonmark -- --nocapture   # CommonMark spec suite
 ```
 
 ### Project Structure
 
 ```
-em-core/           Rust core — parser, formatter, doctor, document model
+markdown-core/     Rust core — parser, formatter, doctor, document model
 src-tauri/         Tauri 2 shell — IPC bridge, menus, file dialogs, multi-window
 src/               TypeScript frontend — CodeMirror 6 editor, WYSIWYM, themes
 docs/              Product vision, architecture, baseline metrics

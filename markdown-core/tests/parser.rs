@@ -1,10 +1,10 @@
 /// Integration tests for the tree-sitter markdown parser.
 ///
-/// These tests exercise `em_core::parser::parse()` and verify it returns a
+/// These tests exercise `markdown_core::parser::parse()` and verify it returns a
 /// typed AST (Rust enum variants), not a raw tree-sitter CST.
 
-use em_core::ast::{CheckboxState, NodeKind, SyntaxNode, SyntaxTree};
-use em_core::parser::parse;
+use markdown_core::ast::{CheckboxState, NodeKind, SyntaxNode, SyntaxTree};
+use markdown_core::parser::parse;
 
 // ── Helpers ──
 

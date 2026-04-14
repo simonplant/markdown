@@ -31,6 +31,7 @@ const MARKER_TYPES = new Set([
   "EmphasisMark",
   "CodeMark",
   "LinkMark",
+  "QuoteMark",
 ]);
 
 function buildDecorations(view: EditorView): DecorationSet {

@@ -21,6 +21,19 @@ impl Document {
     }
 
     pub fn edit(&mut self, offset: usize, delete: usize, insert: &str) {
+        debug_assert!(
+            offset <= self.content.len(),
+            "edit offset {} exceeds document length {}",
+            offset,
+            self.content.len()
+        );
+        debug_assert!(
+            offset + delete <= self.content.len(),
+            "edit range {}..{} exceeds document length {}",
+            offset,
+            offset + delete,
+            self.content.len()
+        );
         let offset = offset.min(self.content.len());
         let end = (offset + delete).min(self.content.len());
         self.content.replace_range(offset..end, insert);

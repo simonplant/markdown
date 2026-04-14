@@ -8,6 +8,7 @@ import { countWords } from "./wordcount";
 import { markdownExtension } from "./markdown-highlight";
 import { wysiwym } from "./wysiwym";
 import { theRender, toggleRender } from "./the-render";
+import { renderedDecorations, setRenderedTheme } from "./rendered-decorations";
 
 const typographyTheme = EditorView.theme({
   ".cm-scroller": {
@@ -60,6 +61,7 @@ export function initEditor(parent: HTMLElement, extraExtensions: Extension[] = [
       ]),
       markdownExtension(),
       wysiwym(),
+      renderedDecorations(isDark),
       theRender(),
       EditorView.lineWrapping,
       typographyTheme,
@@ -85,6 +87,7 @@ export function initEditor(parent: HTMLElement, extraExtensions: Extension[] = [
 
   window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", (e) => {
     setTheme(view, e.matches);
+    setRenderedTheme(view, e.matches);
   });
 
   return view;

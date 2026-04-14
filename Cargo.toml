@@ -1,5 +1,5 @@
 [workspace]
-members = ["em-core", "src-tauri"]
+members = ["markdown-core", "src-tauri"]
 resolver = "2"
 
 # Patch glib 0.18.x to fix RUSTSEC-2024-0429 (UB in VariantStrIter).

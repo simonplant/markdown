@@ -1,7 +1,7 @@
 /// CommonMark spec test suite runner.
 ///
 /// Reads the official CommonMark spec.json (652 examples), parses each through
-/// em-core's `parse()`, renders the AST to HTML, and compares against expected
+/// markdown-core's `parse()`, renders the AST to HTML, and compares against expected
 /// output. A skip-list (commonmark_skip.json) documents known divergences.
 ///
 /// CI contract:
@@ -13,8 +13,8 @@ use std::path::Path;
 
 use serde::Deserialize;
 
-use em_core::ast::{NodeKind, SyntaxNode, SyntaxTree};
-use em_core::parser::parse;
+use markdown_core::ast::{NodeKind, SyntaxNode, SyntaxTree};
+use markdown_core::parser::parse;
 
 // ── Spec JSON schema ──
 

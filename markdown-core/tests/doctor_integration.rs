@@ -1,7 +1,7 @@
 use std::fs;
 
-use em_core::doctor::{check, DoctorContext, Severity};
-use em_core::parser;
+use markdown_core::doctor::{check, DoctorContext, Severity};
+use markdown_core::parser;
 
 /// Integration test: a single fixture file triggers all three diagnostic rules.
 #[test]

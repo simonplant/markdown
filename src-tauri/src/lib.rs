@@ -2,8 +2,8 @@ use std::collections::HashMap;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Mutex;
 
-use em_core::Document;
-use tauri::menu::{MenuBuilder, MenuItemBuilder, SubmenuBuilder};
+use markdown_core::Document;
+use tauri::menu::{MenuBuilder, MenuItemBuilder, PredefinedMenuItem, SubmenuBuilder};
 use tauri::{Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder};
 
 static WINDOW_COUNTER: AtomicU32 = AtomicU32::new(1);
@@ -89,7 +89,40 @@ fn rebuild_menu(app: &tauri::AppHandle) -> Result<(), tauri::Error> {
     }
 
     let file_menu = file_menu.separator().item(&save_item).build()?;
-    let menu = MenuBuilder::new(app).item(&file_menu).build()?;
+
+    // macOS app menu with standard items (About, Hide, Quit)
+    #[cfg(target_os = "macos")]
+    let menu = {
+        let app_menu = SubmenuBuilder::new(app, "Markdown")
+            .item(&PredefinedMenuItem::about(app, Some("About Markdown"), None)?)
+            .separator()
+            .item(&PredefinedMenuItem::hide(app, None)?)
+            .item(&PredefinedMenuItem::hide_others(app, None)?)
+            .item(&PredefinedMenuItem::show_all(app, None)?)
+            .separator()
+            .item(&PredefinedMenuItem::quit(app, None)?)
+            .build()?;
+        MenuBuilder::new(app)
+            .item(&app_menu)
+            .item(&file_menu)
+            .build()?
+    };
+    #[cfg(not(target_os = "macos"))]
+    let menu = {
+        let quit_item = MenuItemBuilder::with_id("quit", "Exit")
+            .accelerator("Alt+F4")
+            .build(app)?;
+        let file_with_quit = SubmenuBuilder::new(app, "File")
+            .item(&new_item)
+            .item(&open_item)
+            .separator()
+            .item(&save_item)
+            .separator()
+            .item(&quit_item)
+            .build()?;
+        MenuBuilder::new(app).item(&file_with_quit).build()?
+    };
+
     app.set_menu(menu)?;
     Ok(())
 }
@@ -277,6 +310,9 @@ pub fn run() {
                     .inner_size(900.0, 700.0)
                     .build();
                 }
+                "quit" => {
+                    app.exit(0);
+                }
                 _ => {}
             }
         })
@@ -301,7 +337,7 @@ mod tests {
         tmp.flush().unwrap();
         let path = tmp.path().to_str().unwrap().to_string();
 
-        // open_file: load via em_core, store in AppState
+        // open_file: load via markdown_core, store in AppState
         {
             let doc = Document::open_file(&path).unwrap();
             let text = doc.current_text().to_string();
@@ -327,7 +363,7 @@ mod tests {
             assert_eq!(doc.current_text(), "hello rust");
         }
 
-        // save_file: persist via em_core
+        // save_file: persist via markdown_core
         {
             let docs = state.documents.lock().unwrap();
             let doc = docs.get(TEST_LABEL).expect("document should be open");

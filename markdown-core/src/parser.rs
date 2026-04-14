@@ -1,6 +1,6 @@
 /// Markdown parser that wraps tree-sitter-markdown and produces a typed AST.
 ///
-/// This is the single parser for all operations in em-core. Every downstream
+/// This is the single parser for all operations in markdown-core. Every downstream
 /// feature reads from the `SyntaxTree` returned by `parse()`.
 
 use tree_sitter_md::{MarkdownCursor, MarkdownParser};

@@ -1,5 +1,5 @@
 {
-  "name": "easy-markdown",
+  "name": "markdown",
   "private": true,
   "version": "0.1.0",
   "scripts": {
@@ -16,7 +16,8 @@
     "@codemirror/view": "^6.36.5",
     "@lezer/highlight": "^1.2.3",
     "@tauri-apps/api": "^2",
-    "@tauri-apps/plugin-dialog": "^2"
+    "@tauri-apps/plugin-dialog": "^2",
+    "marked": "^18.0.0"
   },
   "devDependencies": {
     "typescript": "^5.8.3",

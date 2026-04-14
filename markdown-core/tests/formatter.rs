@@ -2,8 +2,8 @@
 ///
 /// Covers all five rules, idempotency, and semantic preservation.
 
-use em_core::formatter::{apply_mutations, format, Mutation};
-use em_core::parser::parse;
+use markdown_core::formatter::{apply_mutations, format, Mutation};
+use markdown_core::parser::parse;
 
 /// Helper: parse, format, apply mutations.
 fn fmt(text: &str) -> String {

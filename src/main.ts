@@ -4,6 +4,7 @@ import { open, save as saveDialog, ask } from "@tauri-apps/plugin-dialog";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { initEditor, getContent, setContent } from "./editor";
+import { initPreview, togglePreview, updatePreview } from "./preview";
 
 let currentPath: string | null = null;
 let hasUnsavedChanges = false;
@@ -75,6 +76,7 @@ async function handleOpen(): Promise<void> {
   currentPath = selected;
   hasUnsavedChanges = false;
   updateTitle();
+  updatePreview(text);
 
   await invoke("add_recent_file", { path: selected });
 }
@@ -86,6 +88,8 @@ async function handleNew(): Promise<void> {
 document.addEventListener("DOMContentLoaded", async () => {
   const editorEl = document.getElementById("editor")!;
 
+  initPreview();
+
   const saveKeymap = keymap.of([
     {
       key: "Mod-s",
@@ -94,13 +98,21 @@ document.addEventListener("DOMContentLoaded", async () => {
         return true;
       },
     },
+    {
+      key: "Mod-Shift-p",
+      run: () => {
+        togglePreview(getContent);
+        return true;
+      },
+    },
   ]);
 
-  // Track dirty state via an editor update listener
+  // Track dirty state and update preview via an editor update listener
   const dirtyTracker = EditorView.updateListener.of((update) => {
     if (update.docChanged && !suppressDirtyTracking) {
       hasUnsavedChanges = true;
       updateTitle();
+      updatePreview(update.state.doc.toString());
     }
   });
 
@@ -117,12 +129,16 @@ document.addEventListener("DOMContentLoaded", async () => {
       currentPath = pendingPath;
       hasUnsavedChanges = false;
       updateTitle();
+      updatePreview(text);
     }
   } catch {
     // No pending open — start with empty document
   }
 
   document.getElementById("btn-open")!.addEventListener("click", handleOpen);
+  document.getElementById("btn-preview")!.addEventListener("click", () => {
+    togglePreview(getContent);
+  });
 
   listen("menu-open", handleOpen);
   listen("menu-save", handleSave);
