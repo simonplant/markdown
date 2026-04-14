@@ -11,6 +11,58 @@ let hasUnsavedChanges = false;
 let closingConfirmed = false;
 let suppressDirtyTracking = false;
 
+// Auto-save state
+let lastSavedHash: number = 0;
+let autoSaveTimer: ReturnType<typeof setTimeout> | null = null;
+const AUTO_SAVE_DELAY_MS = 2000;
+
+// FNV-1a hash for content comparison
+function fnv1aHash(str: string): number {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) {
+    hash ^= str.charCodeAt(i);
+    hash = (hash * 0x01000193) >>> 0;
+  }
+  return hash;
+}
+
+function showSaveIndicator(): void {
+  const el = document.getElementById("stat-save");
+  if (!el) return;
+  el.textContent = "Saved";
+  el.style.opacity = "1";
+  setTimeout(() => {
+    el.style.opacity = "0";
+  }, 2000);
+}
+
+function scheduleAutoSave(): void {
+  if (autoSaveTimer !== null) {
+    clearTimeout(autoSaveTimer);
+  }
+  // Skip untitled documents (no file path yet)
+  if (!currentPath) return;
+
+  autoSaveTimer = setTimeout(async () => {
+    autoSaveTimer = null;
+    if (!currentPath) return;
+
+    const content = getContent();
+    const hash = fnv1aHash(content);
+    if (hash === lastSavedHash) return;
+
+    try {
+      await invoke("save_file", { path: currentPath, content });
+      lastSavedHash = hash;
+      hasUnsavedChanges = false;
+      updateTitle();
+      showSaveIndicator();
+    } catch {
+      // Auto-save failed silently — user can still save manually
+    }
+  }, AUTO_SAVE_DELAY_MS);
+}
+
 function updateTitle(): void {
   const filename = currentPath ? currentPath.split("/").pop() : "Untitled";
   const prefix = hasUnsavedChanges ? "\u25CF " : "";
@@ -22,9 +74,12 @@ async function handleSaveAs(): Promise<boolean> {
     filters: [{ name: "Markdown", extensions: ["md"] }],
   });
   if (!path) return false;
-  await invoke("save_file", { path, content: getContent() });
+  const content = getContent();
+  await invoke("save_file", { path, content });
   currentPath = path;
   hasUnsavedChanges = false;
+  lastSavedHash = fnv1aHash(content);
+  if (autoSaveTimer !== null) { clearTimeout(autoSaveTimer); autoSaveTimer = null; }
   updateTitle();
   await invoke("add_recent_file", { path });
   return true;
@@ -35,8 +90,11 @@ async function handleSave(): Promise<void> {
     await handleSaveAs();
     return;
   }
-  await invoke("save_file", { path: currentPath, content: getContent() });
+  const content = getContent();
+  await invoke("save_file", { path: currentPath, content });
   hasUnsavedChanges = false;
+  lastSavedHash = fnv1aHash(content);
+  if (autoSaveTimer !== null) { clearTimeout(autoSaveTimer); autoSaveTimer = null; }
   updateTitle();
   await invoke("add_recent_file", { path: currentPath });
 }
@@ -75,6 +133,8 @@ async function handleOpen(): Promise<void> {
   suppressDirtyTracking = false;
   currentPath = selected;
   hasUnsavedChanges = false;
+  lastSavedHash = fnv1aHash(text);
+  if (autoSaveTimer !== null) { clearTimeout(autoSaveTimer); autoSaveTimer = null; }
   updateTitle();
   updatePreview(text);
 
@@ -107,12 +167,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     },
   ]);
 
-  // Track dirty state and update preview via an editor update listener
+  // Track dirty state, update preview, and schedule auto-save
   const dirtyTracker = EditorView.updateListener.of((update) => {
     if (update.docChanged && !suppressDirtyTracking) {
       hasUnsavedChanges = true;
       updateTitle();
       updatePreview(update.state.doc.toString());
+      scheduleAutoSave();
     }
   });
 
@@ -128,6 +189,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       suppressDirtyTracking = false;
       currentPath = pendingPath;
       hasUnsavedChanges = false;
+      lastSavedHash = fnv1aHash(text);
       updateTitle();
       updatePreview(text);
     }
