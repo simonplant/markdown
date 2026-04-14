@@ -31,20 +31,23 @@ Three layers, one codebase per layer:
 
 ## Current priorities
 
-**M0 walking skeleton first.** See `docs/PRODUCT.md §7.1` for the full spec and `backlog/backlog.json` for the six M0 items.
+**Phase 2 — platform expansion.** M0 (FEAT-001–006), Phase 0 foundations (FEAT-007–010), and Phase 1 editor polish (FEAT-011–021) are all complete. The macOS app is functional with tree-sitter parsing, formatting, diagnostics, WYSIWYM, themes, and file workflow.
 
-The ordering is not negotiable: the first real milestone is a running app that opens a file, edits it, saves it, and captures baseline performance metrics. Only *after* M0 lands do parser, formatter, doctor, or piece-table engine work become eligible.
+Current work targets cross-platform reach and reliability:
 
-1. **FEAT-001** — Rust workspace and `em-core` crate with a `String`-backed document (no piece table, no parser, no formatter)
-2. **FEAT-002** — Tauri 2.0 macOS shell, `em-core` wired as a Rust dependency, building in CI
-3. **FEAT-003** — Tauri IPC commands exposing the four em-core functions
-4. **FEAT-004** — CodeMirror 6 in the webview, plain-text only, no markdown language extension
-5. **FEAT-005** — end-to-end open → edit → save → reopen loop with a real e2e test
-6. **FEAT-006** — measure and commit `docs/baseline.json` on the canonical GitHub Actions runner; add the >10% regression gate
+1. **FEAT-022** — Linux Tauri shell (WebKitGTK)
+2. **FEAT-023** — Windows Tauri shell (WebView2)
+3. **FEAT-024** — Web/PWA shell (File System Access API)
+4. **FEAT-025** — Auto-save with content-hash skip
+5. **FEAT-026** — File watching and conflict resolution
+6. **FEAT-027** — Large-file performance (>10k lines)
+7. **FEAT-028** — Flatpak packaging for Linux distribution
 
-Post-M0 Phase 0 foundations (FEAT-007..FEAT-010 — tree-sitter, piece table, formatter, CommonMark CI) **must not be marked ready for sprint until FEAT-006 passes** — see D-M0-1 in `docs/PRODUCT.md`. This discipline is enforced by the backlog's dependency graph.
+See `backlog/backlog.json` for the full backlog including Phase 3–5 items.
 
-**Document model decision is deferred.** M0 uses `String`. The choice between piece table, rope, or staying with `String` is made *after* FEAT-006 gives us measured numbers to compare against. Do not re-open this in backlog grooming until a baseline exists.
+**Document model decision is made.** FEAT-008 measured all three candidates (piece table, rope, String) against the baseline. Piece table and rope both regressed beyond the 10% threshold. The project stays with `String`. See `docs/engine-decision.md` and `docs/engine-comparison.json` for the data.
+
+**Baseline regression gate is active.** `docs/baseline.json` contains 5-run median measurements. Every merge is checked against a 1.1x regression threshold via CI.
 
 ## Legacy Swift prototype
 

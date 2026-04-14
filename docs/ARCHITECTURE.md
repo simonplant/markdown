@@ -28,17 +28,15 @@ Markdown is a cross-platform markdown editor. Three layers, one codebase per lay
                   +----------------------------------+
                   |       Rust Core Engine           |
                   |                                  |
-                  |  Document model (String in M0;   |
-                  |    engine choice deferred to     |
-                  |    post-baseline)                |
-                  |  tree-sitter-markdown parser*    |
-                  |  Formatting engine*              |
-                  |  Doctor engine*                  |
+                  |  Document model (String)         |
+                  |  tree-sitter-markdown parser     |
+                  |  Formatting engine (5 rules)     |
+                  |  Doctor engine (5 rules)         |
                   |  Undo/redo*                      |
                   |  File watching (notify)*         |
                   |  Auto-save, conflict detection*  |
                   +----------------------------------+
-                  * post-M0; see PRODUCT.md §7.1
+                  * not yet implemented; see backlog
 ```
 
 The three layers map cleanly to the three decisions in `docs/PRODUCT.md`:
@@ -55,33 +53,9 @@ The engine is the product. Everything else is a frontend.
 
 ### Document Model
 
-**M0 decision**: the walking skeleton uses a naive UTF-8 `String` behind a `Document` struct. No piece table, no rope, no incremental line index. See `PRODUCT.md §7.1.3` for why — we are proving the loop, not optimizing the engine, and we refuse to make an optimization decision without baseline measurements to compare against.
+**Decision (FEAT-008): keep `String`.** The `Document` struct uses a naive UTF-8 `String`. All three candidates (piece table, rope, String) were measured against `docs/baseline.json` with 5-run medians. Both piece table and rope regressed beyond the 10% threshold — piece table regressed keystroke latency by 1.33x and save by 1.28x; rope regressed open-10k by 2.91x and memory by 1.35x. String matched baseline within measurement noise.
 
-**Post-M0 decision point**: once `FEAT-006` has committed `docs/baseline.json`, we revisit the document model. At that point, the choice is informed by real measurements from the baseline run: cold startup, large-file open time, keystroke-to-onscreen latency, save round-trip, memory footprint.
-
-Three candidates are on the table. None is pre-selected; the post-baseline decision is made against numbers.
-
-**Candidate A — Piece table**
-- Pieces stored in a balanced BST keyed by cumulative byte offset
-- Each piece: `{ buffer_id: Original | Add, offset, length, line_count }`
-- Original file bytes never mutated (trivial `is-modified` detection)
-- Append-only Add buffer makes undo straightforward
-- Line-starts index as a sorted `Vec<usize>`, updated incrementally
-- Periodic compaction when piece count > 10× line count
-- **Pro**: proven in VS Code and other editors; O(log n) edits; cheap is-modified
-- **Con**: complex to implement correctly; the M0 `String` probably handles 99% of our documents without it
-
-**Candidate B — Rope**
-- Trees of small string nodes, balanced
-- **Pro**: also proven (Xi used one; `ropey` is a mature Rust crate)
-- **Con**: Xi's abandonment was attributed in part to rope complexity; we should learn from that
-
-**Candidate C — Keep `String`**
-- Do nothing. The naive approach works for documents up to the size where editing becomes perceptibly slow (empirically multi-MB on modern hardware).
-- **Pro**: zero added complexity; we know it works because M0 will have proved it
-- **Con**: large-file performance is worse than A or B; some hypothetical user with a 100MB markdown file won't have a good time
-
-The correct choice depends on what the baseline numbers tell us and what §7.1.5's regression budget lets us accept. **Do not pick before FEAT-006.**
+See `docs/engine-comparison.json` for the full data and `docs/engine-decision.md` for the rationale. If large-file performance becomes a problem (FEAT-027), the decision can be revisited with new measurements.
 
 ### Parser: tree-sitter
 
@@ -149,18 +123,21 @@ All in Rust core:
 
 Tauri integrates the Rust core directly as a Rust dependency — no FFI boundary, no separate process. Commands are exposed to the webview via Tauri's `#[tauri::command]` macro and IPC bridge.
 
-**M0 API (FEAT-003 wires exactly these four commands — no more, no less):**
+**Current IPC commands (implemented):**
 
 ```rust
 #[tauri::command] fn open_file(state, path: String) -> Result<String, Error>;     // returns file contents
 #[tauri::command] fn edit(state, offset: usize, delete: usize, insert: String);   // mutates state-held Document
 #[tauri::command] fn save_file(state, path: String, content: String) -> Result<(), Error>;
 #[tauri::command] fn current_text(state) -> String;
+#[tauri::command] fn create_window(app, path: Option<String>);                    // multi-window support
+#[tauri::command] fn get_recent_files(state) -> Vec<String>;                      // recent files list
+#[tauri::command] fn add_recent_file(state, path: String);                        // track opened files
 ```
 
-State is held in a Tauri `AppState` struct with a `Mutex<Option<Document>>` field. The walking skeleton does not ship any other commands. Do not add undo, viewport, diagnose, or format to the M0 bridge — they have their own post-M0 backlog items.
+State is held in a Tauri `AppState` struct with per-window document management (`HashMap<window_label, Document>`).
 
-**Long-term API target (post-M0, spread across multiple feature items):**
+**Planned API additions (not yet implemented):**
 
 ```rust
 #[tauri::command] fn document_viewport(h, start: usize, end: usize) -> Viewport;
@@ -284,27 +261,27 @@ App Store channels are not required for the product to work — they're one dist
 
 ## Reference: legacy Swift prototype
 
-A Swift prototype in `reference/` contains algorithm work from an earlier Apple-only version of the product. **No Swift code transfers.** What transfers is algorithm *reference* when porting to Rust:
+A Swift prototype in `reference/` contains algorithm work from an earlier Apple-only version of the product. **No Swift code transfers.** The Swift code was used as algorithm *reference* when implementing the Rust equivalents:
 
-- Formatting rules (list continuation, table alignment, heading spacing, blank-line separation, trailing whitespace)
-- Doctor rules (broken links, heading hierarchy, duplicate headings, unclosed formatting)
-- Tree-sitter node type → AST mapping
+- Formatting rules — **ported** to `em-core/src/formatter.rs` (list continuation, table alignment, heading spacing, blank-line separation, trailing whitespace trim)
+- Doctor rules — **ported** to `em-core/src/doctor.rs` (broken links, heading hierarchy, duplicate headings, unclosed formatting, passive voice)
+- Tree-sitter node type → AST mapping — **ported** to `em-core/src/ast.rs` and `em-core/src/parser.rs`
 
-When implementing a Rust equivalent, read the Swift file as pseudocode, not as source. Do not add Swift targets to this repo. Do not invoke `swift build` or `swift test`.
+Do not add Swift targets to this repo. Do not invoke `swift build` or `swift test`.
 
 ## Phases
 
 These align with `docs/PRODUCT.md §7.1` (walking skeleton) and `§8` (post-M0 roadmap). Timelines are soft — agent-driven sprints run continuously. Ordering is not.
 
-| Phase | Deliverable |
-|-------|-------------|
-| **M0 — Walking skeleton** | Rust workspace + `em-core` (String-backed), Tauri 2.0 macOS shell, CodeMirror 6 plain-text editor, IPC bridge, end-to-end open → edit → save → reopen loop, baseline metrics committed to `docs/baseline.json` and enforced as a CI regression gate |
-| **0 — Post-M0 foundations** | tree-sitter-markdown parser and AST, document-model engine decision (piece table / rope / String) made against baseline numbers, formatting engine first rules, doctor engine first rules, CommonMark spec suite in CI |
-| **1 — Editor polish** | WYSIWYM decorations via CodeMirror 6, The Render prototype, themes, keyboard shortcuts, typography, find/replace |
-| **2 — Second shells** | Linux Tauri shell, Windows Tauri shell, Web (PWA). First public pre-release |
-| **3 — AI and file scale** | Local AI (llama.cpp/MLX/ONNX), BYO-key cloud AI, auto-save, file watching, conflict detection, large-file handling, v1.0 |
-| **4 — Mobile** | iOS + Android via Tauri mobile |
-| **5 — Expansion** | Wikilinks/backlinks against plain files, extended doctor rules, voice intent, Mermaid AI editing |
+| Phase | Status | Deliverable |
+|-------|--------|-------------|
+| **M0 — Walking skeleton** | Done | Rust workspace + `em-core` (String-backed), Tauri 2.0 macOS shell, CodeMirror 6 editor, IPC bridge, end-to-end open → edit → save → reopen loop, baseline metrics in `docs/baseline.json` with CI regression gate |
+| **0 — Foundations** | Done | tree-sitter-markdown parser and AST, engine decision (String — measured, not assumed), 5-rule formatting engine, 5-rule doctor engine, CommonMark spec suite in CI |
+| **1 — Editor polish** | Done | WYSIWYM decorations, The Render animation, light/dark themes, keyboard shortcuts, typography, find/replace, word count, recent files, spell check |
+| **2 — Platform expansion** | Next | Linux Tauri shell, Windows Tauri shell, Web (PWA), auto-save, file watching, conflict detection, Flatpak. First public pre-release |
+| **3 — AI and file scale** | Planned | Local AI (llama.cpp/MLX/ONNX), BYO-key cloud AI, smart completions, large-file handling, v1.0 |
+| **4 — Mobile** | Planned | iOS + Android via Tauri mobile |
+| **5 — Expansion** | Planned | Wikilinks/backlinks against plain files, extended doctor rules, voice intent, Mermaid, math, custom themes |
 
 **Every item in every phase measures against `docs/baseline.json` before merging.** See `PRODUCT.md §7.1.5` and `D-M0-2`. A regression of more than 10% in the median of the measurement run blocks the merge until the regression is understood, named, and accepted.
 
