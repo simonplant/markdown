@@ -5,6 +5,7 @@ pub mod ast;
 pub mod doctor;
 pub mod formatter;
 pub mod parser;
+pub mod watcher;
 
 pub struct Document {
     content: String,

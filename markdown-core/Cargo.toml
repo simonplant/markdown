@@ -6,6 +6,7 @@ edition = "2021"
 [dependencies]
 tree-sitter = "0.26"
 tree-sitter-md = { version = "0.5", features = ["parser"] }
+notify = "6"
 
 [dev-dependencies]
 serde = { version = "1", features = ["derive"] }
