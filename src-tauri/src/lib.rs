@@ -8,6 +8,21 @@ use markdown_core::Document;
 use tauri::menu::{MenuBuilder, MenuItemBuilder, PredefinedMenuItem, SubmenuBuilder};
 use tauri::{Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder};
 
+// ---------------------------------------------------------------------------
+// Cloud AI types
+// ---------------------------------------------------------------------------
+
+const KEYRING_SERVICE: &str = "com.markdown.app";
+const KEYRING_USER: &str = "ai-api-key";
+
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
+pub struct CloudAiConfig {
+    pub provider: String,     // "openai", "anthropic", "ollama", "custom"
+    pub endpoint_url: String, // e.g. "https://api.openai.com"
+    pub model: String,        // e.g. "gpt-4o"
+    pub use_cloud: bool,
+}
+
 static WINDOW_COUNTER: AtomicU32 = AtomicU32::new(1);
 
 /// Per-window file watcher state.
@@ -23,6 +38,7 @@ pub struct AppState {
     pub pending_opens: Mutex<HashMap<String, String>>,
     pub watch_states: Mutex<HashMap<String, WatchState>>,
     pub ai_engine: Mutex<Option<AiEngine>>,
+    pub cloud_config: Mutex<Option<CloudAiConfig>>,
 }
 
 impl Default for AppState {
@@ -32,6 +48,7 @@ impl Default for AppState {
             pending_opens: Mutex::new(HashMap::new()),
             watch_states: Mutex::new(HashMap::new()),
             ai_engine: Mutex::new(None),
+            cloud_config: Mutex::new(None),
         }
     }
 }
@@ -574,7 +591,257 @@ fn read_file_content(path: String) -> Result<String, String> {
 }
 
 // ---------------------------------------------------------------------------
-// AI commands (FEAT-029)
+// Cloud AI settings & keyring (FEAT-030)
+// ---------------------------------------------------------------------------
+
+fn load_cloud_config(app: &tauri::AppHandle) -> Option<CloudAiConfig> {
+    let data_dir = app.path().app_data_dir().ok()?;
+    let path = data_dir.join("ai-settings.json");
+    let data = std::fs::read_to_string(&path).ok()?;
+    serde_json::from_str(&data).ok()
+}
+
+fn save_cloud_config(app: &tauri::AppHandle, config: &CloudAiConfig) -> Result<(), String> {
+    let data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    std::fs::create_dir_all(&data_dir).map_err(|e| e.to_string())?;
+    let path = data_dir.join("ai-settings.json");
+    let json = serde_json::to_string_pretty(config).map_err(|e| e.to_string())?;
+    std::fs::write(&path, json).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+fn keyring_load() -> Result<String, String> {
+    let entry = keyring::Entry::new(KEYRING_SERVICE, KEYRING_USER)
+        .map_err(|e| format!("Keyring error: {}", e))?;
+    match entry.get_password() {
+        Ok(key) => Ok(key),
+        Err(keyring::Error::NoEntry) => Ok(String::new()),
+        Err(e) => Err(format!("Failed to read API key from keychain: {}", e)),
+    }
+}
+
+fn keyring_save(key: &str) -> Result<(), String> {
+    let entry = keyring::Entry::new(KEYRING_SERVICE, KEYRING_USER)
+        .map_err(|e| format!("Keyring error: {}", e))?;
+    entry
+        .set_password(key)
+        .map_err(|e| format!("Failed to save API key to keychain: {}", e))
+}
+
+fn keyring_delete() -> Result<(), String> {
+    let entry = keyring::Entry::new(KEYRING_SERVICE, KEYRING_USER)
+        .map_err(|e| format!("Keyring error: {}", e))?;
+    match entry.delete_credential() {
+        Ok(()) => Ok(()),
+        Err(keyring::Error::NoEntry) => Ok(()),
+        Err(e) => Err(format!("Failed to delete API key from keychain: {}", e)),
+    }
+}
+
+/// Build (system_message, user_message) for cloud API chat format.
+fn build_chat_messages(action: AiAction, text: &str, context: &str) -> (String, String) {
+    match action {
+        AiAction::Improve => {
+            let system = "You are a writing assistant. Improve text to make it clearer, more concise, and better written. Return ONLY the improved text, no explanations.".to_string();
+            let user = if context.is_empty() {
+                format!("Improve this text:\n\n{}", text)
+            } else {
+                format!(
+                    "Surrounding context:\n{}\n\nImprove this text:\n\n{}",
+                    context, text
+                )
+            };
+            (system, user)
+        }
+        AiAction::Summarize => {
+            let system = "You are a writing assistant. Summarize text in a concise paragraph. Return ONLY the summary, no explanations.".to_string();
+            let user = format!("Summarize this text:\n\n{}", text);
+            (system, user)
+        }
+        AiAction::Continue => {
+            let system = "You are a writing assistant. Continue writing naturally, maintaining the same style and tone. Write 1-3 sentences. Return ONLY the continuation, no explanations.".to_string();
+            (system, text.to_string())
+        }
+    }
+}
+
+/// Send a request to an OpenAI-compatible API (OpenAI, Ollama, custom).
+async fn cloud_request_openai(
+    config: &CloudAiConfig,
+    api_key: &str,
+    action: AiAction,
+    text: &str,
+    context: &str,
+) -> Result<String, String> {
+    let (system_msg, user_msg) = build_chat_messages(action, text, context);
+    let url = format!(
+        "{}/v1/chat/completions",
+        config.endpoint_url.trim_end_matches('/')
+    );
+
+    let body = serde_json::json!({
+        "model": config.model,
+        "messages": [
+            {"role": "system", "content": system_msg},
+            {"role": "user", "content": user_msg}
+        ],
+        "max_tokens": 1024
+    });
+
+    let client = reqwest::Client::new();
+    let resp = client
+        .post(&url)
+        .header("Authorization", format!("Bearer {}", api_key))
+        .header("Content-Type", "application/json")
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| format!("Cloud AI request failed: {}", e))?;
+
+    if !resp.status().is_success() {
+        let status = resp.status();
+        let body_text = resp.text().await.unwrap_or_default();
+        return Err(format!(
+            "Cloud AI error ({}): {}. Try checking your API key or switching to local AI.",
+            status, body_text
+        ));
+    }
+
+    let json: serde_json::Value = resp
+        .json()
+        .await
+        .map_err(|e| format!("Failed to parse cloud AI response: {}", e))?;
+
+    json["choices"][0]["message"]["content"]
+        .as_str()
+        .map(|s| s.trim().to_string())
+        .ok_or_else(|| "Unexpected response format from cloud AI provider.".to_string())
+}
+
+/// Send a request to the Anthropic Messages API.
+async fn cloud_request_anthropic(
+    config: &CloudAiConfig,
+    api_key: &str,
+    action: AiAction,
+    text: &str,
+    context: &str,
+) -> Result<String, String> {
+    let (system_msg, user_msg) = build_chat_messages(action, text, context);
+    let url = format!(
+        "{}/v1/messages",
+        config.endpoint_url.trim_end_matches('/')
+    );
+
+    let body = serde_json::json!({
+        "model": config.model,
+        "max_tokens": 1024,
+        "system": system_msg,
+        "messages": [
+            {"role": "user", "content": user_msg}
+        ]
+    });
+
+    let client = reqwest::Client::new();
+    let resp = client
+        .post(&url)
+        .header("x-api-key", api_key)
+        .header("anthropic-version", "2023-06-01")
+        .header("Content-Type", "application/json")
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| format!("Cloud AI request failed: {}", e))?;
+
+    if !resp.status().is_success() {
+        let status = resp.status();
+        let body_text = resp.text().await.unwrap_or_default();
+        return Err(format!(
+            "Cloud AI error ({}): {}. Try checking your API key or switching to local AI.",
+            status, body_text
+        ));
+    }
+
+    let json: serde_json::Value = resp
+        .json()
+        .await
+        .map_err(|e| format!("Failed to parse cloud AI response: {}", e))?;
+
+    json["content"][0]["text"]
+        .as_str()
+        .map(|s| s.trim().to_string())
+        .ok_or_else(|| "Unexpected response format from Anthropic API.".to_string())
+}
+
+/// Route a cloud AI request to the appropriate provider.
+async fn cloud_request(
+    config: &CloudAiConfig,
+    api_key: &str,
+    action: AiAction,
+    text: &str,
+    context: &str,
+) -> Result<String, String> {
+    match config.provider.as_str() {
+        "anthropic" => cloud_request_anthropic(config, api_key, action, text, context).await,
+        _ => cloud_request_openai(config, api_key, action, text, context).await,
+    }
+}
+
+#[tauri::command]
+fn save_ai_settings(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+    config: CloudAiConfig,
+) -> Result<(), String> {
+    save_cloud_config(&app, &config)?;
+    *state.cloud_config.lock().unwrap() = Some(config);
+    Ok(())
+}
+
+#[tauri::command]
+fn load_ai_settings(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+) -> Option<CloudAiConfig> {
+    // Try cache first
+    let cached = state.cloud_config.lock().unwrap().clone();
+    if cached.is_some() {
+        return cached;
+    }
+    // Load from disk
+    let config = load_cloud_config(&app);
+    if let Some(ref c) = config {
+        *state.cloud_config.lock().unwrap() = Some(c.clone());
+    }
+    config
+}
+
+#[tauri::command]
+fn save_api_key(key: String) -> Result<(), String> {
+    keyring_save(&key)
+}
+
+#[tauri::command]
+fn load_api_key() -> Result<String, String> {
+    keyring_load()
+}
+
+#[tauri::command]
+fn delete_api_key(state: State<'_, AppState>, app: tauri::AppHandle) -> Result<(), String> {
+    keyring_delete()?;
+    // Also clear cloud config so AI reverts to local
+    let mut config = state.cloud_config.lock().unwrap();
+    if let Some(ref mut c) = *config {
+        c.use_cloud = false;
+    }
+    // Persist the change
+    if let Some(ref c) = *config {
+        let _ = save_cloud_config(&app, c);
+    }
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// AI commands (FEAT-029, updated for cloud routing in FEAT-030)
 // ---------------------------------------------------------------------------
 
 #[derive(serde::Serialize)]
@@ -620,38 +887,79 @@ fn ai_init(app: tauri::AppHandle, state: State<'_, AppState>) -> Result<bool, St
     Ok(true)
 }
 
-/// Run the "improve" AI action on selected text.
+/// Run the "improve" AI action — routes to cloud if configured, else local.
 #[tauri::command]
-fn ai_improve(
-    state: State<'_, AppState>,
+async fn ai_improve(
+    app: tauri::AppHandle,
     selected_text: String,
     context: String,
 ) -> Result<String, String> {
-    let engine = state.ai_engine.lock().unwrap();
-    let engine = engine
-        .as_ref()
-        .ok_or("AI model not loaded. Download and initialize the model first.")?;
-    engine.run(AiAction::Improve, &selected_text, &context)
+    let state = app.state::<AppState>();
+
+    // Check cloud config
+    let cloud_config = state.cloud_config.lock().unwrap().clone();
+    if let Some(ref config) = cloud_config {
+        if config.use_cloud {
+            if let Ok(api_key) = keyring_load() {
+                if !api_key.is_empty() {
+                    return cloud_request(config, &api_key, AiAction::Improve, &selected_text, &context).await;
+                }
+            }
+        }
+    }
+
+    // Local inference
+    let engine_guard = state.ai_engine.lock().unwrap();
+    match engine_guard.as_ref() {
+        Some(engine) => engine.run(AiAction::Improve, &selected_text, &context),
+        None => Err("AI not available. Configure a cloud provider in Settings or download the local model.".into()),
+    }
 }
 
-/// Run the "summarize" AI action on text.
+/// Run the "summarize" AI action — routes to cloud if configured, else local.
 #[tauri::command]
-fn ai_summarize(state: State<'_, AppState>, text: String) -> Result<String, String> {
-    let engine = state.ai_engine.lock().unwrap();
-    let engine = engine
-        .as_ref()
-        .ok_or("AI model not loaded. Download and initialize the model first.")?;
-    engine.run(AiAction::Summarize, &text, "")
+async fn ai_summarize(app: tauri::AppHandle, text: String) -> Result<String, String> {
+    let state = app.state::<AppState>();
+
+    let cloud_config = state.cloud_config.lock().unwrap().clone();
+    if let Some(ref config) = cloud_config {
+        if config.use_cloud {
+            if let Ok(api_key) = keyring_load() {
+                if !api_key.is_empty() {
+                    return cloud_request(config, &api_key, AiAction::Summarize, &text, "").await;
+                }
+            }
+        }
+    }
+
+    let engine_guard = state.ai_engine.lock().unwrap();
+    match engine_guard.as_ref() {
+        Some(engine) => engine.run(AiAction::Summarize, &text, ""),
+        None => Err("AI not available. Configure a cloud provider in Settings or download the local model.".into()),
+    }
 }
 
-/// Run the "continue writing" AI action.
+/// Run the "continue writing" AI action — routes to cloud if configured, else local.
 #[tauri::command]
-fn ai_continue(state: State<'_, AppState>, text: String) -> Result<String, String> {
-    let engine = state.ai_engine.lock().unwrap();
-    let engine = engine
-        .as_ref()
-        .ok_or("AI model not loaded. Download and initialize the model first.")?;
-    engine.run(AiAction::Continue, &text, "")
+async fn ai_continue(app: tauri::AppHandle, text: String) -> Result<String, String> {
+    let state = app.state::<AppState>();
+
+    let cloud_config = state.cloud_config.lock().unwrap().clone();
+    if let Some(ref config) = cloud_config {
+        if config.use_cloud {
+            if let Ok(api_key) = keyring_load() {
+                if !api_key.is_empty() {
+                    return cloud_request(config, &api_key, AiAction::Continue, &text, "").await;
+                }
+            }
+        }
+    }
+
+    let engine_guard = state.ai_engine.lock().unwrap();
+    match engine_guard.as_ref() {
+        Some(engine) => engine.run(AiAction::Continue, &text, ""),
+        None => Err("AI not available. Configure a cloud provider in Settings or download the local model.".into()),
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -683,9 +991,18 @@ pub fn run() {
             ai_improve,
             ai_summarize,
             ai_continue,
+            save_ai_settings,
+            load_ai_settings,
+            save_api_key,
+            load_api_key,
+            delete_api_key,
         ])
         .setup(|app| {
             rebuild_menu(app.handle())?;
+            // Load cloud AI config from disk into state
+            if let Some(config) = load_cloud_config(app.handle()) {
+                *app.state::<AppState>().cloud_config.lock().unwrap() = Some(config);
+            }
             Ok(())
         })
         .on_window_event(|window, event| {
