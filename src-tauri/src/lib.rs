@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
+use markdown_core::ai::{self, AiAction, AiEngine};
 use markdown_core::watcher::{FileChangeEvent, FileWatcher};
 use markdown_core::Document;
 use tauri::menu::{MenuBuilder, MenuItemBuilder, PredefinedMenuItem, SubmenuBuilder};
@@ -21,6 +22,7 @@ pub struct AppState {
     pub documents: Mutex<HashMap<String, Document>>,
     pub pending_opens: Mutex<HashMap<String, String>>,
     pub watch_states: Mutex<HashMap<String, WatchState>>,
+    pub ai_engine: Mutex<Option<AiEngine>>,
 }
 
 impl Default for AppState {
@@ -29,6 +31,7 @@ impl Default for AppState {
             documents: Mutex::new(HashMap::new()),
             pending_opens: Mutex::new(HashMap::new()),
             watch_states: Mutex::new(HashMap::new()),
+            ai_engine: Mutex::new(None),
         }
     }
 }
@@ -571,6 +574,87 @@ fn read_file_content(path: String) -> Result<String, String> {
 }
 
 // ---------------------------------------------------------------------------
+// AI commands (FEAT-029)
+// ---------------------------------------------------------------------------
+
+#[derive(serde::Serialize)]
+struct AiModelStatus {
+    available: bool,
+    download_url: String,
+}
+
+/// Check whether the AI model is downloaded and available.
+#[tauri::command]
+fn ai_check_model(app: tauri::AppHandle) -> AiModelStatus {
+    let available = app
+        .path()
+        .app_data_dir()
+        .map(|dir| ai::is_model_available(&dir))
+        .unwrap_or(false);
+    AiModelStatus {
+        available,
+        download_url: ai::model_download_url().to_string(),
+    }
+}
+
+/// Initialize the AI engine by loading the model. Returns true on success.
+#[tauri::command]
+fn ai_init(app: tauri::AppHandle, state: State<'_, AppState>) -> Result<bool, String> {
+    let data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    let model_file = ai::model_path(&data_dir);
+
+    if !model_file.is_file() {
+        return Ok(false);
+    }
+
+    // Check if already initialized
+    {
+        let engine = state.ai_engine.lock().unwrap();
+        if engine.is_some() {
+            return Ok(true);
+        }
+    }
+
+    let engine = AiEngine::new(&model_file)?;
+    *state.ai_engine.lock().unwrap() = Some(engine);
+    Ok(true)
+}
+
+/// Run the "improve" AI action on selected text.
+#[tauri::command]
+fn ai_improve(
+    state: State<'_, AppState>,
+    selected_text: String,
+    context: String,
+) -> Result<String, String> {
+    let engine = state.ai_engine.lock().unwrap();
+    let engine = engine
+        .as_ref()
+        .ok_or("AI model not loaded. Download and initialize the model first.")?;
+    engine.run(AiAction::Improve, &selected_text, &context)
+}
+
+/// Run the "summarize" AI action on text.
+#[tauri::command]
+fn ai_summarize(state: State<'_, AppState>, text: String) -> Result<String, String> {
+    let engine = state.ai_engine.lock().unwrap();
+    let engine = engine
+        .as_ref()
+        .ok_or("AI model not loaded. Download and initialize the model first.")?;
+    engine.run(AiAction::Summarize, &text, "")
+}
+
+/// Run the "continue writing" AI action.
+#[tauri::command]
+fn ai_continue(state: State<'_, AppState>, text: String) -> Result<String, String> {
+    let engine = state.ai_engine.lock().unwrap();
+    let engine = engine
+        .as_ref()
+        .ok_or("AI model not loaded. Download and initialize the model first.")?;
+    engine.run(AiAction::Continue, &text, "")
+}
+
+// ---------------------------------------------------------------------------
 // App entry point
 // ---------------------------------------------------------------------------
 
@@ -594,6 +678,11 @@ pub fn run() {
             start_watching,
             stop_watching,
             read_file_content,
+            ai_check_model,
+            ai_init,
+            ai_improve,
+            ai_summarize,
+            ai_continue,
         ])
         .setup(|app| {
             rebuild_menu(app.handle())?;

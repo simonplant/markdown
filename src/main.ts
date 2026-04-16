@@ -6,6 +6,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { initEditor, getContent, setContent } from "./editor";
 import { initPreview, togglePreview, updatePreview } from "./preview";
 import { updateCurrentFilePath } from "./wikilinks";
+import { checkAiModel, initAiEngine } from "./ai";
 
 let currentPath: string | null = null;
 let editorView: EditorView;
@@ -358,6 +359,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Proceed with close (either saved or discarded)
     closingConfirmed = true;
     await invoke("close_current_window");
+  });
+
+  // Initialize AI engine if model is available (non-blocking)
+  checkAiModel().then((available) => {
+    if (available) {
+      initAiEngine().catch(() => {
+        // AI init failed — editor works normally without AI
+      });
+    }
   });
 
   updateTitle();
