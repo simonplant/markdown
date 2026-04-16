@@ -1,6 +1,7 @@
 use std::fs;
 use std::io;
 
+pub mod ai;
 pub mod ast;
 pub mod doctor;
 pub mod formatter;

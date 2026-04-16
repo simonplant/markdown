@@ -10,6 +10,7 @@ import { wysiwym } from "./wysiwym";
 import { theRender, toggleRender } from "./the-render";
 import { renderedDecorations, setRenderedTheme } from "./rendered-decorations";
 import { wikilinks } from "./wikilinks";
+import { aiExtension } from "./ai";
 
 const typographyTheme = EditorView.theme({
   ".cm-scroller": {
@@ -65,6 +66,7 @@ export function initEditor(parent: HTMLElement, extraExtensions: Extension[] = [
       renderedDecorations(isDark),
       theRender(),
       wikilinks(isDark),
+      aiExtension(),
       EditorView.lineWrapping,
       typographyTheme,
       themeExtension(isDark),
