@@ -1,16 +1,26 @@
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicU32, Ordering};
-use std::sync::Mutex;
+use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
+use std::sync::{Arc, Mutex};
 
+use markdown_core::watcher::{FileChangeEvent, FileWatcher};
 use markdown_core::Document;
 use tauri::menu::{MenuBuilder, MenuItemBuilder, PredefinedMenuItem, SubmenuBuilder};
 use tauri::{Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder};
 
 static WINDOW_COUNTER: AtomicU32 = AtomicU32::new(1);
 
+/// Per-window file watcher state.
+struct WatchState {
+    _watcher: FileWatcher,
+    /// Content hash of the last save we performed, used to distinguish
+    /// our own saves from external changes.
+    last_saved_hash: Arc<AtomicU64>,
+}
+
 pub struct AppState {
     pub documents: Mutex<HashMap<String, Document>>,
     pub pending_opens: Mutex<HashMap<String, String>>,
+    pub watch_states: Mutex<HashMap<String, WatchState>>,
 }
 
 impl Default for AppState {
@@ -18,8 +28,25 @@ impl Default for AppState {
         AppState {
             documents: Mutex::new(HashMap::new()),
             pending_opens: Mutex::new(HashMap::new()),
+            watch_states: Mutex::new(HashMap::new()),
         }
     }
+}
+
+/// FNV-1a hash for content comparison (self-save detection).
+fn fnv1a_hash(data: &[u8]) -> u64 {
+    let mut hash: u64 = 0xcbf29ce484222325;
+    for &byte in data {
+        hash ^= byte as u64;
+        hash = hash.wrapping_mul(0x100000001b3);
+    }
+    hash
+}
+
+#[derive(serde::Serialize, Clone)]
+struct FileChangePayload {
+    kind: String,
+    path: String,
 }
 
 // ---------------------------------------------------------------------------
@@ -166,6 +193,16 @@ fn save_file(
     path: String,
     content: String,
 ) -> Result<(), String> {
+    // Update the save hash BEFORE writing so the watcher can distinguish
+    // our own saves from external changes.
+    let hash = fnv1a_hash(content.as_bytes());
+    {
+        let watch_states = state.watch_states.lock().unwrap();
+        if let Some(ws) = watch_states.get(window.label()) {
+            ws.last_saved_hash.store(hash, Ordering::SeqCst);
+        }
+    }
+
     std::fs::write(&path, &content).map_err(|e| e.to_string())?;
     state
         .documents
@@ -447,6 +484,93 @@ fn create_wikilink_target(link_text: String, current_file_path: String) -> Resul
 }
 
 // ---------------------------------------------------------------------------
+// File watching commands (FEAT-026)
+// ---------------------------------------------------------------------------
+
+/// Start watching a file for external changes. Emits "file-changed-externally"
+/// events to the calling window when the file is modified or deleted by an
+/// external process. Our own saves are filtered out via content-hash comparison.
+#[tauri::command]
+fn start_watching(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+    window: tauri::Window,
+    path: String,
+) -> Result<(), String> {
+    let label = window.label().to_string();
+
+    // Compute the initial content hash so we can detect self-saves
+    let initial_hash = std::fs::read(std::path::Path::new(&path))
+        .map(|content| fnv1a_hash(&content))
+        .unwrap_or(0);
+    let last_saved_hash = Arc::new(AtomicU64::new(initial_hash));
+
+    let hash_ref = last_saved_hash.clone();
+    let event_path = path.clone();
+
+    let watcher = FileWatcher::new(&path, 200, move |event| {
+        match event {
+            FileChangeEvent::Modified => {
+                // Read the new file content and compare with our last save hash
+                if let Ok(content) = std::fs::read(std::path::Path::new(&event_path)) {
+                    let new_hash = fnv1a_hash(&content);
+                    let saved_hash = hash_ref.load(Ordering::SeqCst);
+                    if new_hash == saved_hash {
+                        return; // Our own save — ignore
+                    }
+                    // Update hash so we don't re-fire for the same external content
+                    hash_ref.store(new_hash, Ordering::SeqCst);
+                }
+                let _ = app.emit(
+                    "file-changed-externally",
+                    FileChangePayload {
+                        kind: "modified".to_string(),
+                        path: event_path.clone(),
+                    },
+                );
+            }
+            FileChangeEvent::Deleted => {
+                let _ = app.emit(
+                    "file-changed-externally",
+                    FileChangePayload {
+                        kind: "deleted".to_string(),
+                        path: event_path.clone(),
+                    },
+                );
+            }
+        }
+    })
+    .map_err(|e| e.to_string())?;
+
+    // Insert new watcher (drops any previous watcher for this window)
+    state.watch_states.lock().unwrap().insert(
+        label,
+        WatchState {
+            _watcher: watcher,
+            last_saved_hash,
+        },
+    );
+
+    Ok(())
+}
+
+/// Stop watching the file for a given window.
+#[tauri::command]
+fn stop_watching(state: State<'_, AppState>, window: tauri::Window) {
+    state
+        .watch_states
+        .lock()
+        .unwrap()
+        .remove(window.label());
+}
+
+/// Read file content without modifying state (used for diff display).
+#[tauri::command]
+fn read_file_content(path: String) -> Result<String, String> {
+    std::fs::read_to_string(&path).map_err(|e| e.to_string())
+}
+
+// ---------------------------------------------------------------------------
 // App entry point
 // ---------------------------------------------------------------------------
 
@@ -467,6 +591,9 @@ pub fn run() {
             resolve_wikilink,
             compute_backlinks,
             create_wikilink_target,
+            start_watching,
+            stop_watching,
+            read_file_content,
         ])
         .setup(|app| {
             rebuild_menu(app.handle())?;
@@ -474,7 +601,15 @@ pub fn run() {
         })
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::Destroyed = event {
+                // Clean up file watcher for this window
                 let app = window.app_handle();
+                if let Some(state) = app.try_state::<AppState>() {
+                    state
+                        .watch_states
+                        .lock()
+                        .unwrap()
+                        .remove(window.label());
+                }
                 if app.webview_windows().len() == 0 {
                     app.exit(0);
                 }

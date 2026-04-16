@@ -1,6 +1,6 @@
 import { EditorView, keymap } from "@codemirror/view";
 import { invoke } from "@tauri-apps/api/core";
-import { open, save as saveDialog, ask } from "@tauri-apps/plugin-dialog";
+import { open, save as saveDialog, ask, message } from "@tauri-apps/plugin-dialog";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { initEditor, getContent, setContent } from "./editor";
@@ -85,6 +85,7 @@ async function handleSaveAs(): Promise<boolean> {
   updateTitle();
   updateCurrentFilePath(editorView, currentPath);
   await invoke("add_recent_file", { path });
+  startWatchingCurrentFile();
   return true;
 }
 
@@ -143,10 +144,98 @@ async function handleOpen(): Promise<void> {
   updateCurrentFilePath(editorView, currentPath);
 
   await invoke("add_recent_file", { path: selected });
+  startWatchingCurrentFile();
 }
 
 async function handleNew(): Promise<void> {
   await invoke("create_window", { filePath: null });
+}
+
+async function startWatchingCurrentFile(): Promise<void> {
+  if (!currentPath) return;
+  try {
+    await invoke("start_watching", { path: currentPath });
+  } catch {
+    // File watching is best-effort — editor works without it
+  }
+}
+
+async function handleFileChangedExternally(kind: string, path: string): Promise<void> {
+  // Ignore events for a different file (e.g. stale event after navigation)
+  if (path !== currentPath) return;
+
+  if (kind === "deleted") {
+    await message(
+      "This file has been deleted or moved from disk.\n\nYou can save your current content to a new location using File > Save As.",
+      { title: "File Deleted", kind: "warning" },
+    );
+    return;
+  }
+
+  // kind === "modified"
+  if (!hasUnsavedChanges) {
+    // No unsaved changes — reload silently
+    try {
+      const text = await invoke<string>("open_file", { path });
+      suppressDirtyTracking = true;
+      setContent(text);
+      suppressDirtyTracking = false;
+      hasUnsavedChanges = false;
+      lastSavedHash = fnv1aHash(text);
+      if (autoSaveTimer !== null) { clearTimeout(autoSaveTimer); autoSaveTimer = null; }
+      updateTitle();
+      updatePreview(text);
+    } catch {
+      // File may have been deleted between event and reload attempt
+    }
+    return;
+  }
+
+  // Unsaved changes exist — show conflict dialog
+  const reload = await ask(
+    "This file was changed externally.\n\nReload the external version or keep your changes?",
+    {
+      title: "File Changed Externally",
+      kind: "warning",
+      okLabel: "Reload External Version",
+      cancelLabel: "Keep My Version",
+    },
+  );
+
+  if (reload) {
+    // Reload the external version
+    try {
+      const text = await invoke<string>("open_file", { path });
+      suppressDirtyTracking = true;
+      setContent(text);
+      suppressDirtyTracking = false;
+      hasUnsavedChanges = false;
+      lastSavedHash = fnv1aHash(text);
+      if (autoSaveTimer !== null) { clearTimeout(autoSaveTimer); autoSaveTimer = null; }
+      updateTitle();
+      updatePreview(text);
+    } catch {
+      // File may have been deleted
+    }
+  } else {
+    // User chose "Keep My Version" — offer to show diff
+    const showDiff = await ask(
+      "Would you like to see the external version for comparison?",
+      {
+        title: "Show Diff",
+        okLabel: "Show External Version",
+        cancelLabel: "Dismiss",
+      },
+    );
+    if (showDiff) {
+      // Open the external version in a new window for side-by-side comparison
+      try {
+        await invoke("create_window", { filePath: path });
+      } catch {
+        // Best effort
+      }
+    }
+  }
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -197,6 +286,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       updateTitle();
       updatePreview(text);
       updateCurrentFilePath(editorView, currentPath);
+      startWatchingCurrentFile();
     }
   } catch {
     // No pending open — start with empty document
@@ -210,6 +300,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   listen("menu-open", handleOpen);
   listen("menu-save", handleSave);
   listen("menu-new", handleNew);
+
+  // Listen for external file change events from the backend file watcher
+  listen<{ kind: string; path: string }>("file-changed-externally", (event) => {
+    handleFileChangedExternally(event.payload.kind, event.payload.path);
+  });
 
   // Handle wikilink navigation events from wikilinks.ts.
   // This fires synchronously BEFORE the view.dispatch that changes content,
@@ -230,6 +325,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         updatePreview(content);
         suppressDirtyTracking = false;
       });
+      startWatchingCurrentFile();
     }
   }) as EventListener);
 
