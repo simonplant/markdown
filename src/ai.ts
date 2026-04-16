@@ -75,13 +75,13 @@ export async function aiContinue(text: string): Promise<string> {
 // Inline suggestion state (ghost text / accept-reject)
 // ---------------------------------------------------------------------------
 
-interface AiSuggestion {
+export interface AiSuggestion {
   from: number;
   to: number;
   text: string;
 }
 
-const setSuggestion = StateEffect.define<AiSuggestion | null>();
+export const setSuggestion = StateEffect.define<AiSuggestion | null>();
 
 class GhostTextWidget extends WidgetType {
   constructor(readonly text: string) {
@@ -98,7 +98,7 @@ class GhostTextWidget extends WidgetType {
   }
 }
 
-const suggestionField = StateField.define<AiSuggestion | null>({
+export const suggestionField = StateField.define<AiSuggestion | null>({
   create() {
     return null;
   },
@@ -155,6 +155,10 @@ function rejectSuggestion(view: EditorView): boolean {
 // ---------------------------------------------------------------------------
 
 let aiInProgress = false;
+
+export function isAiActionInProgress(): boolean {
+  return aiInProgress;
+}
 
 function showAiStatus(message: string): void {
   const el = document.getElementById("stat-ai");
