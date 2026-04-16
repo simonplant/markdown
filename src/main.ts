@@ -6,7 +6,8 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { initEditor, getContent, setContent } from "./editor";
 import { initPreview, togglePreview, updatePreview } from "./preview";
 import { updateCurrentFilePath } from "./wikilinks";
-import { checkAiModel, initAiEngine } from "./ai";
+import { checkAiModel, initAiEngine, setAiAvailable } from "./ai";
+import { loadSettings, openSettings, updateAiStatusIndicator } from "./settings";
 
 let currentPath: string | null = null;
 let editorView: EditorView;
@@ -297,6 +298,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("btn-preview")!.addEventListener("click", () => {
     togglePreview(getContent);
   });
+  document.getElementById("btn-settings")!.addEventListener("click", openSettings);
+
+  // AI mode indicator click opens settings
+  const aiModeEl = document.getElementById("stat-ai-mode");
+  if (aiModeEl) aiModeEl.addEventListener("click", openSettings);
 
   listen("menu-open", handleOpen);
   listen("menu-save", handleSave);
@@ -361,13 +367,27 @@ document.addEventListener("DOMContentLoaded", async () => {
     await invoke("close_current_window");
   });
 
-  // Initialize AI engine if model is available (non-blocking)
-  checkAiModel().then((available) => {
-    if (available) {
-      initAiEngine().catch(() => {
-        // AI init failed — editor works normally without AI
-      });
+  // Initialize AI: check cloud config first, then fall back to local model
+  loadSettings().then(async (config) => {
+    if (config?.use_cloud) {
+      // Cloud mode — check if there's an API key
+      try {
+        const key = await invoke<string>("load_api_key");
+        if (key) {
+          setAiAvailable(true);
+          updateAiStatusIndicator();
+          return;
+        }
+      } catch {
+        // Keyring not available — fall through to local
+      }
     }
+    // Try local model
+    const available = await checkAiModel();
+    if (available) {
+      await initAiEngine().catch(() => {});
+    }
+    updateAiStatusIndicator();
   });
 
   updateTitle();

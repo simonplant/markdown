@@ -40,6 +40,11 @@ export async function initAiEngine(): Promise<boolean> {
   }
 }
 
+/** Mark AI as available (called when cloud config has a key). */
+export function setAiAvailable(available: boolean): void {
+  aiAvailable = available;
+}
+
 export function isAiAvailable(): boolean {
   return aiAvailable;
 }
@@ -159,9 +164,29 @@ function showAiStatus(message: string): void {
 }
 
 function hideAiStatus(): void {
+  if (aiErrorActive) return; // Don't hide if an error is being displayed
   const el = document.getElementById("stat-ai");
   if (!el) return;
   el.style.opacity = "0";
+}
+
+let aiErrorActive = false;
+
+function showAiError(err: unknown): void {
+  const el = document.getElementById("stat-ai");
+  if (!el) return;
+  const msg = typeof err === "string" ? err : String(err);
+  // Truncate long error messages for the status bar
+  const short = msg.length > 100 ? msg.slice(0, 100) + "\u2026" : msg;
+  el.textContent = short;
+  el.style.opacity = "1";
+  el.style.color = "#cf222e";
+  aiErrorActive = true;
+  setTimeout(() => {
+    el.style.opacity = "0";
+    el.style.color = "";
+    aiErrorActive = false;
+  }, 6000);
 }
 
 export function runImprove(view: EditorView): boolean {
@@ -187,6 +212,7 @@ export function runImprove(view: EditorView): boolean {
     })
     .catch((err) => {
       console.error("AI improve failed:", err);
+      showAiError(err);
     })
     .finally(() => {
       aiInProgress = false;
@@ -221,6 +247,7 @@ export function runSummarize(view: EditorView): boolean {
     })
     .catch((err) => {
       console.error("AI summarize failed:", err);
+      showAiError(err);
     })
     .finally(() => {
       aiInProgress = false;
@@ -255,6 +282,7 @@ export function runContinue(view: EditorView): boolean {
     })
     .catch((err) => {
       console.error("AI continue failed:", err);
+      showAiError(err);
     })
     .finally(() => {
       aiInProgress = false;
