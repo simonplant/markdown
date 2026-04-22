@@ -1040,7 +1040,7 @@
       "passes": false,
       "readyForSprint": true,
       "groomedAt": "2026-04-21",
-      "groomingNotes": "Parity test is the load-bearing piece — without it the duplication drifts and bug reports become impossible to triage. Prefer running both implementations in a single Rust test via a JS runtime shim rather than running TS tests against a Rust subprocess."
+      "groomingNotes": "FEAT-053 partial landed in 726e6af — markdownKeymap enabled for list continuation on Enter (most common hot-path keystroke). Remaining scope: port Rust table-alignment and heading-spacing rules to TypeScript, add a parity test harness with a committed input/output corpus. Table alignment while typing pipes is the next user-visible improvement."
     },
     {
       "id": "FEAT-054",
