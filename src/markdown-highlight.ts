@@ -131,6 +131,7 @@ export function markdownExtension(): Extension {
   return [
     markdown({
       base: markdownLanguage,
+      addKeymap: true,
     }),
     syntaxHighlighting(lightHighlightStyle),
     syntaxHighlighting(darkHighlightStyle),
