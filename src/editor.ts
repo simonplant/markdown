@@ -10,6 +10,8 @@ import { wysiwym } from "./wysiwym";
 import { theRender, toggleRender } from "./the-render";
 import { renderedDecorations, setRenderedTheme } from "./rendered-decorations";
 import { wikilinks } from "./wikilinks";
+import { readMode, toggleMode, isReadMode, enterReadMode } from "./read-mode";
+import { doctorDiagnostics } from "./doctor";
 // AI extensions are deferred per D-ROAD-3 — see docs/ARCHITECTURE.md §5.
 
 const typographyTheme = EditorView.theme({
@@ -55,6 +57,8 @@ export function initEditor(parent: HTMLElement, extraExtensions: Extension[] = [
       keymap.of([
         { key: "Mod-b", run: toggleBold },
         { key: "Mod-i", run: toggleItalic },
+        { key: "Mod-e", run: toggleMode },
+        { key: "Escape", run: (view) => (isReadMode(view) ? false : (enterReadMode(view), true)) },
         { key: "Mod-Shift-r", run: toggleRender },
         { key: "Mod-Shift-k", run: deleteLine },
         ...searchKeymap,
@@ -62,10 +66,12 @@ export function initEditor(parent: HTMLElement, extraExtensions: Extension[] = [
         ...historyKeymap,
       ]),
       markdownExtension(),
+      readMode(),
       wysiwym(),
       renderedDecorations(isDark),
       theRender(),
       wikilinks(isDark),
+      doctorDiagnostics(),
       EditorView.lineWrapping,
       typographyTheme,
       themeExtension(isDark),

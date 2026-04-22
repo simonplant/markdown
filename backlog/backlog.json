@@ -866,8 +866,8 @@
       "dependsOn": [
         "FEAT-045"
       ],
-      "status": "todo",
-      "passes": false,
+      "status": "done",
+      "passes": true,
       "readyForSprint": true,
       "groomedAt": "2026-04-21",
       "groomingNotes": "Load-bearing. Do not conflate with FEAT-015 (The Render animation) — that is a visual effect on the author surface; this is a distinct default view. The WYSIWYM decoration tree in src/wysiwym.ts is the right starting point for the mark-hiding logic. If scope creeps toward remembering per-file last mode or adding a settings override, split that off — this item ships the default and the transition only."
@@ -918,8 +918,8 @@
       "dependsOn": [
         "FEAT-045"
       ],
-      "status": "todo",
-      "passes": false,
+      "status": "done",
+      "passes": true,
       "readyForSprint": true,
       "groomedAt": "2026-04-21",
       "groomingNotes": "Doctor engine already exists in Rust — this is wiring, not algorithm work. Measure keystroke latency against baseline before and after; if the doctor run regresses typing, it needs to go on a worker (not the per-keystroke path). Extended rules (passive voice, etc.) remain in FEAT-036."

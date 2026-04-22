@@ -602,6 +602,57 @@ fn read_file_content(path: String) -> Result<String, String> {
 }
 
 // ---------------------------------------------------------------------------
+// Doctor diagnostics (FEAT-050)
+// ---------------------------------------------------------------------------
+
+/// Shell-facing diagnostic DTO — mirrors `markdown_core::doctor::Diagnostic`
+/// with serializable field names the editor frontend can consume.
+#[derive(serde::Serialize)]
+struct DiagnosticDto {
+    rule: String,
+    severity: &'static str,
+    /// Byte offset where the problem starts.
+    start: usize,
+    /// Byte offset where the problem ends (exclusive).
+    end: usize,
+    message: String,
+}
+
+impl From<markdown_core::doctor::Diagnostic> for DiagnosticDto {
+    fn from(d: markdown_core::doctor::Diagnostic) -> Self {
+        DiagnosticDto {
+            rule: d.rule.to_string(),
+            severity: match d.severity {
+                markdown_core::doctor::Severity::Error => "error",
+                markdown_core::doctor::Severity::Warning => "warning",
+                markdown_core::doctor::Severity::Hint => "hint",
+            },
+            start: d.span.0,
+            end: d.span.1,
+            message: d.message,
+        }
+    }
+}
+
+/// Run the document doctor against the current window's document and return
+/// a flat list of diagnostics. File-system context (for broken-link checking)
+/// is not supplied here; that rule is skipped gracefully.
+#[tauri::command]
+fn document_diagnose(
+    state: State<'_, AppState>,
+    window: tauri::Window,
+) -> Result<Vec<DiagnosticDto>, String> {
+    let docs = state.documents.lock().unwrap();
+    let doc = docs
+        .get(window.label())
+        .ok_or_else(|| "No document open".to_string())?;
+    let text = doc.current_text();
+    let tree = markdown_core::parser::parse(text);
+    let diagnostics = markdown_core::doctor::check(&tree, text, None);
+    Ok(diagnostics.into_iter().map(DiagnosticDto::from).collect())
+}
+
+// ---------------------------------------------------------------------------
 // Cloud AI settings & keyring (FEAT-030) — gated behind `ai` feature
 // ---------------------------------------------------------------------------
 
@@ -1020,6 +1071,7 @@ pub fn run() {
                     start_watching,
                     stop_watching,
                     read_file_content,
+                    document_diagnose,
                     ai_check_model,
                     ai_init,
                     ai_improve,
@@ -1050,6 +1102,7 @@ pub fn run() {
                     start_watching,
                     stop_watching,
                     read_file_content,
+                    document_diagnose,
                 ]
             }
         })
