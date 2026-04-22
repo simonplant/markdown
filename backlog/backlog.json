@@ -776,7 +776,7 @@
       "passes": false,
       "readyForSprint": false,
       "groomedAt": "2026-04-21",
-      "groomingNotes": "Depends on FEAT-046 (baseline.json restored first). The synthetic session is the trickiest piece — aim for a scripted driver that exercises steady-state, not cold-start. File size targets: small ~1KB/30 lines, medium ~25KB/800 lines with tables, large ~250KB/8000 lines with rich content."
+      "groomingNotes": "FEAT-047 partial: corpus fixtures committed under docs/baseline-corpus/ (small.md 465B, medium.md 16KB, large.md 200KB), and markdown-core/tests/corpus_smoke.rs gates that they continue to parse. Full per-slice timing integration into scripts/measure_baseline.sh --capture/--check is the remaining scope — the current script captures open_small/open_10k as a proxy distribution, so the baseline gate still fires, but not per-corpus-slice as ARCHITECTURE §2 specifies."
     },
     {
       "id": "FEAT-048",
