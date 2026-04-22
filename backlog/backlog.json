@@ -995,8 +995,8 @@
         "src/markdown-commands.ts"
       ],
       "dependsOn": [],
-      "status": "todo",
-      "passes": false,
+      "status": "done",
+      "passes": true,
       "readyForSprint": true,
       "groomedAt": "2026-04-21",
       "groomingNotes": "document_undo/redo replacing CodeMirror history is deliberately out of scope — only expose the commands; the editor keeps using history() for now. Revisit when undo coalescing (§3.5) becomes a user-visible need."
@@ -1076,8 +1076,8 @@
         "src/main.ts"
       ],
       "dependsOn": [],
-      "status": "todo",
-      "passes": false,
+      "status": "done",
+      "passes": true,
       "readyForSprint": true,
       "groomedAt": "2026-04-21",
       "groomingNotes": "Do not pull in a charset detection crate for this — BOM-only detection is all §3.7 requires, and adding chardet-like inference invites silent misclassification. Explicit error for non-UTF-8 is the correct behavior."

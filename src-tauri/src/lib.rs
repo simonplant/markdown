@@ -653,6 +653,108 @@ fn document_diagnose(
 }
 
 // ---------------------------------------------------------------------------
+// Planned document IPC commands (FEAT-052)
+// ---------------------------------------------------------------------------
+// These round out the IPC surface described in ARCHITECTURE §3.8. Undo/redo
+// currently leave CodeMirror's history() in charge and are exposed as no-op
+// shims so callers can adopt the API without a parallel migration; the core
+// engine does not yet own command history (§3.5 is still future work).
+
+#[derive(serde::Serialize)]
+struct MutationDto {
+    offset: usize,
+    delete: usize,
+    insert: String,
+}
+
+impl From<markdown_core::formatter::Mutation> for MutationDto {
+    fn from(m: markdown_core::formatter::Mutation) -> Self {
+        MutationDto {
+            offset: m.offset,
+            delete: m.delete,
+            insert: m.insert,
+        }
+    }
+}
+
+/// Run the full formatter against the current window's document and return
+/// the list of mutations the editor should apply.
+#[tauri::command]
+fn document_format(
+    state: State<'_, AppState>,
+    window: tauri::Window,
+) -> Result<Vec<MutationDto>, String> {
+    let docs = state.documents.lock().unwrap();
+    let doc = docs
+        .get(window.label())
+        .ok_or_else(|| "No document open".to_string())?;
+    let text = doc.current_text();
+    let tree = markdown_core::parser::parse(text);
+    Ok(markdown_core::formatter::format(&tree, text)
+        .into_iter()
+        .map(MutationDto::from)
+        .collect())
+}
+
+#[derive(serde::Serialize)]
+struct ViewportTokens {
+    start: usize,
+    end: usize,
+    /// Placeholder — full tokenization is deferred until the core takes over
+    /// syntax highlighting (currently owned by CodeMirror + Lezer).
+    tokens: Vec<(usize, usize, String)>,
+}
+
+/// Return placeholder viewport tokens for the given byte range. The editor
+/// currently tokenizes client-side via CodeMirror's markdown grammar; this
+/// command exists so callers can start targeting the API shape ARCHITECTURE
+/// §3.8 specifies.
+#[tauri::command]
+fn document_viewport(
+    state: State<'_, AppState>,
+    window: tauri::Window,
+    start: usize,
+    end: usize,
+) -> Result<ViewportTokens, String> {
+    let docs = state.documents.lock().unwrap();
+    let doc = docs
+        .get(window.label())
+        .ok_or_else(|| "No document open".to_string())?;
+    let len = doc.current_text().len();
+    let clamped_start = start.min(len);
+    let clamped_end = end.min(len).max(clamped_start);
+    Ok(ViewportTokens {
+        start: clamped_start,
+        end: clamped_end,
+        tokens: Vec::new(),
+    })
+}
+
+/// Shim for the planned core-owned undo. Today CodeMirror's history() owns
+/// undo in the editor; the command succeeds no-op so adopters have a stable
+/// entry point.
+#[tauri::command]
+fn document_undo() -> Result<(), String> {
+    Ok(())
+}
+
+#[tauri::command]
+fn document_redo() -> Result<(), String> {
+    Ok(())
+}
+
+/// Release the per-window document state. Called by the shell when a window
+/// closes and the document backing it will not be touched again.
+#[tauri::command]
+fn document_close(state: State<'_, AppState>, window: tauri::Window) -> Result<(), String> {
+    let mut docs = state.documents.lock().unwrap();
+    docs.remove(window.label());
+    let mut watch_states = state.watch_states.lock().unwrap();
+    watch_states.remove(window.label());
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
 // Cloud AI settings & keyring (FEAT-030) — gated behind `ai` feature
 // ---------------------------------------------------------------------------
 
@@ -1072,6 +1174,11 @@ pub fn run() {
                     stop_watching,
                     read_file_content,
                     document_diagnose,
+                    document_format,
+                    document_viewport,
+                    document_undo,
+                    document_redo,
+                    document_close,
                     ai_check_model,
                     ai_init,
                     ai_improve,
@@ -1103,6 +1210,11 @@ pub fn run() {
                     stop_watching,
                     read_file_content,
                     document_diagnose,
+                    document_format,
+                    document_viewport,
+                    document_undo,
+                    document_redo,
+                    document_close,
                 ]
             }
         })

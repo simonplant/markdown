@@ -12,6 +12,7 @@ import { renderedDecorations, setRenderedTheme } from "./rendered-decorations";
 import { wikilinks } from "./wikilinks";
 import { readMode, toggleMode, isReadMode, enterReadMode } from "./read-mode";
 import { doctorDiagnostics } from "./doctor";
+import { formatDocumentCommand } from "./format";
 // AI extensions are deferred per D-ROAD-3 — see docs/ARCHITECTURE.md §5.
 
 const typographyTheme = EditorView.theme({
@@ -58,6 +59,7 @@ export function initEditor(parent: HTMLElement, extraExtensions: Extension[] = [
         { key: "Mod-b", run: toggleBold },
         { key: "Mod-i", run: toggleItalic },
         { key: "Mod-e", run: toggleMode },
+        { key: "Shift-Alt-f", run: formatDocumentCommand },
         { key: "Escape", run: (view) => (isReadMode(view) ? false : (enterReadMode(view), true)) },
         { key: "Mod-Shift-r", run: toggleRender },
         { key: "Mod-Shift-k", run: deleteLine },
