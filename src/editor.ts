@@ -10,8 +10,7 @@ import { wysiwym } from "./wysiwym";
 import { theRender, toggleRender } from "./the-render";
 import { renderedDecorations, setRenderedTheme } from "./rendered-decorations";
 import { wikilinks } from "./wikilinks";
-import { aiExtension } from "./ai";
-import { completionsExtension } from "./completions";
+// AI extensions are deferred per D-ROAD-3 — see docs/ARCHITECTURE.md §5.
 
 const typographyTheme = EditorView.theme({
   ".cm-scroller": {
@@ -67,8 +66,6 @@ export function initEditor(parent: HTMLElement, extraExtensions: Extension[] = [
       renderedDecorations(isDark),
       theRender(),
       wikilinks(isDark),
-      aiExtension(),
-      completionsExtension(),
       EditorView.lineWrapping,
       typographyTheme,
       themeExtension(isDark),

@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
+#[cfg(feature = "ai")]
 use markdown_core::ai::{self, AiAction, AiEngine};
 use markdown_core::watcher::{FileChangeEvent, FileWatcher};
 use markdown_core::Document;
@@ -11,10 +12,16 @@ use tauri::{Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder};
 // ---------------------------------------------------------------------------
 // Cloud AI types
 // ---------------------------------------------------------------------------
+// AI is gated off by default pending D-ROAD-3 (AI ships post-v1.0). Build with
+// `--features ai` to re-enable the llama.cpp inference engine, BYO-key cloud
+// mode, and the ai_* Tauri commands. See docs/ARCHITECTURE.md §5.
 
+#[cfg(feature = "ai")]
 const KEYRING_SERVICE: &str = "com.markdown.app";
+#[cfg(feature = "ai")]
 const KEYRING_USER: &str = "ai-api-key";
 
+#[cfg(feature = "ai")]
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
 pub struct CloudAiConfig {
     pub provider: String,     // "openai", "anthropic", "ollama", "custom"
@@ -37,7 +44,9 @@ pub struct AppState {
     pub documents: Mutex<HashMap<String, Document>>,
     pub pending_opens: Mutex<HashMap<String, String>>,
     pub watch_states: Mutex<HashMap<String, WatchState>>,
+    #[cfg(feature = "ai")]
     pub ai_engine: Mutex<Option<AiEngine>>,
+    #[cfg(feature = "ai")]
     pub cloud_config: Mutex<Option<CloudAiConfig>>,
 }
 
@@ -47,7 +56,9 @@ impl Default for AppState {
             documents: Mutex::new(HashMap::new()),
             pending_opens: Mutex::new(HashMap::new()),
             watch_states: Mutex::new(HashMap::new()),
+            #[cfg(feature = "ai")]
             ai_engine: Mutex::new(None),
+            #[cfg(feature = "ai")]
             cloud_config: Mutex::new(None),
         }
     }
@@ -591,9 +602,10 @@ fn read_file_content(path: String) -> Result<String, String> {
 }
 
 // ---------------------------------------------------------------------------
-// Cloud AI settings & keyring (FEAT-030)
+// Cloud AI settings & keyring (FEAT-030) — gated behind `ai` feature
 // ---------------------------------------------------------------------------
 
+#[cfg(feature = "ai")]
 fn load_cloud_config(app: &tauri::AppHandle) -> Option<CloudAiConfig> {
     let data_dir = app.path().app_data_dir().ok()?;
     let path = data_dir.join("ai-settings.json");
@@ -601,6 +613,7 @@ fn load_cloud_config(app: &tauri::AppHandle) -> Option<CloudAiConfig> {
     serde_json::from_str(&data).ok()
 }
 
+#[cfg(feature = "ai")]
 fn save_cloud_config(app: &tauri::AppHandle, config: &CloudAiConfig) -> Result<(), String> {
     let data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
     std::fs::create_dir_all(&data_dir).map_err(|e| e.to_string())?;
@@ -610,6 +623,7 @@ fn save_cloud_config(app: &tauri::AppHandle, config: &CloudAiConfig) -> Result<(
     Ok(())
 }
 
+#[cfg(feature = "ai")]
 fn keyring_load() -> Result<String, String> {
     let entry = keyring::Entry::new(KEYRING_SERVICE, KEYRING_USER)
         .map_err(|e| format!("Keyring error: {}", e))?;
@@ -620,6 +634,7 @@ fn keyring_load() -> Result<String, String> {
     }
 }
 
+#[cfg(feature = "ai")]
 fn keyring_save(key: &str) -> Result<(), String> {
     let entry = keyring::Entry::new(KEYRING_SERVICE, KEYRING_USER)
         .map_err(|e| format!("Keyring error: {}", e))?;
@@ -628,6 +643,7 @@ fn keyring_save(key: &str) -> Result<(), String> {
         .map_err(|e| format!("Failed to save API key to keychain: {}", e))
 }
 
+#[cfg(feature = "ai")]
 fn keyring_delete() -> Result<(), String> {
     let entry = keyring::Entry::new(KEYRING_SERVICE, KEYRING_USER)
         .map_err(|e| format!("Keyring error: {}", e))?;
@@ -639,6 +655,7 @@ fn keyring_delete() -> Result<(), String> {
 }
 
 /// Build (system_message, user_message) for cloud API chat format.
+#[cfg(feature = "ai")]
 fn build_chat_messages(action: AiAction, text: &str, context: &str) -> (String, String) {
     match action {
         AiAction::Improve => {
@@ -666,6 +683,7 @@ fn build_chat_messages(action: AiAction, text: &str, context: &str) -> (String, 
 }
 
 /// Send a request to an OpenAI-compatible API (OpenAI, Ollama, custom).
+#[cfg(feature = "ai")]
 async fn cloud_request_openai(
     config: &CloudAiConfig,
     api_key: &str,
@@ -719,6 +737,7 @@ async fn cloud_request_openai(
 }
 
 /// Send a request to the Anthropic Messages API.
+#[cfg(feature = "ai")]
 async fn cloud_request_anthropic(
     config: &CloudAiConfig,
     api_key: &str,
@@ -773,6 +792,7 @@ async fn cloud_request_anthropic(
 }
 
 /// Route a cloud AI request to the appropriate provider.
+#[cfg(feature = "ai")]
 async fn cloud_request(
     config: &CloudAiConfig,
     api_key: &str,
@@ -786,6 +806,7 @@ async fn cloud_request(
     }
 }
 
+#[cfg(feature = "ai")]
 #[tauri::command]
 fn save_ai_settings(
     app: tauri::AppHandle,
@@ -797,6 +818,7 @@ fn save_ai_settings(
     Ok(())
 }
 
+#[cfg(feature = "ai")]
 #[tauri::command]
 fn load_ai_settings(
     app: tauri::AppHandle,
@@ -815,16 +837,19 @@ fn load_ai_settings(
     config
 }
 
+#[cfg(feature = "ai")]
 #[tauri::command]
 fn save_api_key(key: String) -> Result<(), String> {
     keyring_save(&key)
 }
 
+#[cfg(feature = "ai")]
 #[tauri::command]
 fn load_api_key() -> Result<String, String> {
     keyring_load()
 }
 
+#[cfg(feature = "ai")]
 #[tauri::command]
 fn delete_api_key(state: State<'_, AppState>, app: tauri::AppHandle) -> Result<(), String> {
     keyring_delete()?;
@@ -844,6 +869,7 @@ fn delete_api_key(state: State<'_, AppState>, app: tauri::AppHandle) -> Result<(
 // AI commands (FEAT-029, updated for cloud routing in FEAT-030)
 // ---------------------------------------------------------------------------
 
+#[cfg(feature = "ai")]
 #[derive(serde::Serialize)]
 struct AiModelStatus {
     available: bool,
@@ -851,6 +877,7 @@ struct AiModelStatus {
 }
 
 /// Check whether the AI model is downloaded and available.
+#[cfg(feature = "ai")]
 #[tauri::command]
 fn ai_check_model(app: tauri::AppHandle) -> AiModelStatus {
     let available = app
@@ -865,6 +892,7 @@ fn ai_check_model(app: tauri::AppHandle) -> AiModelStatus {
 }
 
 /// Initialize the AI engine by loading the model. Returns true on success.
+#[cfg(feature = "ai")]
 #[tauri::command]
 fn ai_init(app: tauri::AppHandle, state: State<'_, AppState>) -> Result<bool, String> {
     let data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
@@ -888,6 +916,7 @@ fn ai_init(app: tauri::AppHandle, state: State<'_, AppState>) -> Result<bool, St
 }
 
 /// Run the "improve" AI action — routes to cloud if configured, else local.
+#[cfg(feature = "ai")]
 #[tauri::command]
 async fn ai_improve(
     app: tauri::AppHandle,
@@ -917,6 +946,7 @@ async fn ai_improve(
 }
 
 /// Run the "summarize" AI action — routes to cloud if configured, else local.
+#[cfg(feature = "ai")]
 #[tauri::command]
 async fn ai_summarize(app: tauri::AppHandle, text: String) -> Result<String, String> {
     let state = app.state::<AppState>();
@@ -940,6 +970,7 @@ async fn ai_summarize(app: tauri::AppHandle, text: String) -> Result<String, Str
 }
 
 /// Run the "continue writing" AI action — routes to cloud if configured, else local.
+#[cfg(feature = "ai")]
 #[tauri::command]
 async fn ai_continue(app: tauri::AppHandle, text: String) -> Result<String, String> {
     let state = app.state::<AppState>();
@@ -970,36 +1001,62 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .manage(AppState::default())
-        .invoke_handler(tauri::generate_handler![
-            open_file,
-            edit,
-            save_file,
-            current_text,
-            get_recent_files,
-            add_recent_file,
-            create_window,
-            get_pending_open,
-            close_current_window,
-            resolve_wikilink,
-            compute_backlinks,
-            create_wikilink_target,
-            start_watching,
-            stop_watching,
-            read_file_content,
-            ai_check_model,
-            ai_init,
-            ai_improve,
-            ai_summarize,
-            ai_continue,
-            save_ai_settings,
-            load_ai_settings,
-            save_api_key,
-            load_api_key,
-            delete_api_key,
-        ])
+        .invoke_handler({
+            #[cfg(feature = "ai")]
+            {
+                tauri::generate_handler![
+                    open_file,
+                    edit,
+                    save_file,
+                    current_text,
+                    get_recent_files,
+                    add_recent_file,
+                    create_window,
+                    get_pending_open,
+                    close_current_window,
+                    resolve_wikilink,
+                    compute_backlinks,
+                    create_wikilink_target,
+                    start_watching,
+                    stop_watching,
+                    read_file_content,
+                    ai_check_model,
+                    ai_init,
+                    ai_improve,
+                    ai_summarize,
+                    ai_continue,
+                    save_ai_settings,
+                    load_ai_settings,
+                    save_api_key,
+                    load_api_key,
+                    delete_api_key,
+                ]
+            }
+            #[cfg(not(feature = "ai"))]
+            {
+                tauri::generate_handler![
+                    open_file,
+                    edit,
+                    save_file,
+                    current_text,
+                    get_recent_files,
+                    add_recent_file,
+                    create_window,
+                    get_pending_open,
+                    close_current_window,
+                    resolve_wikilink,
+                    compute_backlinks,
+                    create_wikilink_target,
+                    start_watching,
+                    stop_watching,
+                    read_file_content,
+                ]
+            }
+        })
         .setup(|app| {
             rebuild_menu(app.handle())?;
-            // Load cloud AI config from disk into state
+            // Load cloud AI config from disk into state (AI feature only).
+            #[cfg(feature = "ai")]
             if let Some(config) = load_cloud_config(app.handle()) {
                 *app.state::<AppState>().cloud_config.lock().unwrap() = Some(config);
             }

@@ -6,8 +6,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { initEditor, getContent, setContent } from "./editor";
 import { initPreview, togglePreview, updatePreview } from "./preview";
 import { updateCurrentFilePath } from "./wikilinks";
-import { checkAiModel, initAiEngine, setAiAvailable } from "./ai";
-import { loadSettings, openSettings, updateAiStatusIndicator } from "./settings";
+// AI wiring is deferred per D-ROAD-3 — see docs/ARCHITECTURE.md §5.
 
 let currentPath: string | null = null;
 let editorView: EditorView;
@@ -18,7 +17,7 @@ let suppressDirtyTracking = false;
 // Auto-save state
 let lastSavedHash: number = 0;
 let autoSaveTimer: ReturnType<typeof setTimeout> | null = null;
-const AUTO_SAVE_DELAY_MS = 2000;
+const AUTO_SAVE_DELAY_MS = 1000;
 
 // FNV-1a hash for content comparison
 function fnv1aHash(str: string): number {
@@ -298,11 +297,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("btn-preview")!.addEventListener("click", () => {
     togglePreview(getContent);
   });
-  document.getElementById("btn-settings")!.addEventListener("click", openSettings);
-
-  // AI mode indicator click opens settings
-  const aiModeEl = document.getElementById("stat-ai-mode");
-  if (aiModeEl) aiModeEl.addEventListener("click", openSettings);
+  // Settings button and AI mode indicator are hidden until the AI phase ships (D-ROAD-3).
 
   listen("menu-open", handleOpen);
   listen("menu-save", handleSave);
@@ -365,29 +360,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Proceed with close (either saved or discarded)
     closingConfirmed = true;
     await invoke("close_current_window");
-  });
-
-  // Initialize AI: check cloud config first, then fall back to local model
-  loadSettings().then(async (config) => {
-    if (config?.use_cloud) {
-      // Cloud mode — check if there's an API key
-      try {
-        const key = await invoke<string>("load_api_key");
-        if (key) {
-          setAiAvailable(true);
-          updateAiStatusIndicator();
-          return;
-        }
-      } catch {
-        // Keyring not available — fall through to local
-      }
-    }
-    // Try local model
-    const available = await checkAiModel();
-    if (available) {
-      await initAiEngine().catch(() => {});
-    }
-    updateAiStatusIndicator();
   });
 
   updateTitle();
