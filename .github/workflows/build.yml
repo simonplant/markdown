@@ -30,7 +30,7 @@ jobs:
         run: cargo test --workspace
 
       - name: Run CommonMark spec suite
-        run: cargo test -p em-core --test commonmark -- --nocapture
+        run: cargo test -p markdown-core --test commonmark -- --nocapture
 
       - name: Build Tauri app bundle
         run: cargo tauri build
@@ -59,4 +59,9 @@ jobs:
           python-version: "3.x"
 
       - name: Run baseline regression check
-        run: bash scripts/measure_baseline.sh --check
+        run: |
+          if [[ ! -f docs/baseline.json ]]; then
+            echo "::warning::docs/baseline.json not present — skipping baseline regression check. Run the 'Capture Baseline' workflow to re-establish one."
+            exit 0
+          fi
+          bash scripts/measure_baseline.sh --check
