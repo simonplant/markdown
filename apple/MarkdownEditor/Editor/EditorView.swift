@@ -3,12 +3,14 @@ import MarkdownCore
 
 enum EditorMode { case read, author }
 
-/// The document editor: read mode by default (rendered, FEAT-049), one tap (or
-/// the Edit/Done control, or ⌘E) into TextKit 2 author mode. The status bar is
-/// computed THROUGH the Rust core. Author mode also offers Format Document (M4).
+/// The document editor: read mode by default (FEAT-049), tap / Edit / ⌘E into
+/// TextKit 2 author mode. Status bar (via the Rust core), Format Document (M4),
+/// and an outline for navigation (FEAT-039). IOS_BUILD_SPEC §4.
 struct EditorView: View {
   @ObservedObject var document: MarkdownFileDocument
   @State private var mode: EditorMode = .read
+  @State private var scrollTarget: Int?
+  @State private var showOutline = false
 
   var body: some View {
     VStack(spacing: 0) {
@@ -17,46 +19,74 @@ struct EditorView: View {
         case .read:
           ReadModeView(text: document.text) { setMode(.author) }
         case .author:
-          MarkdownTextView(text: $document.text)
+          MarkdownTextView(text: $document.text, scrollTarget: $scrollTarget)
         }
       }
       Divider()
       CoreStatusBar(text: document.text, mode: mode,
                     onToggle: { setMode(mode == .read ? .author : .read) },
-                    onFormat: formatDocument)
+                    onFormat: formatDocument,
+                    onOutline: { showOutline = true })
     }
     .navigationTitle("Markdown")
     #if os(iOS)
     .navigationBarTitleDisplayMode(.inline)
     #endif
+    .sheet(isPresented: $showOutline) {
+      OutlineSheet(items: Outline.of(document.text)) { item in
+        showOutline = false
+        setMode(.author)
+        scrollTarget = item.utf16Offset
+      }
+    }
   }
 
-  /// Format Document (FEAT-052 / M4) — reformat the whole document through the
-  /// core (all five formatter rules) and replace the text in one step.
   private func formatDocument() {
-    if let formatted = FormatAction.formatted(document.text) {
-      document.text = formatted
-    }
+    if let formatted = FormatAction.formatted(document.text) { document.text = formatted }
   }
 
-  /// Crossfade unless Reduce Motion is on (D-A11Y-1).
   private func setMode(_ next: EditorMode) {
-    if reduceMotionEnabled {
-      mode = next
-    } else {
-      withAnimation(.easeInOut(duration: 0.2)) { mode = next }
-    }
+    if reduceMotionEnabled { mode = next }
+    else { withAnimation(.easeInOut(duration: 0.2)) { mode = next } }
   }
 }
 
-/// Word count + doctor-issue count (via `markdown-core`), Format Document (author
-/// mode), and the read/author toggle. In our own bottom bar so controls never
-/// collapse into a nav-bar overflow menu and stay above the keyboard.
+/// The document outline (FEAT-039): a navigable list of headings; tapping one
+/// scrolls the editor to it.
+private struct OutlineSheet: View {
+  let items: [OutlineItem]
+  let onSelect: (OutlineItem) -> Void
+
+  var body: some View {
+    NavigationStack {
+      Group {
+        if items.isEmpty {
+          ContentUnavailableView("No headings", systemImage: "list.bullet.indent")
+        } else {
+          List(items) { item in
+            Button { onSelect(item) } label: {
+              Text(item.title)
+                .padding(.leading, CGFloat((item.level - 1) * 16))
+                .font(item.level <= 1 ? .headline : .body)
+                .foregroundStyle(.primary)
+            }
+          }
+        }
+      }
+      .navigationTitle("Outline")
+    }
+    .presentationDetents([.medium, .large])
+  }
+}
+
+/// Word count + doctor-issue count (via `markdown-core`), Format (author mode),
+/// outline, and the read/author toggle — in our own bottom bar.
 private struct CoreStatusBar: View {
   let text: String
   let mode: EditorMode
   let onToggle: () -> Void
   let onFormat: () -> Void
+  let onOutline: () -> Void
 
   var body: some View {
     let issues = diagnose(text: text).count
@@ -67,6 +97,8 @@ private struct CoreStatusBar: View {
         .foregroundStyle(issues == 0 ? Color.secondary : Color.orange)
         .accessibilityLabel(issues == 0 ? "No issues" : "\(issues) issue\(issues == 1 ? "" : "s")")
       Spacer()
+      Button("Outline", systemImage: "list.bullet.indent", action: onOutline)
+        .labelStyle(.iconOnly)
       if mode == .author {
         Button("Format", action: onFormat)
           .buttonStyle(.bordered)

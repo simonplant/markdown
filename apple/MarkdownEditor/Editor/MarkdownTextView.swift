@@ -22,6 +22,7 @@ import AppKit
 /// Author-mode editing surface on macOS — `NSTextView` over the same Rust core.
 struct MarkdownTextView: NSViewRepresentable {
   @Binding var text: String
+  @Binding var scrollTarget: Int?  // UTF-16 offset to scroll to (outline nav, FEAT-039)
 
   func makeNSView(context: Context) -> NSScrollView {
     let scroll = NSTextView.scrollableTextView()
@@ -45,6 +46,12 @@ struct MarkdownTextView: NSViewRepresentable {
     if textView.string != text {
       textView.string = text
       context.coordinator.scheduleDiagnose()
+    }
+    if let target = scrollTarget {
+      let loc = max(0, min(target, (textView.string as NSString).length))
+      textView.scrollRangeToVisible(NSRange(location: loc, length: 0))
+      textView.setSelectedRange(NSRange(location: loc, length: 0))
+      DispatchQueue.main.async { scrollTarget = nil }
     }
   }
 
@@ -104,6 +111,7 @@ import UIKit
 /// Author-mode editing surface on iOS — `UITextView` on TextKit 2.
 struct MarkdownTextView: UIViewRepresentable {
   @Binding var text: String
+  @Binding var scrollTarget: Int?  // UTF-16 offset to scroll to (outline nav, FEAT-039)
 
   func makeUIView(context: Context) -> UITextView {
     let textView = UITextView(usingTextLayoutManager: true) // TextKit 2
@@ -131,6 +139,12 @@ struct MarkdownTextView: UIViewRepresentable {
     if textView.text != text {
       textView.text = text
       context.coordinator.scheduleDiagnose()
+    }
+    if let target = scrollTarget {
+      let loc = max(0, min(target, (textView.text as NSString).length))
+      textView.scrollRangeToVisible(NSRange(location: loc, length: 0))
+      textView.selectedRange = NSRange(location: loc, length: 0)
+      DispatchQueue.main.async { scrollTarget = nil }
     }
   }
 
