@@ -16,20 +16,22 @@ struct MarkdownTextView: UIViewRepresentable {
   func makeUIView(context: Context) -> UITextView {
     let textView = UITextView(usingTextLayoutManager: true) // TextKit 2
     textView.delegate = context.coordinator
-    textView.font = .monospacedSystemFont(ofSize: 16, weight: .regular)
+    // Monospaced, but scaled for Dynamic Type (FEAT-020, M7).
+    let editorFont = UIFontMetrics(forTextStyle: .body)
+      .scaledFont(for: .monospacedSystemFont(ofSize: 16, weight: .regular))
+    textView.font = editorFont
+    textView.adjustsFontForContentSizeCategory = true
     textView.text = text
     textView.alwaysBounceVertical = true
-    textView.autocorrectionType = .no
+    textView.autocorrectionType = .no       // markdown syntax, not prose autocorrect
     textView.autocapitalizationType = .none
     textView.smartQuotesType = .no
     textView.smartDashesType = .no
+    textView.spellCheckingType = .yes       // spell check (FEAT-021, M7)
     textView.isFindInteractionEnabled = true // native find/replace, ⌘F (FEAT-016, M6)
     textView.textContainerInset = UIEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
     // New text must not inherit the diagnostic underline.
-    textView.typingAttributes = [
-      .font: UIFont.monospacedSystemFont(ofSize: 16, weight: .regular),
-      .foregroundColor: UIColor.label,
-    ]
+    textView.typingAttributes = [.font: editorFont, .foregroundColor: UIColor.label]
     context.coordinator.textView = textView
     context.coordinator.scheduleDiagnose()
     return textView
