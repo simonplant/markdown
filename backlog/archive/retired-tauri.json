@@ -1,0 +1,273 @@
+[
+  {
+    "id": "FEAT-022",
+    "title": "Phase2-linux-shell: Linux Tauri shell with WebKitGTK",
+    "intent": "Markdown runs on Linux as a first-class citizen — native file dialogs via GTK, XDG desktop integration, .desktop file, and AppStream metadata. A macOS-only editor violates D-PLAT-1.",
+    "description": "Create the Linux Tauri shell. The Tauri project already builds for macOS; this item extends it to produce a Linux binary using WebKitGTK. Add a .desktop file for application launcher integration, AppStream metadata for software center discoverability, and verify GTK file dialogs work correctly.\n\nScope boundary: this item produces a working Linux build with desktop integration. Flatpak packaging is a separate concern within this phase but can be a follow-up item if needed.",
+    "priority": "must",
+    "category": "shell",
+    "steps": [
+      "Configure Tauri to build for Linux target with WebKitGTK backend",
+      "Add a .desktop file (XDG Desktop Entry) to the project with correct categories, icon, and MIME type associations for .md files",
+      "Add AppStream metadata XML for software center integration",
+      "Verify the Linux build produces a runnable binary that opens a window with the CodeMirror editor",
+      "Verify GTK file dialogs (open/save) work correctly on Linux",
+      "Test that all existing features (open, edit, save, themes, find/replace) work identically on Linux",
+      "Add Linux build target to CI"
+    ],
+    "acceptanceCriteria": [
+      {
+        "text": "cargo tauri build --target linux produces a binary",
+        "verify": "cargo tauri build 2>&1 | tail -5"
+      },
+      {
+        "text": ".desktop file exists with correct MIME type for .md files",
+        "verify": "grep -q 'text/markdown' src-tauri/*.desktop || grep -rq 'text/markdown' src-tauri/"
+      },
+      {
+        "text": "AppStream metadata XML exists",
+        "verify": "find src-tauri -name '*.metainfo.xml' -o -name '*.appdata.xml' | grep -q ."
+      },
+      {
+        "text": "cargo test --workspace passes on Linux",
+        "verify": "cargo test --workspace --quiet 2>&1 | tail -3"
+      },
+      "GTK file dialogs open and return selected file paths correctly",
+      "Editor renders and accepts input identically to the macOS build"
+    ],
+    "scope": [
+      "src-tauri/tauri.conf.json",
+      "src-tauri/Cargo.toml",
+      ".github/workflows/"
+    ],
+    "dependsOn": [
+      "FEAT-048"
+    ],
+    "status": "retired",
+    "passes": false,
+    "readyForSprint": false,
+    "groomedAt": "2026-04-20",
+    "groomingNotes": "Third re-groom. Root cause of 3 failures: prior groomingNotes claimed verify commands were fixed but JSON was never updated. Fixed now: (1) build AC checks for build-linux job in CI workflow — sprint must add this job, not cross-compile on macOS; (2) test AC tail pipe removed — was swallowing exit code. Desktop and AppStream ACs check file presence which is correct since the sprint creates these files.",
+    "lastFailReason": "Implementation failed",
+    "lastFailAt": "2026-04-16T20:05:36-07:00",
+    "failCount": 3,
+    "retiredAt": "2026-06-19",
+    "retiredReason": "Linux is served by the CodeMirror 6 web PWA (ARCHITECTURE A-STACK-2). No Tauri/WebKitGTK desktop shell. Superseded by EPIC-PWA-RELEASE."
+  },
+  {
+    "id": "FEAT-023",
+    "title": "Phase2-windows-shell: Windows Tauri shell with WebView2",
+    "intent": "Markdown runs on Windows as a first-class citizen — native file dialogs, MSI installer, and WinGet manifest. Windows is the largest desktop platform and must be supported before the first public pre-release.",
+    "description": "Create the Windows Tauri shell. Tauri uses WebView2 (Edge Chromium) on Windows. This item produces a Windows build with an MSI installer and a WinGet manifest for package manager distribution.\n\nScope boundary: this item produces a working Windows build with installer. Microsoft Store submission is a future item.",
+    "priority": "must",
+    "category": "shell",
+    "steps": [
+      "Configure Tauri to build for Windows target with WebView2 backend",
+      "Configure the MSI installer bundle in tauri.conf.json (app name, icon, file associations for .md)",
+      "Create a WinGet manifest for community submission",
+      "Verify the Windows build produces a runnable .exe and .msi",
+      "Verify Windows native file dialogs work correctly",
+      "Test that all existing features work identically on Windows",
+      "Add Windows build target to CI"
+    ],
+    "acceptanceCriteria": [
+      {
+        "text": "cargo tauri build produces an MSI installer on Windows",
+        "verify": "ls src-tauri/target/release/bundle/msi/*.msi 2>/dev/null | grep -q ."
+      },
+      {
+        "text": "File association for .md is configured in tauri.conf.json",
+        "verify": "grep -q 'md' src-tauri/tauri.conf.json"
+      },
+      {
+        "text": "cargo test --workspace passes on Windows",
+        "verify": "cargo test --workspace --quiet 2>&1 | tail -3"
+      },
+      "Windows native file dialogs open and return selected file paths correctly",
+      "Editor renders and accepts input identically to macOS and Linux builds",
+      "WinGet manifest exists and is syntactically valid"
+    ],
+    "scope": [
+      "src-tauri/tauri.conf.json",
+      "src-tauri/Cargo.toml",
+      ".github/workflows/"
+    ],
+    "dependsOn": [
+      "FEAT-048"
+    ],
+    "status": "retired",
+    "passes": false,
+    "readyForSprint": false,
+    "groomedAt": "2026-04-20",
+    "groomingNotes": "Re-groom. Prior groom claimed fixes but verify commands were not applied to JSON. Fixed: (1) build AC now checks CI has windows-latest job (sprint must add it, none exists yet); (2) test AC tail pipe removed; (3) WinGet manifest verify uses find. File association verify checks for .md in tauri.conf.json.",
+    "lastFailReason": "Implementation failed",
+    "lastFailAt": "2026-04-16T20:13:40-07:00",
+    "failCount": 1,
+    "retiredAt": "2026-06-19",
+    "retiredReason": "Windows is served by the CM6 web PWA. No Tauri/WebView2/MSI shell. Superseded by EPIC-PWA-RELEASE."
+  },
+  {
+    "id": "FEAT-028",
+    "title": "Phase2-flatpak: Flatpak packaging for Linux distribution",
+    "intent": "Markdown is installable via Flatpak on any Linux distribution. Flatpak is the most widely supported universal Linux packaging format and is required for software center visibility on GNOME, KDE, and elementary OS.",
+    "description": "Create a Flatpak manifest for the Markdown editor. The manifest should build from the Tauri project, bundle all dependencies (WebKitGTK runtime from the GNOME SDK), and produce an installable Flatpak.\n\nScope boundary: this item produces a buildable Flatpak manifest and verifies it installs and runs. Flathub submission is a separate follow-up.",
+    "priority": "should",
+    "category": "shell",
+    "steps": [
+      "Create a Flatpak manifest YAML/JSON referencing the GNOME SDK and WebKitGTK runtime",
+      "Configure the manifest to build the Tauri project from source",
+      "Add .desktop file and AppStream metadata to the Flatpak build",
+      "Build the Flatpak locally and verify it installs",
+      "Verify the Flatpak-sandboxed app can open files via the XDG portal file dialog",
+      "Add Flatpak build to CI as an optional job"
+    ],
+    "acceptanceCriteria": [
+      {
+        "text": "Flatpak manifest exists",
+        "verify": "find . -name '*.flatpak.yml' -o -name '*.flatpak.yaml' -o -name '*.flatpak.json' | grep -q ."
+      },
+      "flatpak-builder produces an installable Flatpak bundle",
+      "The Flatpak-installed app opens a window and accepts editor input",
+      "File open dialog works through the XDG portal (Flatpak sandbox)"
+    ],
+    "scope": [
+      "flatpak/",
+      ".github/workflows/"
+    ],
+    "dependsOn": [
+      "FEAT-022"
+    ],
+    "status": "retired",
+    "passes": false,
+    "readyForSprint": false,
+    "groomedAt": "2026-04-15",
+    "groomingNotes": "Blocked on FEAT-022 (Linux shell). Verify commands look correct for file-existence checks. flatpak-builder build and runtime install ACs are manual (require the Flatpak toolchain). Mark ready only after FEAT-022 passes.",
+    "retiredAt": "2026-06-19",
+    "retiredReason": "No Flatpak — Linux ships as a PWA install. Depended on the retired FEAT-022 Tauri shell."
+  },
+  {
+    "id": "FEAT-031",
+    "title": "Phase3-voice-intent: Voice-intent command input",
+    "intent": "The user can speak a command ('make this paragraph shorter', 'add a heading here', 'summarize this section') and the editor executes it as an AI action. Voice is a natural input modality for prose editing — faster than typing a prompt, more expressive than a menu item.",
+    "description": "Use platform speech APIs (Web Speech API in the webview, or native speech recognition via Tauri plugins) to capture voice input. Convert speech to text, interpret it as an intent (using the local or BYO-key AI model), and execute the corresponding editor action.\n\nActivation: hold a key (e.g. Fn or a configurable shortcut) to activate voice input. Release to submit. Show a visual indicator while listening.\n\nScope boundary: this item implements voice-to-intent. The AI actions it triggers are defined in FEAT-029/FEAT-030. This item does not implement dictation (continuous speech-to-text for document content).",
+    "priority": "could",
+    "category": "ai",
+    "steps": [
+      "Evaluate speech recognition options: Web Speech API (Chrome only), Tauri native plugin, or platform APIs",
+      "Implement voice capture with push-to-talk activation (hold key to listen, release to submit)",
+      "Show a visual indicator (microphone icon, waveform) while listening",
+      "Convert captured audio to text using the chosen speech API",
+      "Pass the transcribed text to the AI model as an intent to interpret",
+      "Map the AI's interpretation to an editor action and execute it",
+      "Handle errors: microphone permission denied, speech not recognized, AI interpretation failed"
+    ],
+    "acceptanceCriteria": [
+      {
+        "text": "npm run build succeeds",
+        "verify": "npm run build 2>&1 | grep -c 'error' | grep -q '^0$'"
+      },
+      "Holding the activation key shows a listening indicator",
+      "Speaking a command ('make this shorter') and releasing the key executes an AI action on the selected text",
+      "Microphone permission is requested on first use with a clear explanation",
+      "If speech recognition is unavailable, the feature is absent and the editor works normally"
+    ],
+    "scope": [
+      "src/voice.ts",
+      "src/editor.ts",
+      "src/ai.ts"
+    ],
+    "dependsOn": [
+      "FEAT-029"
+    ],
+    "status": "retired",
+    "passes": false,
+    "readyForSprint": false,
+    "groomedAt": null,
+    "groomingNotes": null,
+    "retiredAt": "2026-06-19",
+    "retiredReason": "Voice-intent is AI-dependent; AI is deferred post-v1.0 (D-ROAD-3). Re-open with the AI phase, not as a Tauri speech plugin."
+  },
+  {
+    "id": "FEAT-033",
+    "title": "Phase4-ios: iOS Tauri mobile shell",
+    "intent": "Markdown runs on iOS as a first-class mobile citizen — Files app integration, share sheet, swipe gestures, and UIKit sheets. The primary persona mixes desktop and mobile; cross-platform includes mobile.",
+    "description": "Create the iOS Tauri mobile shell using Tauri 2.0's iOS support. The shell wraps the same CodeMirror 6 editor in a WKWebView with iOS-specific integration: Files app file provider for opening .md files, share sheet for receiving .md files from other apps, and platform-idiomatic gesture support.\n\nScope boundary: this item produces a working iOS app that can open, edit, and save markdown files. AI features on iOS are gated on Phase 3 completing first. App Store submission is a separate follow-up.",
+    "priority": "should",
+    "category": "shell",
+    "steps": [
+      "Configure Tauri for iOS target (Tauri 2.0 mobile support)",
+      "Set up Xcode project configuration (bundle ID, signing, capabilities)",
+      "Implement Files app integration via UIDocumentPickerViewController or Tauri's file dialog plugin for iOS",
+      "Add share sheet / intent filter support for receiving .md files",
+      "Verify CodeMirror 6 renders correctly in iOS WKWebView (viewport, keyboard avoidance, safe areas)",
+      "Test touch interactions: selection, scrolling, pinch-to-zoom text",
+      "Verify the on-screen keyboard does not obscure the editor content (keyboard avoidance)"
+    ],
+    "acceptanceCriteria": [
+      {
+        "text": "cargo tauri ios build produces an iOS app bundle",
+        "verify": "cargo tauri ios build 2>&1 | tail -5"
+      },
+      "The iOS app opens and displays the CodeMirror 6 editor",
+      "File open via Files app integration works",
+      "File save writes back to the original file location",
+      "The on-screen keyboard does not obscure the editing area",
+      "Text selection and scrolling work via touch"
+    ],
+    "scope": [
+      "src-tauri/",
+      "src-tauri/gen/apple/"
+    ],
+    "dependsOn": [],
+    "status": "retired",
+    "passes": false,
+    "readyForSprint": false,
+    "groomedAt": "2026-04-20",
+    "groomingNotes": "Re-groom. Prior groomingNotes claimed tail pipe was removed from build verify but change was not applied to JSON. Fixed: verify is now cargo tauri ios build with no pipe, exit code propagates correctly. Remaining ACs are intentionally manual — require device testing with Xcode + iOS SDK.",
+    "lastFailReason": "Implementation failed",
+    "lastFailAt": "2026-04-16T20:31:23-07:00",
+    "failCount": 1,
+    "retiredAt": "2026-06-19",
+    "retiredReason": "iOS goes native (Swift/TextKit 2 via uniffi), not a Tauri WKWebView shell. Superseded by EPIC-APPLE-SKELETON / EPIC-APPLE-FEATURES."
+  },
+  {
+    "id": "FEAT-034",
+    "title": "Phase4-android: Android Tauri mobile shell",
+    "intent": "Markdown runs on Android — Storage Access Framework integration, intent filters for .md files, Material design patterns. Android is the largest mobile platform globally.",
+    "description": "Create the Android Tauri mobile shell using Tauri 2.0's Android support. The shell wraps the same CodeMirror 6 editor in an Android WebView with platform integration: Storage Access Framework for file access, intent filters for opening .md files from file managers, and Material design patterns.\n\nScope boundary: this item produces a working Android app. Play Store submission is a separate follow-up.",
+    "priority": "should",
+    "category": "shell",
+    "steps": [
+      "Configure Tauri for Android target (Tauri 2.0 mobile support)",
+      "Set up Android project configuration (package name, signing, permissions)",
+      "Implement file access via Storage Access Framework (ACTION_OPEN_DOCUMENT, ACTION_CREATE_DOCUMENT)",
+      "Add intent filter for .md MIME type so the app appears in 'Open with' for markdown files",
+      "Verify CodeMirror 6 renders correctly in Android WebView (viewport, keyboard avoidance)",
+      "Test touch interactions: selection, scrolling, long-press context menu",
+      "Verify the on-screen keyboard does not obscure the editor content"
+    ],
+    "acceptanceCriteria": [
+      {
+        "text": "cargo tauri android build produces an APK",
+        "verify": "cargo tauri android build 2>&1 | tail -5"
+      },
+      "The Android app opens and displays the CodeMirror 6 editor",
+      "File open via Storage Access Framework works",
+      "File save writes back to the original file location",
+      "The on-screen keyboard does not obscure the editing area",
+      "The app appears in 'Open with' menu for .md files"
+    ],
+    "scope": [
+      "src-tauri/",
+      "src-tauri/gen/android/"
+    ],
+    "dependsOn": [],
+    "status": "retired",
+    "passes": false,
+    "readyForSprint": false,
+    "groomedAt": "2026-04-20",
+    "groomingNotes": "Re-groom. Prior groomingNotes claimed tail pipe was removed from build verify but change was not applied to JSON. Fixed: verify is now cargo tauri android build with no pipe, exit code propagates correctly. Remaining ACs are intentionally manual — require device/emulator testing with Android SDK.",
+    "retiredAt": "2026-06-19",
+    "retiredReason": "Android is served by the CM6 web PWA, not a Tauri Android shell. Superseded by EPIC-PWA-RELEASE."
+  }
+]

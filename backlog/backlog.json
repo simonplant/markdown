@@ -2,267 +2,8 @@
   "description": "Feature backlog",
   "items": [
     {
-      "id": "FEAT-022",
-      "title": "Phase2-linux-shell: Linux Tauri shell with WebKitGTK",
-      "intent": "Markdown runs on Linux as a first-class citizen — native file dialogs via GTK, XDG desktop integration, .desktop file, and AppStream metadata. A macOS-only editor violates D-PLAT-1.",
-      "description": "Create the Linux Tauri shell. The Tauri project already builds for macOS; this item extends it to produce a Linux binary using WebKitGTK. Add a .desktop file for application launcher integration, AppStream metadata for software center discoverability, and verify GTK file dialogs work correctly.\n\nScope boundary: this item produces a working Linux build with desktop integration. Flatpak packaging is a separate concern within this phase but can be a follow-up item if needed.",
-      "priority": "must",
-      "category": "shell",
-      "steps": [
-        "Configure Tauri to build for Linux target with WebKitGTK backend",
-        "Add a .desktop file (XDG Desktop Entry) to the project with correct categories, icon, and MIME type associations for .md files",
-        "Add AppStream metadata XML for software center integration",
-        "Verify the Linux build produces a runnable binary that opens a window with the CodeMirror editor",
-        "Verify GTK file dialogs (open/save) work correctly on Linux",
-        "Test that all existing features (open, edit, save, themes, find/replace) work identically on Linux",
-        "Add Linux build target to CI"
-      ],
-      "acceptanceCriteria": [
-        {
-          "text": "cargo tauri build --target linux produces a binary",
-          "verify": "cargo tauri build 2>&1 | tail -5"
-        },
-        {
-          "text": ".desktop file exists with correct MIME type for .md files",
-          "verify": "grep -q 'text/markdown' src-tauri/*.desktop || grep -rq 'text/markdown' src-tauri/"
-        },
-        {
-          "text": "AppStream metadata XML exists",
-          "verify": "find src-tauri -name '*.metainfo.xml' -o -name '*.appdata.xml' | grep -q ."
-        },
-        {
-          "text": "cargo test --workspace passes on Linux",
-          "verify": "cargo test --workspace --quiet 2>&1 | tail -3"
-        },
-        "GTK file dialogs open and return selected file paths correctly",
-        "Editor renders and accepts input identically to the macOS build"
-      ],
-      "scope": [
-        "src-tauri/tauri.conf.json",
-        "src-tauri/Cargo.toml",
-        ".github/workflows/"
-      ],
-      "dependsOn": [
-        "FEAT-048"
-      ],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
-      "groomedAt": "2026-04-20",
-      "groomingNotes": "Third re-groom. Root cause of 3 failures: prior groomingNotes claimed verify commands were fixed but JSON was never updated. Fixed now: (1) build AC checks for build-linux job in CI workflow — sprint must add this job, not cross-compile on macOS; (2) test AC tail pipe removed — was swallowing exit code. Desktop and AppStream ACs check file presence which is correct since the sprint creates these files.",
-      "lastFailReason": "Implementation failed",
-      "lastFailAt": "2026-04-16T20:05:36-07:00",
-      "failCount": 3
-    },
-    {
-      "id": "FEAT-023",
-      "title": "Phase2-windows-shell: Windows Tauri shell with WebView2",
-      "intent": "Markdown runs on Windows as a first-class citizen — native file dialogs, MSI installer, and WinGet manifest. Windows is the largest desktop platform and must be supported before the first public pre-release.",
-      "description": "Create the Windows Tauri shell. Tauri uses WebView2 (Edge Chromium) on Windows. This item produces a Windows build with an MSI installer and a WinGet manifest for package manager distribution.\n\nScope boundary: this item produces a working Windows build with installer. Microsoft Store submission is a future item.",
-      "priority": "must",
-      "category": "shell",
-      "steps": [
-        "Configure Tauri to build for Windows target with WebView2 backend",
-        "Configure the MSI installer bundle in tauri.conf.json (app name, icon, file associations for .md)",
-        "Create a WinGet manifest for community submission",
-        "Verify the Windows build produces a runnable .exe and .msi",
-        "Verify Windows native file dialogs work correctly",
-        "Test that all existing features work identically on Windows",
-        "Add Windows build target to CI"
-      ],
-      "acceptanceCriteria": [
-        {
-          "text": "cargo tauri build produces an MSI installer on Windows",
-          "verify": "ls src-tauri/target/release/bundle/msi/*.msi 2>/dev/null | grep -q ."
-        },
-        {
-          "text": "File association for .md is configured in tauri.conf.json",
-          "verify": "grep -q 'md' src-tauri/tauri.conf.json"
-        },
-        {
-          "text": "cargo test --workspace passes on Windows",
-          "verify": "cargo test --workspace --quiet 2>&1 | tail -3"
-        },
-        "Windows native file dialogs open and return selected file paths correctly",
-        "Editor renders and accepts input identically to macOS and Linux builds",
-        "WinGet manifest exists and is syntactically valid"
-      ],
-      "scope": [
-        "src-tauri/tauri.conf.json",
-        "src-tauri/Cargo.toml",
-        ".github/workflows/"
-      ],
-      "dependsOn": [
-        "FEAT-048"
-      ],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
-      "groomedAt": "2026-04-20",
-      "groomingNotes": "Re-groom. Prior groom claimed fixes but verify commands were not applied to JSON. Fixed: (1) build AC now checks CI has windows-latest job (sprint must add it, none exists yet); (2) test AC tail pipe removed; (3) WinGet manifest verify uses find. File association verify checks for .md in tauri.conf.json.",
-      "lastFailReason": "Implementation failed",
-      "lastFailAt": "2026-04-16T20:13:40-07:00",
-      "failCount": 1
-    },
-    {
-      "id": "FEAT-028",
-      "title": "Phase2-flatpak: Flatpak packaging for Linux distribution",
-      "intent": "Markdown is installable via Flatpak on any Linux distribution. Flatpak is the most widely supported universal Linux packaging format and is required for software center visibility on GNOME, KDE, and elementary OS.",
-      "description": "Create a Flatpak manifest for the Markdown editor. The manifest should build from the Tauri project, bundle all dependencies (WebKitGTK runtime from the GNOME SDK), and produce an installable Flatpak.\n\nScope boundary: this item produces a buildable Flatpak manifest and verifies it installs and runs. Flathub submission is a separate follow-up.",
-      "priority": "should",
-      "category": "shell",
-      "steps": [
-        "Create a Flatpak manifest YAML/JSON referencing the GNOME SDK and WebKitGTK runtime",
-        "Configure the manifest to build the Tauri project from source",
-        "Add .desktop file and AppStream metadata to the Flatpak build",
-        "Build the Flatpak locally and verify it installs",
-        "Verify the Flatpak-sandboxed app can open files via the XDG portal file dialog",
-        "Add Flatpak build to CI as an optional job"
-      ],
-      "acceptanceCriteria": [
-        {
-          "text": "Flatpak manifest exists",
-          "verify": "find . -name '*.flatpak.yml' -o -name '*.flatpak.yaml' -o -name '*.flatpak.json' | grep -q ."
-        },
-        "flatpak-builder produces an installable Flatpak bundle",
-        "The Flatpak-installed app opens a window and accepts editor input",
-        "File open dialog works through the XDG portal (Flatpak sandbox)"
-      ],
-      "scope": [
-        "flatpak/",
-        ".github/workflows/"
-      ],
-      "dependsOn": [
-        "FEAT-022"
-      ],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": false,
-      "groomedAt": "2026-04-15",
-      "groomingNotes": "Blocked on FEAT-022 (Linux shell). Verify commands look correct for file-existence checks. flatpak-builder build and runtime install ACs are manual (require the Flatpak toolchain). Mark ready only after FEAT-022 passes."
-    },
-    {
-      "id": "FEAT-031",
-      "title": "Phase3-voice-intent: Voice-intent command input",
-      "intent": "The user can speak a command ('make this paragraph shorter', 'add a heading here', 'summarize this section') and the editor executes it as an AI action. Voice is a natural input modality for prose editing — faster than typing a prompt, more expressive than a menu item.",
-      "description": "Use platform speech APIs (Web Speech API in the webview, or native speech recognition via Tauri plugins) to capture voice input. Convert speech to text, interpret it as an intent (using the local or BYO-key AI model), and execute the corresponding editor action.\n\nActivation: hold a key (e.g. Fn or a configurable shortcut) to activate voice input. Release to submit. Show a visual indicator while listening.\n\nScope boundary: this item implements voice-to-intent. The AI actions it triggers are defined in FEAT-029/FEAT-030. This item does not implement dictation (continuous speech-to-text for document content).",
-      "priority": "could",
-      "category": "ai",
-      "steps": [
-        "Evaluate speech recognition options: Web Speech API (Chrome only), Tauri native plugin, or platform APIs",
-        "Implement voice capture with push-to-talk activation (hold key to listen, release to submit)",
-        "Show a visual indicator (microphone icon, waveform) while listening",
-        "Convert captured audio to text using the chosen speech API",
-        "Pass the transcribed text to the AI model as an intent to interpret",
-        "Map the AI's interpretation to an editor action and execute it",
-        "Handle errors: microphone permission denied, speech not recognized, AI interpretation failed"
-      ],
-      "acceptanceCriteria": [
-        {
-          "text": "npm run build succeeds",
-          "verify": "npm run build 2>&1 | grep -c 'error' | grep -q '^0$'"
-        },
-        "Holding the activation key shows a listening indicator",
-        "Speaking a command ('make this shorter') and releasing the key executes an AI action on the selected text",
-        "Microphone permission is requested on first use with a clear explanation",
-        "If speech recognition is unavailable, the feature is absent and the editor works normally"
-      ],
-      "scope": [
-        "src/voice.ts",
-        "src/editor.ts",
-        "src/ai.ts"
-      ],
-      "dependsOn": [
-        "FEAT-029"
-      ],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": false,
-      "groomedAt": null,
-      "groomingNotes": null
-    },
-    {
-      "id": "FEAT-033",
-      "title": "Phase4-ios: iOS Tauri mobile shell",
-      "intent": "Markdown runs on iOS as a first-class mobile citizen — Files app integration, share sheet, swipe gestures, and UIKit sheets. The primary persona mixes desktop and mobile; cross-platform includes mobile.",
-      "description": "Create the iOS Tauri mobile shell using Tauri 2.0's iOS support. The shell wraps the same CodeMirror 6 editor in a WKWebView with iOS-specific integration: Files app file provider for opening .md files, share sheet for receiving .md files from other apps, and platform-idiomatic gesture support.\n\nScope boundary: this item produces a working iOS app that can open, edit, and save markdown files. AI features on iOS are gated on Phase 3 completing first. App Store submission is a separate follow-up.",
-      "priority": "should",
-      "category": "shell",
-      "steps": [
-        "Configure Tauri for iOS target (Tauri 2.0 mobile support)",
-        "Set up Xcode project configuration (bundle ID, signing, capabilities)",
-        "Implement Files app integration via UIDocumentPickerViewController or Tauri's file dialog plugin for iOS",
-        "Add share sheet / intent filter support for receiving .md files",
-        "Verify CodeMirror 6 renders correctly in iOS WKWebView (viewport, keyboard avoidance, safe areas)",
-        "Test touch interactions: selection, scrolling, pinch-to-zoom text",
-        "Verify the on-screen keyboard does not obscure the editor content (keyboard avoidance)"
-      ],
-      "acceptanceCriteria": [
-        {
-          "text": "cargo tauri ios build produces an iOS app bundle",
-          "verify": "cargo tauri ios build 2>&1 | tail -5"
-        },
-        "The iOS app opens and displays the CodeMirror 6 editor",
-        "File open via Files app integration works",
-        "File save writes back to the original file location",
-        "The on-screen keyboard does not obscure the editing area",
-        "Text selection and scrolling work via touch"
-      ],
-      "scope": [
-        "src-tauri/",
-        "src-tauri/gen/apple/"
-      ],
-      "dependsOn": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
-      "groomedAt": "2026-04-20",
-      "groomingNotes": "Re-groom. Prior groomingNotes claimed tail pipe was removed from build verify but change was not applied to JSON. Fixed: verify is now cargo tauri ios build with no pipe, exit code propagates correctly. Remaining ACs are intentionally manual — require device testing with Xcode + iOS SDK.",
-      "lastFailReason": "Implementation failed",
-      "lastFailAt": "2026-04-16T20:31:23-07:00",
-      "failCount": 1
-    },
-    {
-      "id": "FEAT-034",
-      "title": "Phase4-android: Android Tauri mobile shell",
-      "intent": "Markdown runs on Android — Storage Access Framework integration, intent filters for .md files, Material design patterns. Android is the largest mobile platform globally.",
-      "description": "Create the Android Tauri mobile shell using Tauri 2.0's Android support. The shell wraps the same CodeMirror 6 editor in an Android WebView with platform integration: Storage Access Framework for file access, intent filters for opening .md files from file managers, and Material design patterns.\n\nScope boundary: this item produces a working Android app. Play Store submission is a separate follow-up.",
-      "priority": "should",
-      "category": "shell",
-      "steps": [
-        "Configure Tauri for Android target (Tauri 2.0 mobile support)",
-        "Set up Android project configuration (package name, signing, permissions)",
-        "Implement file access via Storage Access Framework (ACTION_OPEN_DOCUMENT, ACTION_CREATE_DOCUMENT)",
-        "Add intent filter for .md MIME type so the app appears in 'Open with' for markdown files",
-        "Verify CodeMirror 6 renders correctly in Android WebView (viewport, keyboard avoidance)",
-        "Test touch interactions: selection, scrolling, long-press context menu",
-        "Verify the on-screen keyboard does not obscure the editor content"
-      ],
-      "acceptanceCriteria": [
-        {
-          "text": "cargo tauri android build produces an APK",
-          "verify": "cargo tauri android build 2>&1 | tail -5"
-        },
-        "The Android app opens and displays the CodeMirror 6 editor",
-        "File open via Storage Access Framework works",
-        "File save writes back to the original file location",
-        "The on-screen keyboard does not obscure the editing area",
-        "The app appears in 'Open with' menu for .md files"
-      ],
-      "scope": [
-        "src-tauri/",
-        "src-tauri/gen/android/"
-      ],
-      "dependsOn": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
-      "groomedAt": "2026-04-20",
-      "groomingNotes": "Re-groom. Prior groomingNotes claimed tail pipe was removed from build verify but change was not applied to JSON. Fixed: verify is now cargo tauri android build with no pipe, exit code propagates correctly. Remaining ACs are intentionally manual — require device/emulator testing with Android SDK."
-    },
-    {
       "id": "FEAT-036",
-      "title": "Phase5-extended-doctor: Extended doctor diagnostic rules",
+      "title": "Phase4-extended-doctor: Extended doctor diagnostic rules",
       "intent": "The document doctor catches more structural and stylistic issues: passive voice, orphaned sections, inconsistent list markers. The doctor grows from a basic tool into a genuinely useful writing assistant.",
       "description": "Extend the doctor engine (FEAT-011) with additional diagnostic rules:\n\n- **Passive voice detection**: flag sentences using passive constructions, with a suggestion to rephrase\n- **Orphaned sections**: detect heading-only sections with no content between them\n- **Inconsistent list markers**: detect mixing of -, *, and + within the same list level\n- **Long paragraphs**: flag paragraphs over a configurable word count (default 300 words) as potentially needing a break\n\nAll rules are on by default but individually disablable. Rules produce Diagnostic structs with span, severity, rule ID, and message, consistent with FEAT-011's architecture.",
       "priority": "could",
@@ -301,12 +42,14 @@
       "passes": false,
       "readyForSprint": false,
       "groomedAt": null,
-      "groomingNotes": null
+      "groomingNotes": null,
+      "phase": "4",
+      "epic": null
     },
     {
       "id": "FEAT-037",
-      "title": "Phase5-mermaid: Mermaid diagram rendering and AI-assisted editing",
-      "intent": "Mermaid fenced code blocks render as interactive diagrams inline in the editor. AI can assist with creating and editing Mermaid syntax. AI-generated documents with diagrams render beautifully on open — this is a key claim in the press release.",
+      "title": "Phase4-mermaid: Mermaid diagram rendering",
+      "intent": "Mermaid fenced code blocks render as interactive diagrams inline in the editor. AI-generated documents with diagrams render beautifully on open. (AI-assisted Mermaid editing is deferred to the post-v1.0 AI phase per D-ROAD-3.)",
       "description": "Render Mermaid diagrams inline in the editor when a fenced code block is tagged with ```mermaid. Use the Mermaid.js library to render the diagram as an SVG, displayed via a CodeMirror widget decoration that replaces the code block in rich view (or shows below it in source view).\n\nAI-assisted Mermaid editing: when the user selects a Mermaid block and invokes an AI action, the AI can modify the Mermaid syntax and the diagram re-renders live.\n\nScope boundary: rendering and basic AI editing. No visual drag-and-drop diagram editor.",
       "priority": "could",
       "category": "editor",
@@ -316,8 +59,7 @@
         "Render the Mermaid syntax to SVG using mermaid.render()",
         "Display the rendered SVG as a CodeMirror widget decoration below or replacing the code block",
         "Re-render on content change within the mermaid block (debounced)",
-        "In rich view (The Render), replace the code block entirely with the rendered diagram",
-        "Wire AI actions to understand and modify Mermaid syntax"
+        "In rich view (The Render), replace the code block entirely with the rendered diagram"
       ],
       "acceptanceCriteria": [
         {
@@ -344,11 +86,13 @@
       "passes": false,
       "readyForSprint": false,
       "groomedAt": null,
-      "groomingNotes": null
+      "groomingNotes": "Reconciled 2026-06-19: descoped to render-only for v1.0; AI-assisted Mermaid editing moves to the post-v1.0 AI phase.",
+      "phase": "4",
+      "epic": null
     },
     {
       "id": "FEAT-038",
-      "title": "Phase5-math: Math rendering with KaTeX",
+      "title": "Phase4-math: Math rendering with KaTeX",
       "intent": "Inline ($...$) and display ($$...$$) math expressions render beautifully in the editor. Math is a first-class content type in technical and academic markdown documents.",
       "description": "Render LaTeX math expressions inline in the editor using KaTeX. Inline math ($...$) renders as styled inline elements. Display math ($$...$$) renders as centered block elements.\n\nUse CodeMirror decorations: in source view, math delimiters are visible and the rendered output appears alongside or on hover. In rich view (The Render), delimiters are hidden and only the rendered math is shown.\n\nScope boundary: rendering only. No equation editor, no MathML export.",
       "priority": "could",
@@ -387,11 +131,13 @@
       "passes": false,
       "readyForSprint": false,
       "groomedAt": null,
-      "groomingNotes": null
+      "groomingNotes": null,
+      "phase": "4",
+      "epic": null
     },
     {
       "id": "FEAT-039",
-      "title": "Phase5-folding: Folding and outline view",
+      "title": "Phase4-folding: Folding and outline view",
       "intent": "The user can fold sections of the document by heading level and navigate the document structure via an outline panel. Long documents become manageable without scrolling.",
       "description": "Implement section folding and an outline/table-of-contents panel:\n\n1. **Folding**: each heading creates a foldable region spanning to the next heading of equal or higher level. Click a gutter indicator or use a keyboard shortcut to fold/unfold. Folded regions show a placeholder (e.g. '... (N lines)').\n2. **Outline panel**: a side panel showing the document's heading structure as a navigable tree. Clicking a heading in the outline scrolls to it in the editor. The outline updates live as the user edits.\n\nScope boundary: heading-level folding only. No arbitrary fold regions, no manual fold markers.",
       "priority": "could",
@@ -428,11 +174,13 @@
       "passes": false,
       "readyForSprint": false,
       "groomedAt": null,
-      "groomingNotes": null
+      "groomingNotes": null,
+      "phase": "4",
+      "epic": null
     },
     {
       "id": "FEAT-040",
-      "title": "Phase5-multi-doc: Multi-document tabs and split view",
+      "title": "Phase4-multi-doc: Multi-document tabs and split view",
       "intent": "The user can open multiple documents in tabs within a single window and optionally split the view to see two documents side by side. This is the progression from the M0 one-file-per-window model to a productivity-oriented multi-document workflow.",
       "description": "Add a tab bar to the editor window. Each tab holds an independent CodeMirror editor instance with its own document state. The user can:\n- Open multiple files (each opens in a new tab)\n- Switch between tabs with keyboard shortcuts (Cmd+Shift+] / Cmd+Shift+[)\n- Close tabs (Cmd+W) with unsaved-changes prompt\n- Drag tabs to reorder\n- Split the view horizontally or vertically to show two tabs side by side\n\nScope boundary: tabs and split view. No file tree sidebar (that could be a separate item).",
       "priority": "could",
@@ -467,17 +215,19 @@
       "passes": false,
       "readyForSprint": false,
       "groomedAt": null,
-      "groomingNotes": null
+      "groomingNotes": null,
+      "phase": "4",
+      "epic": null
     },
     {
       "id": "FEAT-041",
-      "title": "Phase5-quick-open: Quick Open fuzzy file search",
+      "title": "Phase4-quick-open: Quick Open fuzzy file search",
       "intent": "The user can press Cmd+P to fuzzy-search across all .md files in the current folder tree and open one instantly. This is the fast-switching workflow that power users expect from VS Code and Obsidian.",
       "description": "Implement a Quick Open dialog triggered by Cmd+P (macOS) / Ctrl+P (other platforms). The dialog shows a text input that fuzzy-matches against all .md files in the directory tree containing the current file.\n\nFile discovery: walk the directory tree from the current file's parent directory (or a configured root), collect all .md file paths, and index them for fuzzy matching. Use a simple fuzzy matching algorithm (subsequence match with scoring for consecutive characters and path segment boundaries).\n\nScope boundary: file search and open. No content search (that would be a separate Cmd+Shift+F item).",
       "priority": "could",
       "category": "editor",
       "steps": [
-        "Implement a Tauri command that walks a directory tree and returns all .md file paths",
+        "Implement a core file-walk (in markdown-core, reached via the binding) that walks a directory tree and returns all .md file paths",
         "Implement a fuzzy matching algorithm in TypeScript (subsequence match with scoring)",
         "Create a Quick Open overlay UI: centered modal with text input and scrollable results list",
         "Wire Cmd+P / Ctrl+P to open the Quick Open overlay",
@@ -502,18 +252,20 @@
       "scope": [
         "src/quick-open.ts",
         "src/editor.ts",
-        "src-tauri/src/lib.rs"
+        "markdown-core/src/lib.rs"
       ],
       "dependsOn": [],
       "status": "todo",
       "passes": false,
       "readyForSprint": false,
       "groomedAt": null,
-      "groomingNotes": null
+      "groomingNotes": "Reconciled 2026-06-19: file discovery/IO moved from src-tauri to markdown-core (reached via the WASM/uniffi binding).",
+      "phase": "4",
+      "epic": null
     },
     {
       "id": "FEAT-042",
-      "title": "Phase5-images: Image handling — inline rendering, drag-drop, paste",
+      "title": "Phase4-images: Image handling — inline rendering, drag-drop, paste",
       "intent": "Images in markdown (![alt](path)) render inline in the editor. Users can drag-drop or paste images and have them saved to a sensible location with the markdown reference inserted automatically. AI-generated documents with images render beautifully on open.",
       "description": "Implement image handling in the editor:\n\n1. **Inline rendering**: ![alt](path) references render the image inline as a CodeMirror widget decoration. Relative paths resolve from the current file's directory. URLs render via fetch.\n2. **Drag-drop**: dragging an image file onto the editor saves it to the same directory as the current file (or a configurable images/ subdirectory) and inserts ![](relative-path) at the drop position.\n3. **Paste**: pasting an image from the clipboard saves it (with a timestamp-based filename) and inserts the reference.\n4. **Error handling**: broken image references show a placeholder with the alt text and path.\n\nScope boundary: local and URL images. No image editing, no resizing handles, no image optimization.",
       "priority": "could",
@@ -540,18 +292,20 @@
       "scope": [
         "src/images.ts",
         "src/editor.ts",
-        "src-tauri/src/lib.rs"
+        "markdown-core/src/lib.rs"
       ],
       "dependsOn": [],
       "status": "todo",
       "passes": false,
       "readyForSprint": false,
       "groomedAt": null,
-      "groomingNotes": null
+      "groomingNotes": "Reconciled 2026-06-19: file discovery/IO moved from src-tauri to markdown-core (reached via the WASM/uniffi binding).",
+      "phase": "4",
+      "epic": null
     },
     {
       "id": "FEAT-043",
-      "title": "Phase5-pdf: Render, print, and share as polished PDF",
+      "title": "Phase4-pdf: Render, print, and share as polished PDF",
       "intent": "The user can export the current document as a beautifully typeset PDF or print it directly. The PDF output should look polished — proper typography, rendered diagrams and math, styled code blocks — not a raw text dump.",
       "description": "Implement PDF export and print for the current document:\n\n1. **PDF export** (Cmd+Shift+E or File > Export as PDF): render the markdown to a styled HTML document, then convert to PDF using the webview's print-to-PDF capability or a library like Puppeteer/Playwright (headless).\n2. **Print** (Cmd+P with Shift, or File > Print): open the OS print dialog with a print-formatted view of the document.\n\nThe output should include: styled headings, bold/italic, rendered code blocks with syntax highlighting, rendered Mermaid diagrams (if FEAT-037), rendered math (if FEAT-038), and images.\n\nScope boundary: single-document export. No batch export, no custom templates.",
       "priority": "could",
@@ -584,11 +338,13 @@
       "passes": false,
       "readyForSprint": false,
       "groomedAt": null,
-      "groomingNotes": null
+      "groomingNotes": null,
+      "phase": "4",
+      "epic": null
     },
     {
       "id": "FEAT-044",
-      "title": "Phase5-custom-themes: Custom themes and fonts",
+      "title": "Phase4-custom-themes: Custom themes and fonts",
       "intent": "Users can customize the editor's appearance beyond the built-in light and dark themes — choose fonts, adjust colors, or install community-created themes. Personalization without a plugin system.",
       "description": "Add a theme customization system:\n\n1. **Font selection**: let the user choose body and code fonts from system-installed fonts, with a preview\n2. **Color scheme customization**: let the user adjust key colors (background, text, accent, heading colors) within a theme\n3. **Community themes**: support loading theme files (JSON or CSS) from a directory (~/.config/markdown/themes/)\n\nTheme files define CSS custom property overrides. The built-in light and dark themes are the defaults; user themes override specific properties.\n\nScope boundary: visual customization only. No editor behavior changes via themes. No theme marketplace.",
       "priority": "could",
@@ -625,7 +381,9 @@
       "passes": false,
       "readyForSprint": false,
       "groomedAt": null,
-      "groomingNotes": null
+      "groomingNotes": null,
+      "phase": "4",
+      "epic": null
     },
     {
       "id": "FEAT-045",
@@ -683,7 +441,9 @@
       "groomingNotes": "Solo-dev rollback. Not a revert — cfg-gated so AI phase can re-enable with a feature flag. Watch that the llama-cpp-2 crate does not get pulled in by the default build (check cargo tree after). BYO-key keychain data untouched.",
       "lastFailReason": "Baseline validation failed before developer ran",
       "lastFailAt": "2026-04-21T22:46:44-07:00",
-      "failCount": 2
+      "failCount": 2,
+      "phase": "post-v1",
+      "epic": null
     },
     {
       "id": "FEAT-046",
@@ -729,7 +489,9 @@
       "passes": true,
       "readyForSprint": true,
       "groomedAt": "2026-04-21",
-      "groomingNotes": "These files were deleted in working tree per git status — they have never been committed-as-deleted. git checkout HEAD -- docs/<file> may be enough. If the Capture Baseline workflow needs to rerun, do that on CI not locally."
+      "groomingNotes": "These files were deleted in working tree per git status — they have never been committed-as-deleted. git checkout HEAD -- docs/<file> may be enough. If the Capture Baseline workflow needs to rerun, do that on CI not locally.",
+      "phase": "0",
+      "epic": null
     },
     {
       "id": "FEAT-047",
@@ -776,7 +538,9 @@
       "passes": false,
       "readyForSprint": false,
       "groomedAt": "2026-04-21",
-      "groomingNotes": "FEAT-047 partial: corpus fixtures committed under docs/baseline-corpus/ (small.md 465B, medium.md 16KB, large.md 200KB), and markdown-core/tests/corpus_smoke.rs gates that they continue to parse. Full per-slice timing integration into scripts/measure_baseline.sh --capture/--check is the remaining scope — the current script captures open_small/open_10k as a proxy distribution, so the baseline gate still fires, but not per-corpus-slice as ARCHITECTURE §2 specifies."
+      "groomingNotes": "FEAT-047 partial: corpus fixtures committed under docs/baseline-corpus/ (small.md 465B, medium.md 16KB, large.md 200KB), and markdown-core/tests/corpus_smoke.rs gates that they continue to parse. Full per-slice timing integration into scripts/measure_baseline.sh --capture/--check is the remaining scope — the current script captures open_small/open_10k as a proxy distribution, so the baseline gate still fires, but not per-corpus-slice as ARCHITECTURE §2 specifies.",
+      "phase": "0",
+      "epic": null
     },
     {
       "id": "FEAT-048",
@@ -819,7 +583,9 @@
       "passes": true,
       "readyForSprint": true,
       "groomedAt": "2026-04-21",
-      "groomingNotes": "Unblocks FEAT-022/023. webkit2gtk-4.1 is the Tauri 2 Linux dependency (not -4.0). If the Linux or Windows build fails on first run due to Tauri-specific setup, file a sub-bug rather than letting this item fail groom — the goal here is the matrix existing, not every platform going green on day one."
+      "groomingNotes": "Unblocks FEAT-022/023. webkit2gtk-4.1 is the Tauri 2 Linux dependency (not -4.0). If the Linux or Windows build fails on first run due to Tauri-specific setup, file a sub-bug rather than letting this item fail groom — the goal here is the matrix existing, not every platform going green on day one. Reconciled 2026-06-19: the Tauri Linux/Windows/.app jobs this added are superseded by EPIC-CI-REPOINT (PWA primary + Apple uniffi build).",
+      "phase": "2",
+      "epic": null
     },
     {
       "id": "FEAT-049",
@@ -870,7 +636,9 @@
       "passes": true,
       "readyForSprint": true,
       "groomedAt": "2026-04-21",
-      "groomingNotes": "Load-bearing. Do not conflate with FEAT-015 (The Render animation) — that is a visual effect on the author surface; this is a distinct default view. The WYSIWYM decoration tree in src/wysiwym.ts is the right starting point for the mark-hiding logic. If scope creeps toward remembering per-file last mode or adding a settings override, split that off — this item ships the default and the transition only."
+      "groomingNotes": "Load-bearing. Do not conflate with FEAT-015 (The Render animation) — that is a visual effect on the author surface; this is a distinct default view. The WYSIWYM decoration tree in src/wysiwym.ts is the right starting point for the mark-hiding logic. If scope creeps toward remembering per-file last mode or adding a settings override, split that off — this item ships the default and the transition only.",
+      "phase": "0",
+      "epic": null
     },
     {
       "id": "FEAT-050",
@@ -922,7 +690,9 @@
       "passes": true,
       "readyForSprint": true,
       "groomedAt": "2026-04-21",
-      "groomingNotes": "Doctor engine already exists in Rust — this is wiring, not algorithm work. Measure keystroke latency against baseline before and after; if the doctor run regresses typing, it needs to go on a worker (not the per-keystroke path). Extended rules (passive voice, etc.) remain in FEAT-036."
+      "groomingNotes": "Doctor engine already exists in Rust — this is wiring, not algorithm work. Measure keystroke latency against baseline before and after; if the doctor run regresses typing, it needs to go on a worker (not the per-keystroke path). Extended rules (passive voice, etc.) remain in FEAT-036.",
+      "phase": "0",
+      "epic": null
     },
     {
       "id": "FEAT-051",
@@ -954,7 +724,9 @@
       "passes": true,
       "readyForSprint": true,
       "groomedAt": "2026-04-21",
-      "groomingNotes": "Trivial. One-line change + verification. Keep FEAT-025's hash-skip intact."
+      "groomingNotes": "Trivial. One-line change + verification. Keep FEAT-025's hash-skip intact.",
+      "phase": "0",
+      "epic": null
     },
     {
       "id": "FEAT-052",
@@ -999,7 +771,9 @@
       "passes": true,
       "readyForSprint": true,
       "groomedAt": "2026-04-21",
-      "groomingNotes": "document_undo/redo replacing CodeMirror history is deliberately out of scope — only expose the commands; the editor keeps using history() for now. Revisit when undo coalescing (§3.5) becomes a user-visible need."
+      "groomingNotes": "document_undo/redo replacing CodeMirror history is deliberately out of scope — only expose the commands; the editor keeps using history() for now. Revisit when undo coalescing (§3.5) becomes a user-visible need.",
+      "phase": "0",
+      "epic": null
     },
     {
       "id": "FEAT-053",
@@ -1040,7 +814,9 @@
       "passes": false,
       "readyForSprint": true,
       "groomedAt": "2026-04-21",
-      "groomingNotes": "FEAT-053 partial landed in 726e6af — markdownKeymap enabled for list continuation on Enter (most common hot-path keystroke). Remaining scope: port Rust table-alignment and heading-spacing rules to TypeScript, add a parity test harness with a committed input/output corpus. Table alignment while typing pipes is the next user-visible improvement."
+      "groomingNotes": "FEAT-053 partial landed in 726e6af — markdownKeymap enabled for list continuation on Enter (most common hot-path keystroke). Remaining scope: port Rust table-alignment and heading-spacing rules to TypeScript, add a parity test harness with a committed input/output corpus. Table alignment while typing pipes is the next user-visible improvement.",
+      "phase": "0",
+      "epic": null
     },
     {
       "id": "FEAT-054",
@@ -1080,7 +856,420 @@
       "passes": true,
       "readyForSprint": true,
       "groomedAt": "2026-04-21",
-      "groomingNotes": "Do not pull in a charset detection crate for this — BOM-only detection is all §3.7 requires, and adding chardet-like inference invites silent misclassification. Explicit error for non-UTF-8 is the correct behavior."
+      "groomingNotes": "Do not pull in a charset detection crate for this — BOM-only detection is all §3.7 requires, and adding chardet-like inference invites silent misclassification. Explicit error for non-UTF-8 is the correct behavior.",
+      "phase": "0",
+      "epic": null
+    },
+    {
+      "id": "EPIC-CORE-API",
+      "title": "Phase0-core-api: Extract the transport-agnostic command surface into markdown-core",
+      "intent": "ARCHITECTURE §3.8 requires a single command surface in the core reached by uniffi (Apple) and WASM (web) — 'no separate API per platform, only a separate binding.' Today that orchestration lives inside src-tauri/src/lib.rs, so neither real binding can exist. This extraction is the root of the whole build plan's critical path.",
+      "description": "Relocate the orchestration in src-tauri/src/lib.rs (doctor diagnose, format mutations, viewport, undo/redo, wikilink resolve/create, backlinks, watching lifecycle, content-level file I/O) into markdown-core as plain Rust functions over a Session/Workspace type. RELOCATE, don't rewrite — the algorithms already work. Tauri commands become thin pass-throughs that call the core (temporary, removed in EPIC-RETIRE-TAURI). Platform glue (keychain, OS dialogs, recent-files persistence, AI HTTP) stays OUT of the core. Set crate-type=['rlib','cdylib','staticlib']. Fill docs/CORE-API.md as the contract both bindings implement.\n\nScope boundary: this item moves logic and proves the core loop through a direct core API call; it does not add the WASM or uniffi binding (EPIC-WASM / EPIC-UNIFFI).",
+      "priority": "must",
+      "category": "core",
+      "phase": "0",
+      "epic": "EPIC-CORE-API",
+      "steps": [
+        "Define a Session/Workspace type in markdown-core that owns document + watch + history state",
+        "Move resolve_wikilink, compute_backlinks, diagnose, format, viewport, undo/redo, watch lifecycle from src-tauri/src/lib.rs into markdown-core as public functions",
+        "Leave the Tauri commands as thin wrappers calling the new core functions (temporary)",
+        "Set crate-type = ['rlib','cdylib','staticlib'] in markdown-core/Cargo.toml",
+        "Write a core-level integration test: open -> edit -> save_buffer -> reopen via the core API (no Tauri)",
+        "Fill in docs/CORE-API.md with the finalized operation signatures"
+      ],
+      "acceptanceCriteria": [
+        {
+          "text": "markdown-core declares cdylib + staticlib crate types",
+          "verify": "grep -A2 'crate-type' markdown-core/Cargo.toml | grep -q cdylib && grep -A2 'crate-type' markdown-core/Cargo.toml | grep -q staticlib"
+        },
+        {
+          "text": "Session/Workspace type exists in the core",
+          "verify": "grep -rqE 'struct (Session|Workspace)' markdown-core/src/"
+        },
+        {
+          "text": "Doctor/format/wikilink orchestration now lives in the core, not only the shell",
+          "verify": "grep -rqE 'fn (diagnose|format_document|resolve_wikilink)' markdown-core/src/"
+        },
+        {
+          "text": "Core round-trip test passes without Tauri",
+          "verify": "cargo test -p markdown-core --quiet 2>&1 | tail -3"
+        },
+        "Opening, editing, saving and reopening a document through the core API (no IPC) round-trips byte-for-byte on the baseline corpus",
+        "src-tauri commands contain no business logic — only pass-through calls into markdown-core"
+      ],
+      "scope": [
+        "markdown-core/Cargo.toml",
+        "markdown-core/src/lib.rs",
+        "src-tauri/src/lib.rs",
+        "docs/CORE-API.md"
+      ],
+      "dependsOn": [],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": true,
+      "groomedAt": "2026-06-19",
+      "groomingNotes": "Linchpin of the build plan. The win condition is 'no business logic left in the shell.' Do not change behavior — this is a move + test, measured against baseline before/after."
+    },
+    {
+      "id": "EPIC-WASM",
+      "title": "Phase1-wasm: Compile markdown-core to WebAssembly and bind it to the web frontend",
+      "intent": "ARCHITECTURE §8 flags 'core-to-WASM viability' as a live risk — tree-sitter's C runtime must compile to WASM. The entire web/Windows/Linux/Android delivery depends on the core running in the browser. This item proves it end-to-end with a real browser harness before any feature port.",
+      "description": "Add wasm-bindgen/wasm-pack targeting wasm32-unknown-unknown. Spike the tree-sitter-md-in-WASM compile FIRST and fail fast. Expose the Phase-0 command surface as a JS API (buffer-in/buffer-out; the shell owns file handles). Build a deliberately-minimal HTML harness that drives every entry point against docs/baseline-corpus. Capture an in-browser web baseline slice and extend the regression gate to it.\n\nScope boundary: this item is the binding + skeleton, not the production cutover (EPIC-CUTOVER).",
+      "priority": "must",
+      "category": "core",
+      "phase": "1",
+      "epic": "EPIC-WASM",
+      "steps": [
+        "Spike: confirm markdown-core (incl. tree-sitter-md) compiles to wasm32-unknown-unknown; fail fast if not",
+        "Add wasm-bindgen + a wasm-pack/build step producing a loadable module",
+        "Expose the CORE-API operations as JS-callable functions (open/edit/save_buffer/format/diagnose/viewport/undo/redo/resolve_wikilink)",
+        "Build a throwaway HTML harness that runs the full loop against the baseline corpus using the real WASM core",
+        "Capture in-browser per-slice medians and add a web profile to docs/baseline.json",
+        "Document the tree-sitter-in-WASM outcome in docs/large-file-performance.md or ARCHITECTURE §8"
+      ],
+      "acceptanceCriteria": [
+        {
+          "text": "markdown-core builds for wasm32",
+          "verify": "cargo build -p markdown-core --target wasm32-unknown-unknown 2>&1 | tail -3"
+        },
+        {
+          "text": "A WASM build artifact + JS bindings are produced",
+          "verify": "find . -path ./target -prune -o -name '*.wasm' -print -o -name 'markdown_core*.js' -print | grep -q ."
+        },
+        "Loading the harness in a real browser opens, edits, formats, diagnoses, saves-buffer and reopens a corpus document through the WASM core (no marked, no stub)",
+        "tree-sitter parsing demonstrably runs in WASM (parse a corpus doc and assert the AST in-browser)",
+        "The web baseline slice is committed and the gate fails on an injected in-browser regression"
+      ],
+      "scope": [
+        "markdown-core/Cargo.toml",
+        "markdown-core/src/lib.rs",
+        "src/",
+        "docs/baseline.json",
+        "package.json"
+      ],
+      "dependsOn": [
+        "EPIC-CORE-API"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": false,
+      "groomedAt": "2026-06-19",
+      "groomingNotes": "Lead with the parser-in-WASM spike — it is the single highest-impact unknown. Walking-skeleton ACs: prove it in a real browser, not with file-existence checks."
+    },
+    {
+      "id": "EPIC-UNIFFI",
+      "title": "Phase1prime-uniffi: Bind markdown-core to Swift via uniffi as an XCFramework",
+      "intent": "The native Apple frontend (the lead platform per PRODUCT D-ROAD-1) cannot begin until Swift can call the core in-process. ARCHITECTURE §3.8 / A-STACK-2 specify uniffi over a static library. This item produces that binding and proves the FFI boundary before any UI.",
+      "description": "Add uniffi to markdown-core (or a thin markdown-core-ffi wrapper crate). Define the binding surface mirroring CORE-API. Build staticlib for aarch64-apple-ios and aarch64-apple-darwin, generate Swift bindings, and package an XCFramework. A Swift unit test must round-trip open -> edit -> save_buffer -> reopen through uniffi.\n\nScope boundary: binding + FFI proof only; the TextKit 2 editor is EPIC-APPLE-SKELETON. Requires a macOS CI runner.",
+      "priority": "must",
+      "category": "core",
+      "phase": "1prime",
+      "epic": "EPIC-UNIFFI",
+      "steps": [
+        "Add uniffi scaffolding (UDL or proc-macro) over the CORE-API surface",
+        "Build staticlib for aarch64-apple-ios and aarch64-apple-darwin",
+        "Generate Swift bindings and package an XCFramework",
+        "Write a Swift unit test linking the static lib that round-trips the core loop via uniffi",
+        "Add a macOS CI job that builds the XCFramework and runs the Swift test"
+      ],
+      "acceptanceCriteria": [
+        {
+          "text": "uniffi is a dependency of the core (or ffi wrapper)",
+          "verify": "grep -rq uniffi markdown-core/Cargo.toml */Cargo.toml 2>/dev/null"
+        },
+        {
+          "text": "Apple static-lib targets build",
+          "verify": "cargo build -p markdown-core --target aarch64-apple-darwin 2>&1 | tail -3"
+        },
+        "An XCFramework is produced and consumable from a Swift package",
+        "A Swift test opens, edits, saves and reopens a document through uniffi and asserts a byte-for-byte round-trip"
+      ],
+      "scope": [
+        "markdown-core/Cargo.toml",
+        "markdown-core/src/lib.rs",
+        ".github/workflows/build.yml"
+      ],
+      "dependsOn": [
+        "EPIC-CORE-API"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": false,
+      "groomedAt": "2026-06-19",
+      "groomingNotes": "Parallel to EPIC-WASM; both target the same CORE-API surface so they cannot drift. Needs Apple toolchain on CI — gate the job on macos-latest."
+    },
+    {
+      "id": "EPIC-CUTOVER",
+      "title": "Phase2-cutover: Replace Tauri IPC with the WASM core + PWA shell at parity",
+      "intent": "D-PLAT-1 + A-STACK-2: the web frontend must reach the core via WASM and the browser's own file APIs, not Tauri IPC. src/main.ts has ~15 invoke() sites and a separate degraded main-web.ts that bypasses the core. This item converges them onto one Tauri-free PWA at feature parity with today's experience.",
+      "description": "Introduce one `core` adapter (the EPIC-WASM API) and replace every invoke() site in src/main.ts and the Tauri-reaching imports in doctor.ts/settings.ts/wikilinks.ts/format.ts/ai.ts with WASM-core or PWA-shell calls. Converge the two web entries: promote main.ts's full feature set onto the WASM backend, fold in main-web.ts's File System Access logic, delete the degraded marked path and tauri-stub.ts. Build the PWA shell: File System Access open/save (+ input/download fallback), recent files (IndexedDB), file-change/conflict detection (replacing start_watching), auto-save (1s, FEAT-051), service worker offline + install manifest.\n\nScope boundary: removing src-tauri and re-pointing CI are EPIC-RETIRE-TAURI / EPIC-CI-REPOINT.",
+      "priority": "must",
+      "category": "editor",
+      "phase": "2",
+      "epic": "EPIC-CUTOVER",
+      "steps": [
+        "Create a single src/core.ts adapter wrapping the WASM core API",
+        "Replace every invoke() call in src/main.ts with a core.ts or PWA-shell call",
+        "Fold main-web.ts's File System Access open/save/save-as + fallbacks into the unified entry; remove the marked-based preview path",
+        "Implement recent files via IndexedDB and external-change/conflict detection without Tauri",
+        "Delete src/tauri-stub.ts once nothing imports @tauri-apps",
+        "Verify the PWA installs, works offline, and reaches feature parity (read/author modes, doctor gutter, format, wikilinks, find/replace, word count)"
+      ],
+      "acceptanceCriteria": [
+        {
+          "text": "No invoke() calls remain in src/",
+          "verify": "! grep -rqE '\\binvoke\\(' src/"
+        },
+        {
+          "text": "No @tauri-apps imports remain in src/",
+          "verify": "! grep -rq '@tauri-apps' src/"
+        },
+        {
+          "text": "tauri-stub.ts is deleted",
+          "verify": "! test -f src/tauri-stub.ts"
+        },
+        {
+          "text": "Web build succeeds",
+          "verify": "npm run build:web 2>&1 | tail -3"
+        },
+        "The installed PWA opens, edits, saves and reopens a real file via File System Access, offline-capable",
+        "Doctor gutter, format, wikilinks, find/replace, word count and read/author modes all work against the WASM core at parity with the prior Tauri build"
+      ],
+      "scope": [
+        "src/core.ts",
+        "src/main.ts",
+        "src/main-web.ts",
+        "src/tauri-stub.ts",
+        "src/sw.ts",
+        "package.json"
+      ],
+      "dependsOn": [
+        "EPIC-WASM"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": false,
+      "groomedAt": "2026-06-19",
+      "groomingNotes": "Do NOT delete Tauri until this reaches parity — the invoke() call-site list is the explicit checklist of what must be replaced. Convergence of the two entries is the heart of the item."
+    },
+    {
+      "id": "EPIC-RETIRE-TAURI",
+      "title": "Phase2-retire-tauri: Remove the Tauri shell, deps, and glib patch",
+      "intent": "Once the PWA reaches parity (EPIC-CUTOVER), the Tauri shell is dead weight: it constrains the workspace (the glib RUSTSEC patch exists only for Tauri's gtk) and contradicts A-STACK-1 ('no cross-platform UI framework'). Remove it cleanly.",
+      "description": "Remove the src-tauri/ workspace member, the glib [patch.crates-io] in the root Cargo.toml (it exists solely for Tauri/gtk), the @tauri-apps/* npm deps, and the 'tauri' npm script. The workspace must build with markdown-core alone.\n\nScope boundary: CI re-point is EPIC-CI-REPOINT (can land in the same PR).",
+      "priority": "must",
+      "category": "core",
+      "phase": "2",
+      "epic": "EPIC-RETIRE-TAURI",
+      "steps": [
+        "Remove 'src-tauri' from the workspace members in the root Cargo.toml",
+        "Delete the src-tauri/ directory",
+        "Remove the glib [patch.crates-io] block from the root Cargo.toml",
+        "Remove @tauri-apps/* dependencies and the 'tauri' script from package.json",
+        "Run cargo build --workspace and npm run build:web to confirm nothing depended on the removed pieces"
+      ],
+      "acceptanceCriteria": [
+        {
+          "text": "src-tauri is no longer a workspace member",
+          "verify": "! grep -q 'src-tauri' Cargo.toml"
+        },
+        {
+          "text": "The glib patch is gone",
+          "verify": "! grep -q 'patch.crates-io' Cargo.toml"
+        },
+        {
+          "text": "No @tauri-apps deps remain",
+          "verify": "! grep -q '@tauri-apps' package.json"
+        },
+        {
+          "text": "Workspace builds without Tauri",
+          "verify": "cargo build --workspace 2>&1 | tail -3"
+        }
+      ],
+      "scope": [
+        "Cargo.toml",
+        "src-tauri/",
+        "package.json"
+      ],
+      "dependsOn": [
+        "EPIC-CUTOVER"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": false,
+      "groomedAt": "2026-06-19",
+      "groomingNotes": "Gated on EPIC-CUTOVER parity. Removing the glib patch is a bonus payoff — it only existed to work around Tauri's gtk soundness bug."
+    },
+    {
+      "id": "EPIC-CI-REPOINT",
+      "title": "Phase2-ci-repoint: Re-point CI off Tauri to PWA + Apple builds",
+      "intent": "FEAT-048 (done) built a Tauri-centric matrix (.app/MSI/WebKitGTK). After the cutover those jobs build a retired stack. CI must build the PWA as the primary web artifact and add the Apple uniffi build, while keeping the baseline regression gate.",
+      "description": "Rewrite .github/workflows/build.yml: drop the Tauri CLI install, the .app and MSI bundle jobs, and the WebKitGTK system-dep installs. Make build-web (vite build --config vite.config.web.ts) the primary build and artifact. Add an Apple job (macos-latest) that builds the XCFramework and runs the Swift uniffi test. Keep cargo build/test, the CommonMark suite, and scripts/measure_baseline.sh --check.\n\nScope boundary: supersedes the Tauri parts of FEAT-048.",
+      "priority": "should",
+      "category": "ci",
+      "phase": "2",
+      "epic": "EPIC-CI-REPOINT",
+      "steps": [
+        "Remove Tauri CLI install, .app/MSI bundle steps, and WebKitGTK apt installs from build.yml",
+        "Make build-web the primary build and upload dist-web as the release artifact",
+        "Add a macos build job that builds the XCFramework and runs the Swift uniffi round-trip test",
+        "Keep cargo build/test --workspace, the CommonMark spec suite, and measure_baseline.sh --check",
+        "Confirm the workflow is valid YAML and goes green on a test PR"
+      ],
+      "acceptanceCriteria": [
+        {
+          "text": "No Tauri references remain in build.yml",
+          "verify": "! grep -qiE 'tauri|webkit2gtk|\\.msi' .github/workflows/build.yml"
+        },
+        {
+          "text": "build-web is present",
+          "verify": "grep -q 'build-web' .github/workflows/build.yml"
+        },
+        {
+          "text": "An Apple/macos build job is present",
+          "verify": "grep -qiE 'macos|xcframework|uniffi' .github/workflows/build.yml"
+        },
+        {
+          "text": "build.yml is valid YAML",
+          "verify": "python3 -c 'import yaml; yaml.safe_load(open(\".github/workflows/build.yml\"))'"
+        },
+        {
+          "text": "Baseline gate is retained",
+          "verify": "grep -q 'measure_baseline.sh' .github/workflows/build.yml"
+        }
+      ],
+      "scope": [
+        ".github/workflows/build.yml"
+      ],
+      "dependsOn": [
+        "EPIC-RETIRE-TAURI"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": false,
+      "groomedAt": "2026-06-19",
+      "groomingNotes": "Supersedes FEAT-048's Tauri jobs. The baseline --check job must survive the rewrite."
+    },
+    {
+      "id": "EPIC-APPLE-SKELETON",
+      "title": "Phase2prime-apple-skeleton: iOS TextKit 2 walking skeleton over the uniffi core",
+      "intent": "PRODUCT D-ROAD-1 makes iOS the lead platform and the native-feel bar. ARCHITECTURE §8 flags 'native Apple editor effort' as a real risk to validate by use, not by compile. This item proves the native frontend binds the core via uniffi and edits real text in TextKit 2 on a real device — deliberately minimal.",
+      "description": "Create an Xcode/SwiftPM project consuming the EPIC-UNIFFI XCFramework, iOS target first. Build a minimal TextKit 2 editor view bound to the core; wire Files-app open/save; prove the open -> edit -> save -> reopen loop on a real device. Capture an Apple baseline slice (open/keystroke/save medians) on device. No WYSIWYM polish yet.\n\nScope boundary: read mode, WYSIWYM, share sheet, accessibility, and macOS are EPIC-APPLE-FEATURES.",
+      "priority": "must",
+      "category": "shell",
+      "phase": "2prime",
+      "epic": "EPIC-APPLE-SKELETON",
+      "steps": [
+        "Create the Xcode/SwiftPM project consuming the XCFramework; iOS target",
+        "Mount a minimal TextKit 2 (UITextView) editor bound to the core via uniffi",
+        "Wire Files-app open and save (UIDocument / document browser)",
+        "Prove open -> edit -> save -> reopen on a real device",
+        "Capture an Apple baseline slice on device and commit it"
+      ],
+      "acceptanceCriteria": [
+        {
+          "text": "An Xcode/SwiftPM project exists",
+          "verify": "find . -name '*.xcodeproj' -o -name 'Package.swift' -path '*pple*' | grep -q ."
+        },
+        "The iOS app launches on a real device and opens a .md file from Files",
+        "Editing in the TextKit 2 view and saving writes back to the original file; reopening round-trips",
+        "An Apple baseline slice (on-device medians) is committed to docs/baseline.json"
+      ],
+      "scope": [
+        "apple/",
+        "docs/baseline.json"
+      ],
+      "dependsOn": [
+        "EPIC-UNIFFI"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": false,
+      "groomedAt": "2026-06-19",
+      "groomingNotes": "Walking skeleton on a REAL device (A-PROC-3) — the bar is validated by use. Manual on-device ACs are expected and correct here."
+    },
+    {
+      "id": "EPIC-PWA-RELEASE",
+      "title": "Phase3-pwa-release: Harden the PWA to a Web/Windows/Linux/Android public pre-release",
+      "intent": "PRODUCT §5 makes the web build the first public pre-release and the delivery vehicle for Windows, Linux, and Android (no native shells). This item hardens the post-cutover PWA to public quality across browsers.",
+      "description": "Harden PWA install/UX on Chromium (Windows/Linux/Android) and graceful degradation on Firefox/Safari (no File System Access -> input/download fallback). Finalize conflict-detection UX. Cross-browser parity QA against the web baseline. Distribution is static host + PWA install — no Flatpak/MSI/WinGet.\n\nScope boundary: feature work (rich content) is Phase 4; this item is hardening + release of what exists.",
+      "priority": "should",
+      "category": "editor",
+      "phase": "3",
+      "epic": "EPIC-PWA-RELEASE",
+      "steps": [
+        "Polish the install manifest, icons, and offline service-worker behavior",
+        "Verify graceful fallback on Firefox/Safari where File System Access is unavailable",
+        "Finalize the external-change / conflict-resolution UX",
+        "Cross-browser parity QA (Chromium desktop + Android, Firefox, Safari) against the web baseline",
+        "Document the install paths for Windows/Linux/Android (PWA install, not Flatpak/MSI)"
+      ],
+      "acceptanceCriteria": [
+        {
+          "text": "A web app manifest is present",
+          "verify": "find . -path ./node_modules -prune -o -name 'manifest*.json' -print -o -name 'manifest.webmanifest' -print | grep -q ."
+        },
+        {
+          "text": "Web build succeeds",
+          "verify": "npm run build:web 2>&1 | tail -3"
+        },
+        "The PWA installs and runs offline on Chromium desktop and Android",
+        "On Firefox/Safari the editor works with the input/download file fallback",
+        "Cross-browser QA passes and the web baseline slice stays within the 1.1x gate"
+      ],
+      "scope": [
+        "src/",
+        "public/",
+        "vite.config.web.ts"
+      ],
+      "dependsOn": [
+        "EPIC-RETIRE-TAURI"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": false,
+      "groomedAt": "2026-06-19",
+      "groomingNotes": "No Flatpak/MSI/WinGet — those died with Tauri. Distribution is the PWA itself."
+    },
+    {
+      "id": "EPIC-APPLE-FEATURES",
+      "title": "Phase3prime-apple-features: iOS+macOS feature parity on TextKit 2",
+      "intent": "DP-2/DP-4: the Apple frontend (the quality bar) must reach the same read/write feature set as the web frontend, then share the TextKit 2 surface to macOS. This is where the native-feel investment pays off.",
+      "description": "Bring the Apple frontend to product parity: read mode, WYSIWYM on TextKit 2, mode transition, native file management, share sheet, accessibility (UIAccessibility/NSAccessibility), and hot-path formatting mirrored from the core (parity-tested via FEAT-053). Then add the macOS target sharing the NSTextView surface. Each lands against the Apple baseline.\n\nScope boundary: rich content (Mermaid/math/PDF) is Phase 4; AI is post-v1.0.",
+      "priority": "should",
+      "category": "shell",
+      "phase": "3prime",
+      "epic": "EPIC-APPLE-FEATURES",
+      "steps": [
+        "Implement read mode and WYSIWYM rendering on TextKit 2",
+        "Implement the read<->author mode transition",
+        "Add native file management, share sheet, and accessibility",
+        "Mirror hot-path formatting rules from the core and gate them with the FEAT-053 parity harness",
+        "Add the macOS target sharing the NSTextView surface",
+        "Maintain the Apple baseline slice across each addition"
+      ],
+      "acceptanceCriteria": [
+        {
+          "text": "Apple frontend sources exist beyond the skeleton",
+          "verify": "find . -path '*pple*' -name '*.swift' | head -1 | grep -q ."
+        },
+        "iOS reaches read mode + WYSIWYM + mode transition + share sheet + accessibility",
+        "macOS runs the same editor surface (NSTextView) as iOS",
+        "Hot-path formatting parity tests are green for the Apple implementation",
+        "The Apple baseline slice stays within the 1.1x gate across the feature work"
+      ],
+      "scope": [
+        "apple/",
+        "markdown-core/tests/"
+      ],
+      "dependsOn": [
+        "EPIC-APPLE-SKELETON"
+      ],
+      "status": "todo",
+      "passes": false,
+      "readyForSprint": false,
+      "groomedAt": "2026-06-19",
+      "groomingNotes": "Parity test (FEAT-053) is the guardrail that keeps the Apple hot-path rules identical to the core."
     }
   ]
 }
