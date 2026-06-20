@@ -11,6 +11,8 @@ struct EditorView: View {
   @State private var mode: EditorMode = .read
   @State private var scrollTarget: Int?
   @State private var showOutline = false
+  @State private var pdfFile: PDFFile?
+  @State private var showPDFExport = false
 
   var body: some View {
     VStack(spacing: 0) {
@@ -26,7 +28,8 @@ struct EditorView: View {
       CoreStatusBar(text: document.text, mode: mode,
                     onToggle: { setMode(mode == .read ? .author : .read) },
                     onFormat: formatDocument,
-                    onOutline: { showOutline = true })
+                    onOutline: { showOutline = true },
+                    onExportPDF: exportPDF)
     }
     .navigationTitle("Markdown")
     #if os(iOS)
@@ -39,10 +42,18 @@ struct EditorView: View {
         scrollTarget = item.utf16Offset
       }
     }
+    .fileExporter(isPresented: $showPDFExport, document: pdfFile,
+                  contentType: .pdf, defaultFilename: "Document") { _ in }
   }
 
   private func formatDocument() {
     if let formatted = FormatAction.formatted(document.text) { document.text = formatted }
+  }
+
+  /// Export the rendered document as a PDF (FEAT-043).
+  private func exportPDF() {
+    pdfFile = PDFFile(data: PDFExport.make(MarkdownRenderer.render(document.text)))
+    showPDFExport = true
   }
 
   private func setMode(_ next: EditorMode) {
@@ -87,6 +98,7 @@ private struct CoreStatusBar: View {
   let onToggle: () -> Void
   let onFormat: () -> Void
   let onOutline: () -> Void
+  let onExportPDF: () -> Void
 
   var body: some View {
     let issues = diagnose(text: text).count
@@ -98,6 +110,8 @@ private struct CoreStatusBar: View {
         .accessibilityLabel(issues == 0 ? "No issues" : "\(issues) issue\(issues == 1 ? "" : "s")")
       Spacer()
       Button("Outline", systemImage: "list.bullet.indent", action: onOutline)
+        .labelStyle(.iconOnly)
+      Button("Export PDF", systemImage: "arrow.up.doc", action: onExportPDF)
         .labelStyle(.iconOnly)
       if mode == .author {
         Button("Format", action: onFormat)
