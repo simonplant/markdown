@@ -1,5 +1,13 @@
 # IOS_BUILD_SPEC — Authoritative native iOS build specification
 
+> **PROGRESS: M1–M9 DONE (2026-06-20).** The iOS & macOS lead phase is built and
+> verified by running on the simulator / as a native macOS app: uniffi binding
+> (M1), TextKit 2 skeleton (M1), read-mode default + read↔author + span renderer
+> (M2), doctor diagnostics overlay (M3), Format Document (M4), BOM-preserving save
+> (M5), find + themes (M6), Dynamic Type + spell check + keyboard shortcuts (M7),
+> accessibility + DocumentGroup file management (M8), and the macOS target sharing
+> the editor over NSTextView (M9). Remaining: Phase 4 rich content (deferred).
+>
 > **Status: authoritative.** This is the single source of truth for building the native iOS (and shared macOS) markdown editor: Swift + TextKit 2 frontend binding the shared Rust `markdown-core` in-process via **uniffi**. It synthesizes `docs/PRODUCT.md`, `docs/ARCHITECTURE.md`, the live backlog (`backlog/backlog.json` + archives), the `markdown-core` public API, and the `reference/` Swift prototype catalog.
 >
 > The dependency spine is fixed and non-negotiable: **EPIC-CORE-API (done) → EPIC-UNIFFI → EPIC-APPLE-SKELETON → EPIC-APPLE-FEATURES → Phase-4 rich content.** Phase ordering and `dependsOn` are binding (CLAUDE.md, A-PROC-3). The document model stays `String` (`docs/engine-decision.md`). Every merge is gated against `docs/baseline.json` at 1.1x per slice.

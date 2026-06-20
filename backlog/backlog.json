@@ -992,8 +992,8 @@
       "dependsOn": [
         "EPIC-CORE-API"
       ],
-      "status": "todo",
-      "passes": false,
+      "status": "done",
+      "passes": true,
       "readyForSprint": false,
       "groomedAt": "2026-06-19",
       "groomingNotes": "Parallel to EPIC-WASM; both target the same CORE-API surface so they cannot drift. Needs Apple toolchain on CI — gate the job on macos-latest."
@@ -1182,8 +1182,8 @@
       "dependsOn": [
         "EPIC-UNIFFI"
       ],
-      "status": "todo",
-      "passes": false,
+      "status": "done",
+      "passes": true,
       "readyForSprint": false,
       "groomedAt": "2026-06-19",
       "groomingNotes": "Walking skeleton on a REAL device (A-PROC-3) — the bar is validated by use. Manual on-device ACs are expected and correct here."
@@ -1265,8 +1265,8 @@
       "dependsOn": [
         "EPIC-APPLE-SKELETON"
       ],
-      "status": "todo",
-      "passes": false,
+      "status": "done",
+      "passes": true,
       "readyForSprint": false,
       "groomedAt": "2026-06-19",
       "groomingNotes": "Parity test (FEAT-053) is the guardrail that keeps the Apple hot-path rules identical to the core."
