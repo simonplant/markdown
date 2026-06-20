@@ -52,3 +52,31 @@ targets:
               public.filename-extension:
                 - md
                 - markdown
+
+  MarkdownEditorUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: MarkdownEditorUITests
+    dependencies:
+      - target: MarkdownEditor
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.markdown.editor.uitests
+        SWIFT_VERSION: "5.0"
+        TEST_TARGET_NAME: MarkdownEditor
+        CODE_SIGNING_ALLOWED: "NO"
+        CODE_SIGNING_REQUIRED: "NO"
+
+schemes:
+  MarkdownEditor:
+    build:
+      targets:
+        MarkdownEditor: all
+        MarkdownEditorUITests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - MarkdownEditorUITests
