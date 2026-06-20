@@ -6,6 +6,7 @@ pub mod ast;
 pub mod doctor;
 pub mod formatter;
 pub mod parser;
+pub mod wasm_api;
 pub mod wikilinks;
 
 // File watching relies on the OS (`notify`); it has no WebAssembly equivalent,

@@ -36,11 +36,16 @@ echo "==> building markdown-core for $TARGET"
 cargo build -p markdown-core --target "$TARGET"
 cargo build -p markdown-core --bin wasm_smoke --target "$TARGET"
 
-if [[ "${1:-}" == "run" ]]; then
+if [[ "${1:-}" == "run" || "${1:-}" == "all" ]]; then
   echo "==> running wasm_smoke under wasmtime against the baseline corpus"
   for f in small medium large; do
     wasmtime run --dir=. "target/$TARGET/debug/wasm_smoke.wasm" "docs/baseline-corpus/$f.md"
   done
+fi
+
+if [[ "${1:-}" == "node" || "${1:-}" == "all" ]]; then
+  echo "==> running the JS<->WASM boundary harness under node"
+  node scripts/wasm-node-smoke.mjs
 fi
 
 echo "==> done"

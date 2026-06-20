@@ -93,15 +93,34 @@ cargo build -p markdown-core --target wasm32-wasip1
 The proof binary is `markdown-core/src/bin/wasm_smoke.rs`, run under wasmtime with
 `--dir=.` for file access.
 
-## Next for EPIC-WASM (now unblocked)
+## JS <-> WASM boundary — DONE (2026-06-19)
 
-1. Replace the WASI smoke binary's argv/stdout interface with a real JS-callable
-   surface: `#[no_mangle] extern "C"` entry points over wasm memory (alloc/free +
-   pointer/len for the markdown string in, a serialized result out) — the buffer-in
-   / buffer-out shape from `docs/CORE-API.md`. wasm-bindgen targets
-   `wasm32-unknown-unknown`, so under WASI we hand-roll this thin layer.
-2. Instantiate in the browser with a WASI shim; the PWA shell owns the file handle
-   and passes content as bytes (the core never touches the FS in the browser).
+The JS-callable surface is built and proven from a JS host:
+
+- `markdown-core/src/wasm_api.rs` — a hand-rolled C ABI (`wasm-bindgen` targets
+  `wasm32-unknown-unknown`, so under WASI we roll our own): `mc_alloc`/`mc_dealloc`
+  for memory, `mc_diagnose`/`mc_format` taking `(ptr,len)` and returning a
+  length-prefixed (`u32` LE) UTF-8 JSON buffer. The pure `diagnostics_json` /
+  `format_json` are unit-tested natively (5 tests).
+- `scripts/wasm-node-smoke.mjs` — instantiates the cdylib as a WASI reactor under
+  Node and round-trips a markdown string → diagnostics/mutations JSON, exactly as
+  the browser PWA will (only the host runtime differs). Run: `scripts/build-wasm.sh node`.
+
+```
+mc_diagnose -> [{"rule":"heading-hierarchy","severity":"warning","start":9,"end":29,
+                 "message":"Heading level jumps from H1 to H3 (expected H2 or lower)"}]
+mc_format   -> [{"offset":24,"delete":12,"insert":"| a   | b   |\n| --- | --- |\n"}]
+WASM NODE SMOKE: PASS
+```
+
+## Next for EPIC-WASM (remaining)
+
+1. Instantiate in a **real browser** with a WASI shim (e.g. `@bjorn3/browser_wasi_shim`);
+   the PWA shell owns the file handle and passes content as bytes (the core never
+   touches the FS in the browser). The Node harness is the headless equivalent;
+   the browser step is mostly wiring the shim + bundler.
+2. Grow the ABI to the rest of `docs/CORE-API.md` (open/edit/save-buffer/viewport/
+   undo-redo/resolve-wikilink) as the cutover (EPIC-CUTOVER) needs each call.
 3. Capture an in-browser web baseline slice; extend the regression gate.
 
 ## Toolchain notes for whoever picks this up
