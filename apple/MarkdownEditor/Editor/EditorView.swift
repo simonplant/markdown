@@ -5,9 +5,8 @@ import MarkdownCore
 enum EditorMode { case read, author }
 
 /// The document editor: read mode by default (rendered, FEAT-049), one tap (or
-/// the Edit/Done control, or ⌘E) into author mode (TextKit 2 editing). The status
-/// bar is computed THROUGH the Rust core, proving the binding runs in-app.
-/// IOS_BUILD_SPEC §4.
+/// the Edit/Done control, or ⌘E) into TextKit 2 author mode. The status bar is
+/// computed THROUGH the Rust core. Author mode also offers Format Document (M4).
 struct EditorView: View {
   @ObservedObject var document: MarkdownFileDocument
   @State private var mode: EditorMode = .read
@@ -23,16 +22,23 @@ struct EditorView: View {
         }
       }
       Divider()
-      CoreStatusBar(text: document.text, mode: mode) {
-        setMode(mode == .read ? .author : .read)
-      }
+      CoreStatusBar(text: document.text, mode: mode,
+                    onToggle: { setMode(mode == .read ? .author : .read) },
+                    onFormat: formatDocument)
     }
     .navigationTitle("Markdown")
     .navigationBarTitleDisplayMode(.inline)
   }
 
-  /// Crossfade unless Reduce Motion is on (D-A11Y-1 — polish, not the FEAT-015
-  /// "Render" animation).
+  /// Format Document (FEAT-052 / M4) — reformat the whole document through the
+  /// core (all five formatter rules) and replace the text in one step.
+  private func formatDocument() {
+    if let formatted = FormatAction.formatted(document.text) {
+      document.text = formatted
+    }
+  }
+
+  /// Crossfade unless Reduce Motion is on (D-A11Y-1).
   private func setMode(_ next: EditorMode) {
     if UIAccessibility.isReduceMotionEnabled {
       mode = next
@@ -42,24 +48,30 @@ struct EditorView: View {
   }
 }
 
-/// Word count + doctor-issue count (both via `markdown-core`) and the read/author
-/// toggle. Lives in a bottom bar we own, so the toggle never collapses into a
-/// nav-bar overflow menu. M3 moves diagnosis to a debounced background pass.
+/// Word count + doctor-issue count (via `markdown-core`), Format Document (author
+/// mode), and the read/author toggle. In our own bottom bar so controls never
+/// collapse into a nav-bar overflow menu and stay above the keyboard.
 private struct CoreStatusBar: View {
   let text: String
   let mode: EditorMode
-  let toggle: () -> Void
+  let onToggle: () -> Void
+  let onFormat: () -> Void
 
   var body: some View {
     let issues = diagnose(text: text).count
     let words = text.split(whereSeparator: { $0 == " " || $0 == "\n" || $0 == "\t" }).count
-    HStack(spacing: 12) {
+    HStack(spacing: 10) {
       Text("\(words) word\(words == 1 ? "" : "s")")
       Label("\(issues)", systemImage: issues == 0 ? "checkmark.circle" : "exclamationmark.triangle")
         .foregroundStyle(issues == 0 ? Color.secondary : Color.orange)
       Spacer()
-      Button(mode == .read ? "Edit" : "Done", action: toggle)
-        .buttonStyle(.bordered)
+      if mode == .author {
+        Button("Format", action: onFormat)
+          .buttonStyle(.bordered)
+          .keyboardShortcut("f", modifiers: [.command, .shift])
+      }
+      Button(mode == .read ? "Edit" : "Done", action: onToggle)
+        .buttonStyle(.borderedProminent)
         .keyboardShortcut("e", modifiers: .command)
     }
     .font(.footnote)
