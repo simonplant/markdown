@@ -40,6 +40,8 @@ pub fn check(tree: &SyntaxTree, text: &str, ctx: Option<&DoctorContext>) -> Vec<
     let mut diagnostics = Vec::new();
     check_heading_hierarchy(tree, text, &mut diagnostics);
     check_duplicate_headings(tree, text, &mut diagnostics);
+    check_empty_sections(tree, text, &mut diagnostics);
+    check_inconsistent_list_markers(tree, text, &mut diagnostics);
     if let Some(ctx) = ctx {
         check_broken_links(tree, text, ctx, &mut diagnostics);
     }
@@ -153,6 +155,94 @@ fn collect_text(node: &crate::ast::SyntaxNode, text: &str, result: &mut String) 
     } else {
         for child in &node.children {
             collect_text(child, text, result);
+        }
+    }
+}
+
+/// Detect empty/orphaned sections: a heading immediately followed by a sibling
+/// or shallower heading with no content between. A heading followed by a *deeper*
+/// heading (a subsection) is not empty. (FEAT-036 extended doctor rule.)
+fn check_empty_sections(tree: &SyntaxTree, text: &str, diagnostics: &mut Vec<Diagnostic>) {
+    let mut headings: Vec<(u8, usize, usize)> = tree
+        .walk()
+        .filter_map(|node| match node.kind {
+            NodeKind::Heading { level } => Some((level, node.span.start, node.span.end)),
+            _ => None,
+        })
+        .collect();
+    headings.sort_by_key(|h| h.1);
+
+    for pair in headings.windows(2) {
+        let (level, start, end) = pair[0];
+        let (next_level, next_start, _) = pair[1];
+        if next_level <= level && end <= next_start && text[end..next_start].trim().is_empty() {
+            diagnostics.push(Diagnostic {
+                span: (start, end),
+                severity: Severity::Hint,
+                rule: "empty-section",
+                message: "Heading has no content before the next heading".to_string(),
+            });
+        }
+    }
+}
+
+/// Detect a contiguous run of bullet-list lines that mixes `-`, `*`, and `+`
+/// markers. CommonMark splits a marker change into separate lists, so this scans
+/// the source lines (matching user intent) rather than the AST. (FEAT-036.)
+fn check_inconsistent_list_markers(_tree: &SyntaxTree, text: &str, diagnostics: &mut Vec<Diagnostic>) {
+    let mut byte = 0usize;
+    let mut run_start: Option<usize> = None;
+    let mut run_end = 0usize;
+    let mut markers: Vec<char> = Vec::new();
+    let mut items = 0u32;
+
+    for line in text.split_inclusive('\n') {
+        let start = byte;
+        byte += line.len();
+        let t = line.trim_start();
+        let is_item = matches!(t.chars().next(), Some('-') | Some('*') | Some('+'))
+            && matches!(t.chars().nth(1), Some(' ') | Some('\t'));
+        if is_item {
+            if run_start.is_none() {
+                run_start = Some(start);
+                markers.clear();
+                items = 0;
+            }
+            run_end = byte;
+            let m = t.chars().next().unwrap();
+            if !markers.contains(&m) {
+                markers.push(m);
+            }
+            items += 1;
+        } else if t.trim().is_empty() {
+            // Blank line — keep a loose list's run open.
+        } else {
+            flush_list_run(&mut run_start, run_end, &markers, items, diagnostics);
+            markers.clear();
+            items = 0;
+        }
+    }
+    flush_list_run(&mut run_start, run_end, &markers, items, diagnostics);
+}
+
+fn flush_list_run(
+    run_start: &mut Option<usize>,
+    run_end: usize,
+    markers: &[char],
+    items: u32,
+    diagnostics: &mut Vec<Diagnostic>,
+) {
+    if let Some(start) = run_start.take() {
+        if markers.len() > 1 && items >= 2 {
+            diagnostics.push(Diagnostic {
+                span: (start, run_end),
+                severity: Severity::Hint,
+                rule: "inconsistent-list-markers",
+                message: format!(
+                    "List mixes markers ({}) — pick one of -, *, or +",
+                    markers.iter().collect::<String>()
+                ),
+            });
         }
     }
 }
@@ -392,5 +482,49 @@ mod tests {
         let tree = parser::parse(text);
         let diags = check(&tree, text, None);
         assert!(diags.is_empty(), "Clean document should have no diagnostics: {:?}", diags);
+    }
+
+    #[test]
+    fn empty_section_flagged() {
+        let text = "# Title\n\n## Empty\n\n## Has content\n\nText.\n";
+        let tree = parser::parse(text);
+        let diags = check(&tree, text, None);
+        assert!(
+            diags.iter().any(|d| d.rule == "empty-section"),
+            "expected empty-section: {:?}",
+            diags
+        );
+    }
+
+    #[test]
+    fn non_empty_sections_not_flagged() {
+        let text = "# Title\n\nIntro.\n\n## Section\n\nBody.\n";
+        let tree = parser::parse(text);
+        let diags = check(&tree, text, None);
+        assert!(!diags.iter().any(|d| d.rule == "empty-section"), "{:?}", diags);
+    }
+
+    #[test]
+    fn inconsistent_list_markers_flagged() {
+        let text = "- one\n* two\n+ three\n";
+        let tree = parser::parse(text);
+        let diags = check(&tree, text, None);
+        assert!(
+            diags.iter().any(|d| d.rule == "inconsistent-list-markers"),
+            "expected inconsistent-list-markers: {:?}",
+            diags
+        );
+    }
+
+    #[test]
+    fn consistent_list_markers_not_flagged() {
+        let text = "- one\n- two\n- three\n";
+        let tree = parser::parse(text);
+        let diags = check(&tree, text, None);
+        assert!(
+            !diags.iter().any(|d| d.rule == "inconsistent-list-markers"),
+            "{:?}",
+            diags
+        );
     }
 }
