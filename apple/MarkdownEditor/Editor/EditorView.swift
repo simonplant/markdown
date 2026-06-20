@@ -13,6 +13,8 @@ struct EditorView: View {
   @State private var showOutline = false
   @State private var pdfFile: PDFFile?
   @State private var showPDFExport = false
+  @State private var showSettings = false
+  @AppStorage(AppSettings.appearanceKey) private var appearance = "system"
 
   var body: some View {
     VStack(spacing: 0) {
@@ -29,8 +31,10 @@ struct EditorView: View {
                     onToggle: { setMode(mode == .read ? .author : .read) },
                     onFormat: formatDocument,
                     onOutline: { showOutline = true },
-                    onExportPDF: exportPDF)
+                    onExportPDF: exportPDF,
+                    onSettings: { showSettings = true })
     }
+    .preferredColorScheme(AppSettings.colorScheme(appearance))
     .navigationTitle("Markdown")
     #if os(iOS)
     .navigationBarTitleDisplayMode(.inline)
@@ -44,6 +48,7 @@ struct EditorView: View {
     }
     .fileExporter(isPresented: $showPDFExport, document: pdfFile,
                   contentType: .pdf, defaultFilename: "Document") { _ in }
+    .sheet(isPresented: $showSettings) { SettingsView() }
   }
 
   private func formatDocument() {
@@ -99,6 +104,7 @@ private struct CoreStatusBar: View {
   let onFormat: () -> Void
   let onOutline: () -> Void
   let onExportPDF: () -> Void
+  let onSettings: () -> Void
 
   var body: some View {
     let issues = diagnose(text: text).count
@@ -112,6 +118,8 @@ private struct CoreStatusBar: View {
       Button("Outline", systemImage: "list.bullet.indent", action: onOutline)
         .labelStyle(.iconOnly)
       Button("Export PDF", systemImage: "arrow.up.doc", action: onExportPDF)
+        .labelStyle(.iconOnly)
+      Button("Settings", systemImage: "gearshape", action: onSettings)
         .labelStyle(.iconOnly)
       if mode == .author {
         Button("Format", action: onFormat)

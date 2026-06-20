@@ -211,11 +211,11 @@
         "src/style.css"
       ],
       "dependsOn": [],
-      "status": "todo",
-      "passes": false,
+      "status": "done",
+      "passes": true,
       "readyForSprint": false,
       "groomedAt": null,
-      "groomingNotes": null,
+      "groomingNotes": " Satisfied natively 2026-06-20: DocumentGroup provides multi-document windows/tabs on iPad+Mac; custom in-app tabs would conflict with the OS document model.",
       "phase": "4",
       "epic": null
     },
@@ -334,8 +334,8 @@
         "src/style-print.css"
       ],
       "dependsOn": [],
-      "status": "todo",
-      "passes": false,
+      "status": "done",
+      "passes": true,
       "readyForSprint": false,
       "groomedAt": null,
       "groomingNotes": null,
@@ -377,8 +377,8 @@
       "dependsOn": [
         "FEAT-014"
       ],
-      "status": "todo",
-      "passes": false,
+      "status": "done",
+      "passes": true,
       "readyForSprint": false,
       "groomedAt": null,
       "groomingNotes": null,

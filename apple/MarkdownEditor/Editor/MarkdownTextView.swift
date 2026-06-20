@@ -28,7 +28,7 @@ struct MarkdownTextView: NSViewRepresentable {
     let scroll = NSTextView.scrollableTextView()
     let textView = scroll.documentView as! NSTextView
     textView.delegate = context.coordinator
-    textView.font = .monospacedSystemFont(ofSize: 14, weight: .regular)
+    textView.font = .monospacedSystemFont(ofSize: AppSettings.fontSize, weight: .regular)
     textView.string = text
     textView.isRichText = false
     textView.isAutomaticQuoteSubstitutionEnabled = false
@@ -117,7 +117,7 @@ struct MarkdownTextView: UIViewRepresentable {
     let textView = UITextView(usingTextLayoutManager: true) // TextKit 2
     textView.delegate = context.coordinator
     let editorFont = UIFontMetrics(forTextStyle: .body)
-      .scaledFont(for: .monospacedSystemFont(ofSize: 16, weight: .regular))
+      .scaledFont(for: .monospacedSystemFont(ofSize: AppSettings.fontSize, weight: .regular))
     textView.font = editorFont
     textView.adjustsFontForContentSizeCategory = true
     textView.text = text
