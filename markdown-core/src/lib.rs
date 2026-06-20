@@ -6,6 +6,11 @@ pub mod ast;
 pub mod doctor;
 pub mod formatter;
 pub mod parser;
+pub mod wikilinks;
+
+// File watching relies on the OS (`notify`); it has no WebAssembly equivalent,
+// so it is excluded from the wasm32 build. The PWA shell observes files itself.
+#[cfg(not(target_arch = "wasm32"))]
 pub mod watcher;
 
 /// Error surfaced when a file cannot be opened as UTF-8 markdown.

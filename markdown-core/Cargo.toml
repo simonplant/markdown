@@ -3,11 +3,21 @@ name = "markdown-core"
 version = "0.1.0"
 edition = "2021"
 
+# rlib for the workspace (tests, measure bin); cdylib for the WebAssembly module
+# (EPIC-WASM); staticlib for the Apple uniffi binding (EPIC-UNIFFI). One crate,
+# three binding targets — ARCHITECTURE A-STACK-2 / §3.8.
+[lib]
+crate-type = ["rlib", "cdylib", "staticlib"]
+
 [dependencies]
 tree-sitter = "0.26"
 tree-sitter-md = { version = "0.5", features = ["parser"] }
-notify = "6"
 llama-cpp-2 = { version = "0.1.143", optional = true }
+
+# File watching has no WebAssembly equivalent — the PWA shell observes file
+# handles itself. Gated off wasm32 so the core still compiles to the web target.
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+notify = "6"
 
 [features]
 default = []
