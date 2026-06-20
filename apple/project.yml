@@ -37,15 +37,27 @@ targets:
         UISupportsDocumentBrowser: true
         LSSupportsOpeningDocumentsInPlace: true
         UIApplicationSupportsIndirectInputEvents: true
-        # net.daringfireball.markdown is a SYSTEM-declared UTI — reference it, do
-        # not re-declare it (a UTImportedTypeDeclarations entry duplicates the
-        # system type and triggers a "duplicate type identifier" error).
+        # Export the app's OWN markdown UTI (unique id, conforms to plain-text,
+        # owns the .md/.markdown extensions) so new-document CREATION works —
+        # without re-declaring the system net.daringfireball.markdown (which would
+        # trigger a "duplicate type identifier" error). We still READ files typed
+        # by the system as net.daringfireball.markdown.
         CFBundleDocumentTypes:
           - CFBundleTypeName: Markdown
             LSHandlerRank: Owner
             LSItemContentTypes:
+              - com.markdown.editor.markdown
               - net.daringfireball.markdown
               - public.plain-text
+        UTExportedTypeDeclarations:
+          - UTTypeIdentifier: com.markdown.editor.markdown
+            UTTypeConformsTo:
+              - public.plain-text
+            UTTypeDescription: Markdown
+            UTTypeTagSpecification:
+              public.filename-extension:
+                - md
+                - markdown
 
   MarkdownEditorUITests:
     type: bundle.ui-testing

@@ -12,8 +12,12 @@ import MarkdownCore
 final class MarkdownFileDocument: ReferenceFileDocument {
   typealias Snapshot = String
 
-  static var readableContentTypes: [UTType] { [.markdownText, .plainText] }
-  static var writableContentTypes: [UTType] { [.markdownText, .plainText] }
+  // Read .md (our exported type + the system type) and plain text; create/save as
+  // our exported markdown type (which owns the .md extension) so creation works.
+  static var readableContentTypes: [UTType] {
+    [.markdownText, UTType("net.daringfireball.markdown") ?? .plainText, .plainText]
+  }
+  static var writableContentTypes: [UTType] { [.markdownText] }
 
   @Published var text: String
 
@@ -36,8 +40,9 @@ final class MarkdownFileDocument: ReferenceFileDocument {
 }
 
 extension UTType {
-  /// The markdown UTI. `net.daringfireball.markdown` is **system-declared**, so
-  /// we look it up (no `importedAs:`, which would re-declare it and cause a
-  /// "duplicate type identifier" error). Falls back to plain text if absent.
-  static let markdownText = UTType("net.daringfireball.markdown") ?? .plainText
+  /// The app's own exported markdown type (declared in Info.plist's
+  /// UTExportedTypeDeclarations). A unique id avoids the "duplicate type
+  /// identifier" collision with the system `net.daringfireball.markdown`, while
+  /// owning the `.md`/`.markdown` extensions so new-document creation succeeds.
+  static let markdownText = UTType(exportedAs: "com.markdown.editor.markdown")
 }
