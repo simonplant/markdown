@@ -14,6 +14,15 @@ pub mod wikilinks;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod watcher;
 
+// The uniffi binding for the native Apple (iOS/macOS) frontend (EPIC-UNIFFI).
+// Native-only — never compiled for wasm32, where the WASM C-ABI in `wasm_api`
+// is the binding instead. `setup_scaffolding!` registers the exported surface.
+#[cfg(not(target_arch = "wasm32"))]
+mod ffi;
+
+#[cfg(not(target_arch = "wasm32"))]
+uniffi::setup_scaffolding!();
+
 /// Error surfaced when a file cannot be opened as UTF-8 markdown.
 /// Today this covers UTF-16 (BE/LE BOM) and invalid-UTF-8 byte sequences;
 /// other codepages are reported as `Other`.

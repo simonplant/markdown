@@ -41,3 +41,10 @@ baseline-runs/
 # Generated WASM core (build via scripts/build-wasm.sh / npm run build:wasm)
 public/markdown_core.wasm
 dist-web/
+
+# Apple build artifacts (regenerate with apple/scripts/build-rust.sh)
+apple/MarkdownCore.xcframework/
+apple/.uniffi-gen/
+apple/.headers/
+apple/Packages/*/.build/
+.build/

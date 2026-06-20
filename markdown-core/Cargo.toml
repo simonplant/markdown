@@ -17,14 +17,26 @@ llama-cpp-2 = { version = "0.1.143", optional = true }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
-# File watching has no WebAssembly equivalent — the PWA shell observes file
-# handles itself. Gated off wasm32 so the core still compiles to the web target.
+# Native-only deps. File watching has no WebAssembly equivalent, and uniffi (the
+# Apple/Swift binding, EPIC-UNIFFI) is gated off wasm32 so it can't collide with
+# the WASM cdylib binding — the two bindings stay isolated per target.
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 notify = "6"
+uniffi = { version = "0.28", features = ["cli"] }
+thiserror = "1"
 
 [features]
 default = []
 ai = ["llama-cpp-2"]
+# Gates the uniffi-bindgen helper binary so it (and clap) only build when asked.
+uniffi-bin = []
+
+# Swift-binding generator (library mode): reads metadata from the compiled
+# staticlib, so generated Swift can never drift from the exported symbols.
+[[bin]]
+name = "uniffi-bindgen"
+path = "src/bin/uniffi-bindgen.rs"
+required-features = ["uniffi-bin"]
 
 [dev-dependencies]
 serde = { version = "1", features = ["derive"] }
