@@ -1,23 +1,20 @@
+/**
+ * Web / PWA entry point for Markdown.
+ *
+ * Replaces Tauri IPC with browser-native file handling:
+ *  - File System Access API (showOpenFilePicker / showSaveFilePicker) on Chromium
+ *  - <input type="file"> / download-as-file fallback on Firefox / Safari
+ */
+
+import "./style.css";
 import { EditorView, keymap } from "@codemirror/view";
-import { invoke } from "@tauri-apps/api/core";
-import { open, save as saveDialog, ask, message } from "@tauri-apps/plugin-dialog";
-import { listen } from "@tauri-apps/api/event";
-import { getCurrentWindow } from "@tauri-apps/api/window";
 import { initEditor, getContent, setContent } from "./editor";
 import { initPreview, togglePreview, updatePreview } from "./preview";
-import { updateCurrentFilePath } from "./wikilinks";
-// AI wiring is deferred per D-ROAD-3 — see docs/ARCHITECTURE.md §5.
 
-let currentPath: string | null = null;
+let currentHandle: FileSystemFileHandle | null = null;
+let currentFilename: string | null = null;
 let editorView: EditorView;
 let hasUnsavedChanges = false;
-let closingConfirmed = false;
-let suppressDirtyTracking = false;
-
-// Auto-save state
-let lastSavedHash: number = 0;
-let autoSaveTimer: ReturnType<typeof setTimeout> | null = null;
-const AUTO_SAVE_DELAY_MS = 1000;
 
 // FNV-1a hash for content comparison
 function fnv1aHash(str: string): number {
@@ -29,6 +26,8 @@ function fnv1aHash(str: string): number {
   return hash;
 }
 
+let lastSavedHash: number = 0;
+
 function showSaveIndicator(): void {
   const el = document.getElementById("stat-save");
   if (!el) return;
@@ -39,207 +38,159 @@ function showSaveIndicator(): void {
   }, 2000);
 }
 
-function scheduleAutoSave(): void {
-  if (autoSaveTimer !== null) {
-    clearTimeout(autoSaveTimer);
-  }
-  // Skip untitled documents (no file path yet)
-  if (!currentPath) return;
-
-  autoSaveTimer = setTimeout(async () => {
-    autoSaveTimer = null;
-    if (!currentPath) return;
-
-    const content = getContent();
-    const hash = fnv1aHash(content);
-    if (hash === lastSavedHash) return;
-
-    try {
-      await invoke("save_file", { path: currentPath, content });
-      lastSavedHash = hash;
-      hasUnsavedChanges = false;
-      updateTitle();
-      showSaveIndicator();
-    } catch {
-      // Auto-save failed silently — user can still save manually
-    }
-  }, AUTO_SAVE_DELAY_MS);
-}
-
 function updateTitle(): void {
-  const filename = currentPath ? currentPath.split("/").pop() : "Untitled";
+  const filename = currentFilename || "Untitled";
   const prefix = hasUnsavedChanges ? "\u25CF " : "";
   document.title = `${prefix}${filename} \u2014 Markdown`;
 }
 
-async function handleSaveAs(): Promise<boolean> {
-  const path = await saveDialog({
-    filters: [{ name: "Markdown", extensions: ["md"] }],
-  });
-  if (!path) return false;
-  const content = getContent();
-  await invoke("save_file", { path, content });
-  currentPath = path;
-  hasUnsavedChanges = false;
-  lastSavedHash = fnv1aHash(content);
-  if (autoSaveTimer !== null) { clearTimeout(autoSaveTimer); autoSaveTimer = null; }
-  updateTitle();
-  updateCurrentFilePath(editorView, currentPath);
-  await invoke("add_recent_file", { path });
-  startWatchingCurrentFile();
-  return true;
+// --- File System Access API detection ---
+
+function hasFileSystemAccess(): boolean {
+  return "showOpenFilePicker" in window;
 }
 
-async function handleSave(): Promise<void> {
-  if (!currentPath) {
-    await handleSaveAs();
-    return;
-  }
-  const content = getContent();
-  await invoke("save_file", { path: currentPath, content });
+// --- Open ---
+
+async function openWithFSA(): Promise<void> {
+  const [handle] = await window.showOpenFilePicker({
+    types: [
+      {
+        description: "Markdown",
+        accept: { "text/markdown": [".md", ".markdown"] },
+      },
+    ],
+    multiple: false,
+  });
+  const file = await handle.getFile();
+  const text = await file.text();
+  currentHandle = handle;
+  currentFilename = file.name;
+  setContent(text);
   hasUnsavedChanges = false;
-  lastSavedHash = fnv1aHash(content);
-  if (autoSaveTimer !== null) { clearTimeout(autoSaveTimer); autoSaveTimer = null; }
+  lastSavedHash = fnv1aHash(text);
   updateTitle();
-  await invoke("add_recent_file", { path: currentPath });
+  updatePreview(text);
+}
+
+async function openWithFallback(): Promise<void> {
+  return new Promise<void>((resolve) => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".md,.markdown,text/markdown";
+    input.onchange = async () => {
+      const file = input.files?.[0];
+      if (!file) {
+        resolve();
+        return;
+      }
+      const text = await file.text();
+      currentHandle = null;
+      currentFilename = file.name;
+      setContent(text);
+      hasUnsavedChanges = false;
+      lastSavedHash = fnv1aHash(text);
+      updateTitle();
+      updatePreview(text);
+      resolve();
+    };
+    // Handle cancel (no change event fires)
+    input.oncancel = () => resolve();
+    input.click();
+  });
 }
 
 async function handleOpen(): Promise<void> {
-  // Prompt for unsaved changes before replacing current content
   if (hasUnsavedChanges) {
-    const filename = currentPath ? currentPath.split("/").pop() : "Untitled";
-    const wantSave = await ask(
-      `Do you want to save changes to "${filename}"?`,
-      {
-        title: "Unsaved Changes",
-        kind: "warning",
-        okLabel: "Save",
-        cancelLabel: "Don\u2019t Save",
-      },
-    );
-    if (wantSave) {
-      if (currentPath) {
-        await handleSave();
-      } else {
-        const saved = await handleSaveAs();
-        if (!saved) return; // Cancelled save-as, abort open
-      }
+    const filename = currentFilename || "Untitled";
+    if (!confirm(`You have unsaved changes to "${filename}". Discard and open a new file?`)) {
+      return;
     }
   }
 
-  const selected = await open({
-    filters: [{ name: "Markdown", extensions: ["md"] }],
-  });
-  if (!selected) return;
-
-  const text = await invoke<string>("open_file", { path: selected });
-  suppressDirtyTracking = true;
-  setContent(text);
-  suppressDirtyTracking = false;
-  currentPath = selected;
-  hasUnsavedChanges = false;
-  lastSavedHash = fnv1aHash(text);
-  if (autoSaveTimer !== null) { clearTimeout(autoSaveTimer); autoSaveTimer = null; }
-  updateTitle();
-  updatePreview(text);
-  updateCurrentFilePath(editorView, currentPath);
-
-  await invoke("add_recent_file", { path: selected });
-  startWatchingCurrentFile();
-}
-
-async function handleNew(): Promise<void> {
-  await invoke("create_window", { filePath: null });
-}
-
-async function startWatchingCurrentFile(): Promise<void> {
-  if (!currentPath) return;
   try {
-    await invoke("start_watching", { path: currentPath });
-  } catch {
-    // File watching is best-effort — editor works without it
+    if (hasFileSystemAccess()) {
+      await openWithFSA();
+    } else {
+      await openWithFallback();
+    }
+  } catch (e: unknown) {
+    // User cancelled the picker — not an error
+    if (e instanceof DOMException && e.name === "AbortError") return;
+    throw e;
   }
 }
 
-async function handleFileChangedExternally(kind: string, path: string): Promise<void> {
-  // Ignore events for a different file (e.g. stale event after navigation)
-  if (path !== currentPath) return;
+// --- Save ---
 
-  if (kind === "deleted") {
-    await message(
-      "This file has been deleted or moved from disk.\n\nYou can save your current content to a new location using File > Save As.",
-      { title: "File Deleted", kind: "warning" },
-    );
+async function saveWithFSA(): Promise<void> {
+  if (!currentHandle) {
+    await saveAsWithFSA();
     return;
   }
+  const content = getContent();
+  const writable = await currentHandle.createWritable();
+  await writable.write(content);
+  await writable.close();
+  hasUnsavedChanges = false;
+  lastSavedHash = fnv1aHash(content);
+  updateTitle();
+  showSaveIndicator();
+}
 
-  // kind === "modified"
-  if (!hasUnsavedChanges) {
-    // No unsaved changes — reload silently
-    try {
-      const text = await invoke<string>("open_file", { path });
-      suppressDirtyTracking = true;
-      setContent(text);
-      suppressDirtyTracking = false;
-      hasUnsavedChanges = false;
-      lastSavedHash = fnv1aHash(text);
-      if (autoSaveTimer !== null) { clearTimeout(autoSaveTimer); autoSaveTimer = null; }
-      updateTitle();
-      updatePreview(text);
-    } catch {
-      // File may have been deleted between event and reload attempt
-    }
-    return;
-  }
-
-  // Unsaved changes exist — show conflict dialog
-  const reload = await ask(
-    "This file was changed externally.\n\nReload the external version or keep your changes?",
-    {
-      title: "File Changed Externally",
-      kind: "warning",
-      okLabel: "Reload External Version",
-      cancelLabel: "Keep My Version",
-    },
-  );
-
-  if (reload) {
-    // Reload the external version
-    try {
-      const text = await invoke<string>("open_file", { path });
-      suppressDirtyTracking = true;
-      setContent(text);
-      suppressDirtyTracking = false;
-      hasUnsavedChanges = false;
-      lastSavedHash = fnv1aHash(text);
-      if (autoSaveTimer !== null) { clearTimeout(autoSaveTimer); autoSaveTimer = null; }
-      updateTitle();
-      updatePreview(text);
-    } catch {
-      // File may have been deleted
-    }
-  } else {
-    // User chose "Keep My Version" — offer to show diff
-    const showDiff = await ask(
-      "Would you like to see the external version for comparison?",
+async function saveAsWithFSA(): Promise<void> {
+  const handle = await window.showSaveFilePicker({
+    suggestedName: currentFilename || "untitled.md",
+    types: [
       {
-        title: "Show Diff",
-        okLabel: "Show External Version",
-        cancelLabel: "Dismiss",
+        description: "Markdown",
+        accept: { "text/markdown": [".md", ".markdown"] },
       },
-    );
-    if (showDiff) {
-      // Open the external version in a new window for side-by-side comparison
-      try {
-        await invoke("create_window", { filePath: path });
-      } catch {
-        // Best effort
-      }
+    ],
+  });
+  currentHandle = handle;
+  currentFilename = handle.name;
+  const content = getContent();
+  const writable = await handle.createWritable();
+  await writable.write(content);
+  await writable.close();
+  hasUnsavedChanges = false;
+  lastSavedHash = fnv1aHash(content);
+  updateTitle();
+  showSaveIndicator();
+}
+
+function saveWithFallback(): void {
+  const content = getContent();
+  const blob = new Blob([content], { type: "text/markdown" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = currentFilename || "untitled.md";
+  a.click();
+  URL.revokeObjectURL(url);
+  hasUnsavedChanges = false;
+  lastSavedHash = fnv1aHash(content);
+  updateTitle();
+  showSaveIndicator();
+}
+
+async function handleSave(): Promise<void> {
+  try {
+    if (hasFileSystemAccess()) {
+      await saveWithFSA();
+    } else {
+      saveWithFallback();
     }
+  } catch (e: unknown) {
+    if (e instanceof DOMException && e.name === "AbortError") return;
+    throw e;
   }
 }
 
-document.addEventListener("DOMContentLoaded", async () => {
+// --- Init ---
+
+document.addEventListener("DOMContentLoaded", () => {
   const editorEl = document.getElementById("editor")!;
 
   initPreview();
@@ -251,6 +202,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         handleSave();
         return true;
       },
+      preventDefault: true,
     },
     {
       key: "Mod-Shift-p",
@@ -261,106 +213,34 @@ document.addEventListener("DOMContentLoaded", async () => {
     },
   ]);
 
-  // Track dirty state, update preview, and schedule auto-save
   const dirtyTracker = EditorView.updateListener.of((update) => {
-    if (update.docChanged && !suppressDirtyTracking) {
+    if (update.docChanged) {
       hasUnsavedChanges = true;
       updateTitle();
       updatePreview(update.state.doc.toString());
-      scheduleAutoSave();
     }
   });
 
   editorView = initEditor(editorEl, [saveKeymap, dirtyTracker]);
 
-  // Check for a pending file open (e.g. from Open Recent creating this window)
-  try {
-    const pendingPath = await invoke<string | null>("get_pending_open");
-    if (pendingPath) {
-      const text = await invoke<string>("open_file", { path: pendingPath });
-      suppressDirtyTracking = true;
-      setContent(text);
-      suppressDirtyTracking = false;
-      currentPath = pendingPath;
-      hasUnsavedChanges = false;
-      lastSavedHash = fnv1aHash(text);
-      updateTitle();
-      updatePreview(text);
-      updateCurrentFilePath(editorView, currentPath);
-      startWatchingCurrentFile();
-    }
-  } catch {
-    // No pending open — start with empty document
-  }
-
   document.getElementById("btn-open")!.addEventListener("click", handleOpen);
   document.getElementById("btn-preview")!.addEventListener("click", () => {
     togglePreview(getContent);
   });
-  // Settings button and AI mode indicator are hidden until the AI phase ships (D-ROAD-3).
 
-  listen("menu-open", handleOpen);
-  listen("menu-save", handleSave);
-  listen("menu-new", handleNew);
-
-  // Listen for external file change events from the backend file watcher
-  listen<{ kind: string; path: string }>("file-changed-externally", (event) => {
-    handleFileChangedExternally(event.payload.kind, event.payload.path);
-  });
-
-  // Handle wikilink navigation events from wikilinks.ts.
-  // This fires synchronously BEFORE the view.dispatch that changes content,
-  // so we set suppressDirtyTracking here and clear it in a microtask after
-  // the synchronous dispatch completes.
-  window.addEventListener("wikilink-navigate", ((event: CustomEvent) => {
-    const path = event.detail?.path;
-    if (path) {
-      suppressDirtyTracking = true;
-      currentPath = path;
-      hasUnsavedChanges = false;
-      if (autoSaveTimer !== null) { clearTimeout(autoSaveTimer); autoSaveTimer = null; }
-      updateTitle();
-      // Re-enable dirty tracking after the synchronous view.dispatch completes
-      queueMicrotask(() => {
-        const content = getContent();
-        lastSavedHash = fnv1aHash(content);
-        updatePreview(content);
-        suppressDirtyTracking = false;
-      });
-      startWatchingCurrentFile();
+  // Warn before leaving with unsaved changes
+  window.addEventListener("beforeunload", (e) => {
+    if (hasUnsavedChanges) {
+      e.preventDefault();
     }
-  }) as EventListener);
-
-  // Intercept window close to prompt for unsaved changes
-  getCurrentWindow().onCloseRequested(async (event) => {
-    if (closingConfirmed || !hasUnsavedChanges) return;
-
-    event.preventDefault();
-
-    const filename = currentPath ? currentPath.split("/").pop() : "Untitled";
-    const wantSave = await ask(
-      `Do you want to save changes to "${filename}"?`,
-      {
-        title: "Unsaved Changes",
-        kind: "warning",
-        okLabel: "Save",
-        cancelLabel: "Don\u2019t Save",
-      },
-    );
-
-    if (wantSave) {
-      if (currentPath) {
-        await handleSave();
-      } else {
-        const saved = await handleSaveAs();
-        if (!saved) return; // Cancelled save-as dialog — abort close
-      }
-    }
-
-    // Proceed with close (either saved or discarded)
-    closingConfirmed = true;
-    await invoke("close_current_window");
   });
 
   updateTitle();
+
+  // Register service worker for PWA offline support
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("/sw.js").catch(() => {
+      // Service worker registration failed — app still works without offline support
+    });
+  }
 });

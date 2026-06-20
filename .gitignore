@@ -37,3 +37,7 @@ Thumbs.db
 
 # Baseline output (captured by FEAT-006; committed to docs/baseline.json, not build artifacts)
 baseline-runs/
+
+# Generated WASM core (build via scripts/build-wasm.sh / npm run build:wasm)
+public/markdown_core.wasm
+dist-web/

@@ -10,7 +10,7 @@
  * Only active in author mode. Read mode suppresses the visual layer.
  */
 
-import { invoke } from "@tauri-apps/api/core";
+import { diagnose } from "./core-wasm";
 import {
   Decoration,
   EditorView,
@@ -177,7 +177,7 @@ const doctorTheme = EditorView.baseTheme({
   },
 });
 
-/** Debounced runner that calls the Tauri command and dispatches diagnostics. */
+/** Debounced runner that calls the WASM core and dispatches diagnostics. */
 function makeRunner(view: EditorView): () => void {
   let timer: ReturnType<typeof setTimeout> | null = null;
   let inflight = 0;
@@ -187,7 +187,7 @@ function makeRunner(view: EditorView): () => void {
       timer = null;
       const myToken = ++inflight;
       try {
-        const diags = await invoke<Diagnostic[]>("document_diagnose");
+        const diags = (await diagnose(view.state.doc.toString())) as Diagnostic[];
         if (myToken !== inflight) return; // superseded by a newer request
         view.dispatch({ effects: setDiagnostics.of(diags) });
       } catch {

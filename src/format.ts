@@ -7,18 +7,12 @@
  * formatting pass).
  */
 
-import { invoke } from "@tauri-apps/api/core";
 import { EditorView } from "@codemirror/view";
-
-interface Mutation {
-  offset: number;
-  delete: number;
-  insert: string;
-}
+import { format } from "./core-wasm";
 
 export async function formatDocument(view: EditorView): Promise<boolean> {
   try {
-    const mutations = await invoke<Mutation[]>("document_format");
+    const mutations = await format(view.state.doc.toString());
     if (mutations.length === 0) return true;
     // Backend returns mutations sorted offset-descending so we can apply
     // without recomputing offsets — but CodeMirror's TransactionSpec expects

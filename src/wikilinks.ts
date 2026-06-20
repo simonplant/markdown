@@ -19,8 +19,13 @@ import {
   type ViewUpdate,
 } from "@codemirror/view";
 import { StateField, StateEffect, type Extension, type Range } from "@codemirror/state";
-import { invoke } from "@tauri-apps/api/core";
-import { ask } from "@tauri-apps/plugin-dialog";
+
+// NOTE (EPIC-CUTOVER): wikilink *navigation* and *backlinks* resolve against real
+// filesystem paths, which the web build does not have — the browser holds file
+// handles, not a path tree. Rendering/decoration of [[links]] still works; the
+// navigation and backlink-scan operations are degraded to no-ops here until a
+// directory-handle model lands. The path-based engine logic lives in
+// markdown-core::wikilinks, reached by the (future) native Apple frontend.
 
 // ---------------------------------------------------------------------------
 // Types
@@ -142,69 +147,11 @@ function findWikilinkAtPos(
   return null;
 }
 
-async function navigateToWikilink(view: EditorView, linkText: string): Promise<void> {
-  const currentPath = view.state.field(currentFilePathField);
-  if (!currentPath) return;
-
-  try {
-    const resolved = await invoke<string | null>("resolve_wikilink", {
-      linkText,
-      currentFilePath: currentPath,
-    });
-
-    if (resolved) {
-      // Open the resolved file
-      const text = await invoke<string>("open_file", { path: resolved });
-      await invoke("add_recent_file", { path: resolved });
-
-      // Notify main.ts BEFORE content change so it can suppress dirty tracking
-      // (CustomEvent dispatch is synchronous)
-      window.dispatchEvent(
-        new CustomEvent("wikilink-navigate", { detail: { path: resolved } }),
-      );
-
-      // Dispatch content change
-      view.dispatch({
-        changes: { from: 0, to: view.state.doc.length, insert: text },
-        effects: setCurrentFilePath.of(resolved),
-      });
-    } else {
-      // Target doesn't exist — offer to create it
-      const filename = linkText.endsWith(".md") ? linkText : `${linkText}.md`;
-      const wantCreate = await ask(
-        `"${filename}" does not exist. Create it?`,
-        {
-          title: "Create File",
-          kind: "info",
-          okLabel: "Create",
-          cancelLabel: "Cancel",
-        },
-      );
-
-      if (wantCreate) {
-        const createdPath = await invoke<string>("create_wikilink_target", {
-          linkText,
-          currentFilePath: currentPath,
-        });
-
-        // Open the newly created file
-        const text = await invoke<string>("open_file", { path: createdPath });
-        await invoke("add_recent_file", { path: createdPath });
-
-        // Notify main.ts BEFORE content change
-        window.dispatchEvent(
-          new CustomEvent("wikilink-navigate", { detail: { path: createdPath } }),
-        );
-
-        view.dispatch({
-          changes: { from: 0, to: view.state.doc.length, insert: text },
-          effects: setCurrentFilePath.of(createdPath),
-        });
-      }
-    }
-  } catch (err) {
-    console.error("Wikilink navigation failed:", err);
-  }
+async function navigateToWikilink(_view: EditorView, linkText: string): Promise<void> {
+  // Degraded in the web build — see the module note. Path resolution and file
+  // creation need a real filesystem; the browser will get this via a
+  // directory-handle model in a later pass.
+  console.warn(`Wikilink navigation is not available in the web build yet: [[${linkText}]]`);
 }
 
 const wikilinkClickHandler = EditorView.domEventHandlers({
@@ -247,18 +194,10 @@ const wikilinkCursorStyle = EditorView.domEventHandlers({
 // ---------------------------------------------------------------------------
 
 /** Compute backlinks for the current file on demand. */
-export async function computeBacklinks(view: EditorView): Promise<Backlink[]> {
-  const currentPath = view.state.field(currentFilePathField);
-  if (!currentPath) return [];
-
-  try {
-    return await invoke<Backlink[]>("compute_backlinks", {
-      filePath: currentPath,
-    });
-  } catch (err) {
-    console.error("Backlink computation failed:", err);
-    return [];
-  }
+export async function computeBacklinks(_view: EditorView): Promise<Backlink[]> {
+  // Degraded in the web build — backlink scanning needs filesystem access
+  // across the .md tree. Returns empty until the directory-handle model lands.
+  return [];
 }
 
 // ---------------------------------------------------------------------------
@@ -346,20 +285,10 @@ class BacklinksPanel {
       item.appendChild(lineEl);
       item.appendChild(ctxEl);
 
-      item.addEventListener("click", async () => {
-        try {
-          const text = await invoke<string>("open_file", { path: bl.path });
-          await invoke("add_recent_file", { path: bl.path });
-          this.view.dispatch({
-            changes: { from: 0, to: this.view.state.doc.length, insert: text },
-            effects: setCurrentFilePath.of(bl.path),
-          });
-          window.dispatchEvent(
-            new CustomEvent("wikilink-navigate", { detail: { path: bl.path } }),
-          );
-        } catch (err) {
-          console.error("Failed to open backlink:", err);
-        }
+      item.addEventListener("click", () => {
+        // Opening a backlink target needs filesystem path access — degraded in
+        // the web build (the panel is empty here anyway; see computeBacklinks).
+        console.warn("Opening backlinks is not available in the web build yet.");
       });
 
       this.list.appendChild(item);
