@@ -132,6 +132,13 @@ enum MarkdownRenderer {
       if ss > cursor {
         out.append(NSAttributedString(string: slice(bytes, cursor, ss), attributes: attributes(base)))
       }
+      // Images render as an attachment (data: URIs) or alt text — not a styled
+      // text slice (FEAT-042). Markdown markup is hidden either way.
+      if case .image(let source) = s.kind {
+        appendImage(source: source, span: (ss, se), bytes: bytes, base: base, into: out)
+        cursor = se
+        continue
+      }
       var st = base
       var innerStart = ss, innerEnd = se
       switch s.kind {
@@ -162,12 +169,31 @@ enum MarkdownRenderer {
   private static func collectStyled(_ node: AstNode, into arr: inout [AstNode]) {
     for c in node.children {
       switch c.kind {
-      case .strong, .emphasis, .strikethrough, .inlineCode, .link, .autolink:
+      case .strong, .emphasis, .strikethrough, .inlineCode, .link, .autolink, .image:
         arr.append(c)
       default:
         collectStyled(c, into: &arr)
       }
     }
+  }
+
+  /// Render an image reference: a `data:` URI becomes an inline attachment;
+  /// otherwise show the alt text with an image glyph (remote/local images need
+  /// async loading / sandbox access — a later pass). FEAT-042.
+  private static func appendImage(source: String?, span: (Int, Int), bytes: [UInt8],
+                                  base: Style, into out: NSMutableAttributedString) {
+    if let src = source, src.hasPrefix("data:"),
+       let comma = src.firstIndex(of: ","),
+       let data = Data(base64Encoded: String(src[src.index(after: comma)...])),
+       let image = PlatformImage(data: data) {
+      let attachment = NSTextAttachment()
+      attachment.image = image
+      out.append(NSAttributedString(attachment: attachment))
+      return
+    }
+    let full = slice(bytes, span.0, span.1)
+    let alt = full.drop(while: { $0 != "[" }).dropFirst().prefix(while: { $0 != "]" })
+    out.append(NSAttributedString(string: "🖼 \(alt)", attributes: attributes(base)))
   }
 
   private static func attributes(_ style: Style) -> [NSAttributedString.Key: Any] {

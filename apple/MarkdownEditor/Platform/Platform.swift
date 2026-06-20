@@ -9,6 +9,7 @@ import AppKit
 
 typealias PlatformColor = NSColor
 typealias PlatformFont = NSFont
+typealias PlatformImage = NSImage
 
 extension PlatformColor {
   static var labelCompat: NSColor { .labelColor }
@@ -35,6 +36,7 @@ import UIKit
 
 typealias PlatformColor = UIColor
 typealias PlatformFont = UIFont
+typealias PlatformImage = UIImage
 
 extension PlatformColor {
   static var labelCompat: UIColor { .label }
