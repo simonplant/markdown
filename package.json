@@ -6,6 +6,8 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "build:web": "vite build --config vite.config.web.ts && mv dist-web/index-web.html dist-web/index.html",
+    "build:wasm": "bash scripts/build-wasm.sh",
+    "test:wasm": "bash scripts/build-wasm.sh node",
     "tauri": "cargo tauri"
   },
   "dependencies": {
