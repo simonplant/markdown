@@ -38,8 +38,8 @@
       "dependsOn": [
         "FEAT-011"
       ],
-      "status": "todo",
-      "passes": false,
+      "status": "done",
+      "passes": true,
       "readyForSprint": false,
       "groomedAt": null,
       "groomingNotes": null,
@@ -170,8 +170,8 @@
       "dependsOn": [
         "FEAT-012"
       ],
-      "status": "todo",
-      "passes": false,
+      "status": "done",
+      "passes": true,
       "readyForSprint": false,
       "groomedAt": null,
       "groomingNotes": null,
