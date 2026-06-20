@@ -59,6 +59,48 @@ targets:
                 - md
                 - markdown
 
+  # macOS app — same sources, same Rust core; the views shim UIKit→AppKit via
+  # Platform.swift / #if os (IOS_BUILD_SPEC M9: iOS + macOS share the surface).
+  MarkdownEditorMac:
+    type: application
+    platform: macOS
+    sources:
+      - path: MarkdownEditor
+    dependencies:
+      - package: MarkdownCore
+        product: MarkdownCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.markdown.editor.mac
+        PRODUCT_NAME: MarkdownEditor
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        SWIFT_VERSION: "5.0"
+        MACOSX_DEPLOYMENT_TARGET: "14.0"
+        CODE_SIGNING_ALLOWED: "NO"
+        CODE_SIGNING_REQUIRED: "NO"
+        ENABLE_HARDENED_RUNTIME: "NO"
+    info:
+      path: MarkdownEditorMac/Info.plist
+      properties:
+        LSApplicationCategoryType: public.app-category.productivity
+        CFBundleDocumentTypes:
+          - CFBundleTypeName: Markdown
+            LSHandlerRank: Owner
+            LSItemContentTypes:
+              - com.markdown.editor.markdown
+              - net.daringfireball.markdown
+              - public.plain-text
+        UTExportedTypeDeclarations:
+          - UTTypeIdentifier: com.markdown.editor.markdown
+            UTTypeConformsTo:
+              - public.plain-text
+            UTTypeDescription: Markdown
+            UTTypeTagSpecification:
+              public.filename-extension:
+                - md
+                - markdown
+
   MarkdownEditorUITests:
     type: bundle.ui-testing
     platform: iOS
@@ -86,3 +128,9 @@ schemes:
       config: Debug
       targets:
         - MarkdownEditorUITests
+  MarkdownEditorMac:
+    build:
+      targets:
+        MarkdownEditorMac: all
+    run:
+      config: Debug

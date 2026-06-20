@@ -1,14 +1,18 @@
+#if os(macOS)
+import AppKit
+#else
 import UIKit
+#endif
 import MarkdownCore
 
 /// Renders markdown to a styled `NSAttributedString` for read mode (FEAT-049).
 ///
 /// The core's `AstNode` gives reliable **byte-offset spans** and node kinds, but
 /// not inline text (tree-sitter's inline text leaves are unnamed and dropped, so
-/// `node.text` is nil) — exactly like the doctor/formatter, which slice the
-/// *source* by span. So this renderer takes the source bytes and the AST, slices
-/// content by span, and strips markers (`#`, `**`, `*`, backticks, `~~`, link
-/// brackets) using the styled nodes' spans. IOS_BUILD_SPEC §4.3.
+/// `node.text` is nil) — like the doctor/formatter, which slice the *source* by
+/// span. So this renderer slices the source bytes and strips markers (`#`, `**`,
+/// `*`, backticks, `~~`, link brackets) using the styled nodes' spans.
+/// Cross-platform (UIColor/NSColor via the Platform shims). IOS_BUILD_SPEC §4.3.
 enum MarkdownRenderer {
 
   static func render(_ text: String) -> NSAttributedString {
@@ -26,7 +30,6 @@ enum MarkdownRenderer {
 
   // MARK: Block structure
 
-  /// Flatten the (possibly nested) `document` wrappers into a flat block list.
   private static func blocks(of node: AstNode) -> [AstNode] {
     if case .document = node.kind {
       return node.children.flatMap { blocks(of: $0) }
@@ -41,7 +44,7 @@ enum MarkdownRenderer {
       let end = trimWhitespace(start, Int(node.span.end), bytes: bytes, alsoHashes: true)
       let sizes: [CGFloat] = [30, 24, 20, 18, 16, 15]
       var style = Style()
-      style.fontOverride = .systemFont(ofSize: sizes[min(max(Int(level) - 1, 0), 5)], weight: .bold)
+      style.fontOverride = PlatformFont.systemFont(ofSize: sizes[min(max(Int(level) - 1, 0), 5)], weight: .bold)
       blockSpacing(out)
       appendInline(node, contentStart: start, contentEnd: end, bytes: bytes, base: style, into: out)
 
@@ -53,11 +56,10 @@ enum MarkdownRenderer {
 
     case .blockQuote:
       blockSpacing(out)
-      let bar = NSMutableAttributedString(string: "▏ ", attributes: [.foregroundColor: UIColor.tertiaryLabel])
-      out.append(bar)
+      out.append(NSAttributedString(string: "▏ ", attributes: [.foregroundColor: PlatformColor.tertiaryLabelCompat]))
       let inner = NSMutableAttributedString()
       for child in node.children { appendBlock(child, bytes: bytes, into: inner, indent: indent) }
-      inner.addAttribute(.foregroundColor, value: UIColor.secondaryLabel, range: NSRange(location: 0, length: inner.length))
+      inner.addAttribute(.foregroundColor, value: PlatformColor.secondaryLabelCompat, range: NSRange(location: 0, length: inner.length))
       out.append(inner)
 
     case .unorderedList, .orderedList:
@@ -66,16 +68,12 @@ enum MarkdownRenderer {
         blockSpacing(out)
         let marker = node.kind.isOrdered ? "\(number).  " : "•  "
         out.append(NSAttributedString(string: String(repeating: "    ", count: indent) + marker,
-                                      attributes: [.foregroundColor: UIColor.secondaryLabel,
-                                                   .font: UIFont.preferredFont(forTextStyle: .body)]))
+                                      attributes: [.foregroundColor: PlatformColor.secondaryLabelCompat,
+                                                   .font: PlatformFont.bodyFont]))
         for sub in child.children {
           switch sub.kind {
           case .unorderedList, .orderedList:
             appendBlock(sub, bytes: bytes, into: out, indent: indent + 1)
-          case .paragraph:
-            appendInline(sub, contentStart: Int(sub.span.start),
-                         contentEnd: trimWhitespace(Int(sub.span.start), Int(sub.span.end), bytes: bytes, alsoHashes: false),
-                         bytes: bytes, base: Style(), into: out)
           default:
             appendInline(sub, contentStart: Int(sub.span.start),
                          contentEnd: trimWhitespace(Int(sub.span.start), Int(sub.span.end), bytes: bytes, alsoHashes: false),
@@ -87,21 +85,20 @@ enum MarkdownRenderer {
 
     case .fencedCodeBlock, .indentedCodeBlock:
       blockSpacing(out)
-      let code = codeBlockContent(node, bytes: bytes)
-      out.append(NSAttributedString(string: code, attributes: [
-        .font: UIFont.monospacedSystemFont(ofSize: 14, weight: .regular),
-        .foregroundColor: UIColor.label,
-        .backgroundColor: UIColor.secondarySystemBackground,
+      out.append(NSAttributedString(string: codeBlockContent(node, bytes: bytes), attributes: [
+        .font: PlatformFont.monospacedSystemFont(ofSize: 14, weight: .regular),
+        .foregroundColor: PlatformColor.labelCompat,
+        .backgroundColor: PlatformColor.secondaryFillCompat,
       ]))
 
     case .thematicBreak:
       blockSpacing(out)
-      out.append(NSAttributedString(string: "—————", attributes: [.foregroundColor: UIColor.tertiaryLabel]))
+      out.append(NSAttributedString(string: "—————", attributes: [.foregroundColor: PlatformColor.tertiaryLabelCompat]))
 
     case .table:
       blockSpacing(out)
-      let raw = slice(bytes, Int(node.span.start), Int(node.span.end))
-      out.append(NSAttributedString(string: raw, attributes: [.font: UIFont.monospacedSystemFont(ofSize: 13, weight: .regular)]))
+      out.append(NSAttributedString(string: slice(bytes, Int(node.span.start), Int(node.span.end)),
+                                    attributes: [.font: PlatformFont.monospacedSystemFont(ofSize: 13, weight: .regular)]))
 
     default:
       blockSpacing(out)
@@ -119,11 +116,9 @@ enum MarkdownRenderer {
     var code = false
     var strike = false
     var link = false
-    var fontOverride: UIFont?
+    var fontOverride: PlatformFont?
   }
 
-  /// Render `[contentStart, contentEnd)` of `node`'s source, applying the styled
-  /// inline descendants (strong/emphasis/…) and stripping their markers.
   private static func appendInline(_ node: AstNode, contentStart: Int, contentEnd: Int,
                                    bytes: [UInt8], base: Style, into out: NSMutableAttributedString) {
     var styled: [AstNode] = []
@@ -133,30 +128,26 @@ enum MarkdownRenderer {
     var cursor = contentStart
     for s in styled {
       let ss = Int(s.span.start), se = Int(s.span.end)
-      if ss < cursor || se > contentEnd || se <= ss { continue } // skip nested / out of range
+      if ss < cursor || se > contentEnd || se <= ss { continue }
       if ss > cursor {
         out.append(NSAttributedString(string: slice(bytes, cursor, ss), attributes: attributes(base)))
       }
       var st = base
       var innerStart = ss, innerEnd = se
       switch s.kind {
-      case .strong:
-        st.bold = true; innerStart = ss + 2; innerEnd = se - 2
-      case .emphasis:
-        st.italic = true; innerStart = ss + 1; innerEnd = se - 1
-      case .strikethrough:
-        st.strike = true; innerStart = ss + 2; innerEnd = se - 2
+      case .strong: st.bold = true; innerStart = ss + 2; innerEnd = se - 2
+      case .emphasis: st.italic = true; innerStart = ss + 1; innerEnd = se - 1
+      case .strikethrough: st.strike = true; innerStart = ss + 2; innerEnd = se - 2
       case .inlineCode:
         st.code = true
         let ticks = leadingCount(0x60, from: ss, end: se, bytes: bytes)
         innerStart = ss + ticks; innerEnd = se - ticks
       case .link:
         st.link = true
-        if let close = firstIndex(of: 0x5D, from: ss, end: se, bytes: bytes) { // ']'
+        if let close = firstIndex(of: 0x5D, from: ss, end: se, bytes: bytes) {
           innerStart = ss + 1; innerEnd = close
         }
-      default:
-        break
+      default: break
       }
       if innerEnd >= innerStart {
         out.append(NSAttributedString(string: slice(bytes, innerStart, innerEnd), attributes: attributes(st)))
@@ -180,26 +171,18 @@ enum MarkdownRenderer {
   }
 
   private static func attributes(_ style: Style) -> [NSAttributedString.Key: Any] {
-    var attrs: [NSAttributedString.Key: Any] = [.foregroundColor: UIColor.label]
+    var attrs: [NSAttributedString.Key: Any] = [.foregroundColor: PlatformColor.labelCompat]
     if style.code {
-      attrs[.font] = UIFont.monospacedSystemFont(ofSize: 16, weight: .regular)
-      attrs[.backgroundColor] = UIColor.secondarySystemBackground
+      attrs[.font] = PlatformFont.monospacedSystemFont(ofSize: 16, weight: .regular)
+      attrs[.backgroundColor] = PlatformColor.secondaryFillCompat
     } else if let override = style.fontOverride {
       attrs[.font] = override
     } else {
-      var traits: UIFontDescriptor.SymbolicTraits = []
-      if style.bold { traits.insert(.traitBold) }
-      if style.italic { traits.insert(.traitItalic) }
-      let bodyFont = UIFont.preferredFont(forTextStyle: .body)
-      if !traits.isEmpty, let desc = bodyFont.fontDescriptor.withSymbolicTraits(traits) {
-        attrs[.font] = UIFont(descriptor: desc, size: 0)
-      } else {
-        attrs[.font] = bodyFont
-      }
+      attrs[.font] = styledFont(PlatformFont.bodyFont, bold: style.bold, italic: style.italic)
     }
     if style.strike { attrs[.strikethroughStyle] = NSUnderlineStyle.single.rawValue }
     if style.link {
-      attrs[.foregroundColor] = UIColor.link
+      attrs[.foregroundColor] = PlatformColor.linkCompat
       attrs[.underlineStyle] = NSUnderlineStyle.single.rawValue
     }
     return attrs
@@ -215,8 +198,8 @@ enum MarkdownRenderer {
   private static func headingContentStart(_ node: AstNode, bytes: [UInt8]) -> Int {
     var i = Int(node.span.start)
     let e = Int(node.span.end)
-    while i < e, bytes[i] == 0x23 { i += 1 }          // '#'
-    while i < e, bytes[i] == 0x20 || bytes[i] == 0x09 { i += 1 } // space / tab
+    while i < e, bytes[i] == 0x23 { i += 1 }
+    while i < e, bytes[i] == 0x20 || bytes[i] == 0x09 { i += 1 }
     return i
   }
 
@@ -230,7 +213,6 @@ enum MarkdownRenderer {
   }
 
   private static func codeBlockContent(_ node: AstNode, bytes: [UInt8]) -> String {
-    // Strip a leading/trailing fence line if present (``` ...).
     let raw = slice(bytes, Int(node.span.start), Int(node.span.end))
     var lines = raw.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
     if let first = lines.first, first.trimmingCharacters(in: .whitespaces).hasPrefix("```") { lines.removeFirst() }

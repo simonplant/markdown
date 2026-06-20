@@ -1,5 +1,4 @@
 import SwiftUI
-import UIKit
 import MarkdownCore
 
 enum EditorMode { case read, author }
@@ -27,7 +26,9 @@ struct EditorView: View {
                     onFormat: formatDocument)
     }
     .navigationTitle("Markdown")
+    #if os(iOS)
     .navigationBarTitleDisplayMode(.inline)
+    #endif
   }
 
   /// Format Document (FEAT-052 / M4) — reformat the whole document through the
@@ -40,7 +41,7 @@ struct EditorView: View {
 
   /// Crossfade unless Reduce Motion is on (D-A11Y-1).
   private func setMode(_ next: EditorMode) {
-    if UIAccessibility.isReduceMotionEnabled {
+    if reduceMotionEnabled {
       mode = next
     } else {
       withAnimation(.easeInOut(duration: 0.2)) { mode = next }
@@ -64,6 +65,7 @@ private struct CoreStatusBar: View {
       Text("\(words) word\(words == 1 ? "" : "s")")
       Label("\(issues)", systemImage: issues == 0 ? "checkmark.circle" : "exclamationmark.triangle")
         .foregroundStyle(issues == 0 ? Color.secondary : Color.orange)
+        .accessibilityLabel(issues == 0 ? "No issues" : "\(issues) issue\(issues == 1 ? "" : "s")")
       Spacer()
       if mode == .author {
         Button("Format", action: onFormat)
