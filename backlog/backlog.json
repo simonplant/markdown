@@ -954,7 +954,7 @@
       "passes": false,
       "readyForSprint": false,
       "groomedAt": "2026-06-19",
-      "groomingNotes": "Lead with the parser-in-WASM spike — it is the single highest-impact unknown. Walking-skeleton ACs: prove it in a real browser, not with file-existence checks. SPIKE RUN 2026-06-19 (docs/wasm-spike.md): tree-sitter's C DOES compile to wasm with llvm clang, but wasm32-unknown-unknown is libc-less and scanner.c needs <wchar.h>. Decide the toolchain first — recommended: wasm32-wasip1 + wasi-sdk (keeps one Rust core; needs a thin browser WASI shim). crate-types + notify-off-wasm32 already landed in EPIC-CORE-API."
+      "groomingNotes": "Lead with the parser-in-WASM spike — it is the single highest-impact unknown. Walking-skeleton ACs: prove it in a real browser, not with file-existence checks. SPIKE RESOLVED 2026-06-19 (docs/wasm-spike.md): PROVEN — markdown-core (incl. tree-sitter) compiles to wasm32-wasip1 and RUNS under wasmtime over the full baseline corpus (scripts/build-wasm.sh run; bin markdown-core/src/bin/wasm_smoke.rs). Toolchain chosen: wasm32-wasip1 + wasi-libc sysroot + llvm clang. Remaining EPIC-WASM scope: replace the WASI argv/stdout smoke with extern-C buffer-in/out entry points (no wasm-bindgen under WASI), instantiate in-browser via a WASI shim with the PWA owning the file handle, and capture an in-browser web baseline slice. crate-types + notify-off-wasm32 landed in EPIC-CORE-API."
     },
     {
       "id": "EPIC-UNIFFI",

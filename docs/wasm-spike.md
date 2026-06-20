@@ -1,9 +1,29 @@
 # WASM spike findings (EPIC-WASM, BUILD_PLAN Phase 1)
 
 **Date:** 2026-06-19. **Goal:** fail-fast check of the highest-impact unknown in
-the build plan — can `markdown-core` (with tree-sitter) compile to WebAssembly?
-**Status:** partial — the C compiles, but the bare `wasm32-unknown-unknown`
-target's lack of a libc is a hard gate that forces a toolchain decision.
+the build plan — can `markdown-core` (with tree-sitter) compile to and run as
+WebAssembly?
+
+**Status: RESOLVED — option A works, proven end-to-end.** `markdown-core` (incl.
+tree-sitter) compiles to `wasm32-wasip1` and **runs under wasmtime**: it opens,
+parses, diagnoses, and formats the full baseline corpus (large.md = 202 KB → 30
+format mutations) inside WASM. Reproduce with `scripts/build-wasm.sh run`.
+
+```
+$ scripts/build-wasm.sh run
+wasm_smoke OK: file=docs/baseline-corpus/small.md  bytes=465    diagnostics=0 format_mutations=0
+wasm_smoke OK: file=docs/baseline-corpus/medium.md bytes=16006  diagnostics=0 format_mutations=1
+wasm_smoke OK: file=docs/baseline-corpus/large.md  bytes=202552 diagnostics=0 format_mutations=30
+```
+
+The toolchain decision (below) is settled: **`wasm32-wasip1` + wasi-libc sysroot.**
+The rest of this doc records how we got there.
+
+---
+
+**Original question / first attempt:** could the core compile to the bare
+`wasm32-unknown-unknown` target? No — that target has no libc and tree-sitter's
+`scanner.c` needs `<wchar.h>`. That dead end is what pointed us at WASI.
 
 ## What was tried
 
@@ -36,29 +56,53 @@ gates `notify`/`watcher` off wasm32 — both committed in EPIC-CORE-API.)
    and even a header shim wouldn't link the wide-char functions the scanner uses
    (`iswspace`/`iswalnum`-style) — those need real implementations.
 
-## The fork (decide in EPIC-WASM, don't hack)
+## The fork — CHOSEN: option A (`wasm32-wasip1` + wasi-libc)
 
-Bare `wasm32-unknown-unknown` + the Rust tree-sitter crate's C is the wrong pairing
-because of (4). The real options, in rough order of preference:
+The options that were on the table (bare `wasm32-unknown-unknown` is ruled out by
+the no-libc finding above):
 
-- **A. `wasm32-wasip1` + wasi-sdk sysroot.** WASI ships a libc, so `wchar.h` and
-  the wide-char functions resolve and the existing Rust crate compiles unchanged.
-  Cost: the browser needs a small WASI shim (e.g. the `@bjorn3/browser_wasi_shim`
-  or wasmer-js) since tree-sitter only touches a handful of libc calls. Most
-  faithful to "one Rust core in WASM."
-- **B. Provide a libc sysroot to clang for `wasm32-unknown-unknown`** (point `CFLAGS`
-  at a wasi-sdk `--sysroot` while keeping the unknown-unknown Rust target). Gets a
-  browser-native module without a WASI runtime, but is the fiddliest to keep green.
-- **C. `web-tree-sitter` (official prebuilt parser WASM) for parsing, Rust-WASM for
-  the rest.** Avoids compiling tree-sitter's C ourselves, but splits the parser
-  (JS-side) from `doctor`/`formatter` (which consume a tree-sitter `Tree` in Rust)
-  — that boundary is awkward and partly defeats the shared-core design. Least
-  preferred unless A and B both prove painful.
+- **A. `wasm32-wasip1` + wasi sysroot — CHOSEN, and proven (2026-06-19).** WASI
+  ships a libc, so `wchar.h` and the wide-char functions resolve and the existing
+  Rust crate compiles unchanged. Builds and runs (see top of doc). Cost going
+  forward: the browser needs a small WASI shim (e.g. `@bjorn3/browser_wasi_shim`)
+  since tree-sitter touches only a handful of libc calls. Most faithful to "one
+  Rust core in WASM."
+- **B. libc sysroot for `wasm32-unknown-unknown`.** Not pursued — A worked.
+- **C. `web-tree-sitter` (prebuilt parser WASM) + Rust-WASM for the rest.** Not
+  pursued — it splits the parser from `doctor`/`formatter` (which consume a
+  tree-sitter `Tree` in Rust) and partly defeats the shared-core design.
 
-**Recommendation:** try **A** first. It keeps the single Rust core intact and only
-adds a thin browser WASI shim. Validate with the same fail-fast loop: get
-`cargo build --target wasm32-wasip1` green, then a Node/browser harness that parses
-a corpus doc through the real module.
+## The working recipe (reproducible)
+
+`scripts/build-wasm.sh` encodes this; run `scripts/build-wasm.sh run` to build and
+execute the corpus smoke test under wasmtime.
+
+Toolchain (macOS): `brew install llvm wasi-libc wasmtime` and
+`rustup target add wasm32-wasip1`. The `cc` crate compiles tree-sitter's C when
+pointed at LLVM's clang plus the wasi sysroot:
+
+```
+CC_wasm32_wasip1=$(brew --prefix llvm)/bin/clang
+AR_wasm32_wasip1=$(brew --prefix llvm)/bin/llvm-ar
+CFLAGS_wasm32_wasip1="--sysroot=$(brew --prefix wasi-libc)/share/wasi-sysroot \
+  -I$(brew --prefix wasi-libc)/share/wasi-sysroot/include/wasm32-wasip1 \
+  -Wno-error=incompatible-pointer-types"
+cargo build -p markdown-core --target wasm32-wasip1
+```
+
+The proof binary is `markdown-core/src/bin/wasm_smoke.rs`, run under wasmtime with
+`--dir=.` for file access.
+
+## Next for EPIC-WASM (now unblocked)
+
+1. Replace the WASI smoke binary's argv/stdout interface with a real JS-callable
+   surface: `#[no_mangle] extern "C"` entry points over wasm memory (alloc/free +
+   pointer/len for the markdown string in, a serialized result out) — the buffer-in
+   / buffer-out shape from `docs/CORE-API.md`. wasm-bindgen targets
+   `wasm32-unknown-unknown`, so under WASI we hand-roll this thin layer.
+2. Instantiate in the browser with a WASI shim; the PWA shell owns the file handle
+   and passes content as bytes (the core never touches the FS in the browser).
+3. Capture an in-browser web baseline slice; extend the regression gate.
 
 ## Toolchain notes for whoever picks this up
 
