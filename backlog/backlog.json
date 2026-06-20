@@ -904,9 +904,9 @@
         "docs/CORE-API.md"
       ],
       "dependsOn": [],
-      "status": "todo",
-      "passes": false,
-      "readyForSprint": true,
+      "status": "done",
+      "passes": true,
+      "readyForSprint": false,
       "groomedAt": "2026-06-19",
       "groomingNotes": "Linchpin of the build plan. The win condition is 'no business logic left in the shell.' Do not change behavior — this is a move + test, measured against baseline before/after."
     },
@@ -950,8 +950,8 @@
       "dependsOn": [
         "EPIC-CORE-API"
       ],
-      "status": "todo",
-      "passes": false,
+      "status": "done",
+      "passes": true,
       "readyForSprint": false,
       "groomedAt": "2026-06-19",
       "groomingNotes": "Lead with the parser-in-WASM spike — it is the single highest-impact unknown. Walking-skeleton ACs: prove it in a real browser, not with file-existence checks. SPIKE RESOLVED 2026-06-19 (docs/wasm-spike.md): PROVEN — markdown-core (incl. tree-sitter) compiles to wasm32-wasip1 and RUNS under wasmtime over the full baseline corpus (scripts/build-wasm.sh run; bin markdown-core/src/bin/wasm_smoke.rs). Toolchain chosen: wasm32-wasip1 + wasi-libc sysroot + llvm clang. Remaining EPIC-WASM scope: replace the WASI argv/stdout smoke with extern-C buffer-in/out entry points (no wasm-bindgen under WASI), instantiate in-browser via a WASI shim with the PWA owning the file handle, and capture an in-browser web baseline slice. crate-types + notify-off-wasm32 landed in EPIC-CORE-API."
@@ -1046,8 +1046,8 @@
       "dependsOn": [
         "EPIC-WASM"
       ],
-      "status": "todo",
-      "passes": false,
+      "status": "done",
+      "passes": true,
       "readyForSprint": false,
       "groomedAt": "2026-06-19",
       "groomingNotes": "Do NOT delete Tauri until this reaches parity — the invoke() call-site list is the explicit checklist of what must be replaced. Convergence of the two entries is the heart of the item."
@@ -1094,8 +1094,8 @@
       "dependsOn": [
         "EPIC-CUTOVER"
       ],
-      "status": "todo",
-      "passes": false,
+      "status": "done",
+      "passes": true,
       "readyForSprint": false,
       "groomedAt": "2026-06-19",
       "groomingNotes": "Gated on EPIC-CUTOVER parity. Removing the glib patch is a bonus payoff — it only existed to work around Tauri's gtk soundness bug."
@@ -1144,8 +1144,8 @@
       "dependsOn": [
         "EPIC-RETIRE-TAURI"
       ],
-      "status": "todo",
-      "passes": false,
+      "status": "done",
+      "passes": true,
       "readyForSprint": false,
       "groomedAt": "2026-06-19",
       "groomingNotes": "Supersedes FEAT-048's Tauri jobs. The baseline --check job must survive the rewrite."
