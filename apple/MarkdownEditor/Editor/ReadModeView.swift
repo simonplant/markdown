@@ -13,6 +13,7 @@ struct ReadModeView: UIViewRepresentable {
     let textView = UITextView(usingTextLayoutManager: true) // TextKit 2
     textView.isEditable = false
     textView.isSelectable = true
+    textView.isFindInteractionEnabled = true // find in rendered text, ⌘F (FEAT-016)
     textView.alwaysBounceVertical = true
     textView.backgroundColor = .systemBackground
     textView.textContainerInset = UIEdgeInsets(top: 16, left: 16, bottom: 24, right: 16)

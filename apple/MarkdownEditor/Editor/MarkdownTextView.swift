@@ -23,6 +23,7 @@ struct MarkdownTextView: UIViewRepresentable {
     textView.autocapitalizationType = .none
     textView.smartQuotesType = .no
     textView.smartDashesType = .no
+    textView.isFindInteractionEnabled = true // native find/replace, ⌘F (FEAT-016, M6)
     textView.textContainerInset = UIEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
     // New text must not inherit the diagnostic underline.
     textView.typingAttributes = [
