@@ -954,7 +954,7 @@
       "passes": false,
       "readyForSprint": false,
       "groomedAt": "2026-06-19",
-      "groomingNotes": "Lead with the parser-in-WASM spike — it is the single highest-impact unknown. Walking-skeleton ACs: prove it in a real browser, not with file-existence checks."
+      "groomingNotes": "Lead with the parser-in-WASM spike — it is the single highest-impact unknown. Walking-skeleton ACs: prove it in a real browser, not with file-existence checks. SPIKE RUN 2026-06-19 (docs/wasm-spike.md): tree-sitter's C DOES compile to wasm with llvm clang, but wasm32-unknown-unknown is libc-less and scanner.c needs <wchar.h>. Decide the toolchain first — recommended: wasm32-wasip1 + wasi-sdk (keeps one Rust core; needs a thin browser WASI shim). crate-types + notify-off-wasm32 already landed in EPIC-CORE-API."
     },
     {
       "id": "EPIC-UNIFFI",
