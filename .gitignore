@@ -48,3 +48,8 @@ apple/.uniffi-gen/
 apple/.headers/
 apple/Packages/*/.build/
 .build/
+
+# XcodeGen-generated (regenerate: cd apple && xcodegen generate)
+apple/MarkdownEditor.xcodeproj/
+apple/MarkdownEditor/Info.plist
+apple/build/

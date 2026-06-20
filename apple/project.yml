@@ -1,0 +1,54 @@
+name: MarkdownEditor
+options:
+  bundleIdPrefix: com.markdown
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+
+packages:
+  MarkdownCore:
+    path: Packages/MarkdownCoreFFI
+
+targets:
+  MarkdownEditor:
+    type: application
+    platform: iOS
+    sources:
+      - path: MarkdownEditor
+    dependencies:
+      - package: MarkdownCore
+        product: MarkdownCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.markdown.editor
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        SWIFT_VERSION: "5.0"
+        TARGETED_DEVICE_FAMILY: "1,2"
+        IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+        # Simulator builds need no signing; keeps the build hermetic on CI/headless.
+        CODE_SIGNING_ALLOWED: "NO"
+        CODE_SIGNING_REQUIRED: "NO"
+        ENABLE_USER_SCRIPT_SANDBOXING: "YES"
+    info:
+      path: MarkdownEditor/Info.plist
+      properties:
+        UILaunchScreen: {}
+        UISupportsDocumentBrowser: true
+        LSSupportsOpeningDocumentsInPlace: true
+        UIApplicationSupportsIndirectInputEvents: true
+        CFBundleDocumentTypes:
+          - CFBundleTypeName: Markdown
+            LSHandlerRank: Owner
+            LSItemContentTypes:
+              - net.daringfireball.markdown
+              - public.plain-text
+        UTImportedTypeDeclarations:
+          - UTTypeIdentifier: net.daringfireball.markdown
+            UTTypeConformsTo:
+              - public.plain-text
+            UTTypeDescription: Markdown
+            UTTypeTagSpecification:
+              public.filename-extension:
+                - md
+                - markdown
