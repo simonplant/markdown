@@ -36,7 +36,8 @@ final class MarkdownFileDocument: ReferenceFileDocument {
 }
 
 extension UTType {
-  /// Markdown UTI. Named distinctly to avoid colliding with any SDK-provided
-  /// `UTType.markdown` constant across OS versions.
-  static let markdownText = UTType(importedAs: "net.daringfireball.markdown")
+  /// The markdown UTI. `net.daringfireball.markdown` is **system-declared**, so
+  /// we look it up (no `importedAs:`, which would re-declare it and cause a
+  /// "duplicate type identifier" error). Falls back to plain text if absent.
+  static let markdownText = UTType("net.daringfireball.markdown") ?? .plainText
 }

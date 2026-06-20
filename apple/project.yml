@@ -37,21 +37,15 @@ targets:
         UISupportsDocumentBrowser: true
         LSSupportsOpeningDocumentsInPlace: true
         UIApplicationSupportsIndirectInputEvents: true
+        # net.daringfireball.markdown is a SYSTEM-declared UTI — reference it, do
+        # not re-declare it (a UTImportedTypeDeclarations entry duplicates the
+        # system type and triggers a "duplicate type identifier" error).
         CFBundleDocumentTypes:
           - CFBundleTypeName: Markdown
             LSHandlerRank: Owner
             LSItemContentTypes:
               - net.daringfireball.markdown
               - public.plain-text
-        UTImportedTypeDeclarations:
-          - UTTypeIdentifier: net.daringfireball.markdown
-            UTTypeConformsTo:
-              - public.plain-text
-            UTTypeDescription: Markdown
-            UTTypeTagSpecification:
-              public.filename-extension:
-                - md
-                - markdown
 
   MarkdownEditorUITests:
     type: bundle.ui-testing
