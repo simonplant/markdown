@@ -295,8 +295,8 @@
         "markdown-core/src/lib.rs"
       ],
       "dependsOn": [],
-      "status": "todo",
-      "passes": false,
+      "status": "done",
+      "passes": true,
       "readyForSprint": false,
       "groomedAt": null,
       "groomingNotes": "Reconciled 2026-06-19: file discovery/IO moved from src-tauri to markdown-core (reached via the WASM/uniffi binding).",
