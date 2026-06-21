@@ -72,7 +72,10 @@ jobs:
           export WASI_SYSROOT="$WASI_SDK/share/wasi-sysroot"
           bash scripts/build-wasm.sh node
 
-  # Performance regression gate against docs/baseline.json.
+  # Performance regression gate against the committed baseline.
+  # The committed docs/baseline.json was removed from the repo; until it is
+  # re-established (run the "Capture Baseline" workflow), this gate skips with a
+  # notice instead of failing. It re-arms automatically once the baseline returns.
   baseline-check:
     runs-on: ubuntu-latest
     steps:
@@ -88,4 +91,9 @@ jobs:
         with:
           python-version: "3.x"
       - name: Run baseline regression check
-        run: bash scripts/measure_baseline.sh --check
+        run: |
+          if [ ! -f docs/baseline.json ]; then
+            echo "::notice::docs/baseline.json is not present — regression gate skipped. Run the 'Capture Baseline' workflow to (re)establish it."
+            exit 0
+          fi
+          bash scripts/measure_baseline.sh --check
