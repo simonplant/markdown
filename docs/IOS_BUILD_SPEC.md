@@ -6,7 +6,13 @@
 > (M2), doctor diagnostics overlay (M3), Format Document (M4), BOM-preserving save
 > (M5), find + themes (M6), Dynamic Type + spell check + keyboard shortcuts (M7),
 > accessibility + DocumentGroup file management (M8), and the macOS target sharing
-> the editor over NSTextView (M9). Remaining: Phase 4 rich content (deferred).
+> the editor over NSTextView (M9).
+>
+> **PHASE 4 DONE (8 of 9):** extended doctor rules, outline, PDF export, themes/fonts,
+> multi-doc tabs (native), inline images (data-URI), math ($…$/$$…$$ via SwiftMath),
+> Quick Open. Only FEAT-037 Mermaid is partial (blocks detected + distinctly
+> rendered; full SVG via offscreen mermaid.js WKWebView is the one remaining piece).
+> Verified by running: core 95 tests, macOS binding 4/4, iOS UI suite 3/3.
 >
 > **Status: authoritative.** This is the single source of truth for building the native iOS (and shared macOS) markdown editor: Swift + TextKit 2 frontend binding the shared Rust `markdown-core` in-process via **uniffi**. It synthesizes `docs/PRODUCT.md`, `docs/ARCHITECTURE.md`, the live backlog (`backlog/backlog.json` + archives), the `markdown-core` public API, and the `reference/` Swift prototype catalog.
 >
