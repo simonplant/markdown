@@ -110,20 +110,20 @@ We use this discipline at three levels:
 
 ### Baseline measurement and the regression gate
 
-Every walking skeleton, on pass, writes a set of measured performance numbers to `docs/baseline.json`. These become the regression budget for every change that follows.
+Every walking skeleton, on pass, writes a set of measured performance numbers as the committed baseline. These become the regression budget for every change that follows.
 
 **Methodology**: each metric captures N≥5 measurements and takes the median. The regression gate fires when a change's median exceeds 110% of the committed baseline median. Single-run gates produce random failures because runners have inherent variance on cold metrics.
 
-**User-representative load distribution.** A single "typical document" baseline is insufficient — performance that looks healthy on a 5 KB test file can hide pathological behavior on documents users actually open. `baseline.json` captures each core metric (open, keystroke latency, format, save, reopen) across a distribution that represents how real users load the product:
+**User-representative load distribution.** A single "typical document" baseline is insufficient — performance that looks healthy on a 5 KB test file can hide pathological behavior on documents users actually open. The committed baseline captures each core metric (open, keystroke latency, format, save, reopen) across a distribution that represents how real users load the product:
 
 - **Small document** (≈1 KB, ~30 lines): a short note or brief AI response
 - **Medium document** (≈25 KB, ~800 lines): a typical long-form document — a research report, a PRD, a meeting summary with tables
 - **Large document** (≈250 KB, ~8,000 lines): a substantial architecture doc, a long-form article, or an AI-generated report with rich content
 - **Synthetic session** (a scripted sequence of open → scroll → edit → format → save across several documents of mixed sizes): exercises steady-state behavior rather than just cold-start numbers
 
-The regression gate fires on any of these slices independently. The distribution lives in `docs/baseline-corpus/` (representative `.md` fixtures) and is versioned alongside `baseline.json`. It is extended, not replaced, as new usage patterns emerge — including per-platform load profiles as each frontend matures.
+The regression gate fires on any of these slices independently. The distribution lives in `docs/baseline-corpus/` (representative `.md` fixtures) and is versioned alongside the committed baseline. It is extended, not replaced, as new usage patterns emerge — including per-platform load profiles as each frontend matures.
 
-**The gate blocks merges.** A regression of more than 10% in any baseline metric blocks the change until the regression is understood, named, and either fixed or explicitly accepted (which updates `baseline.json`).
+**The gate blocks merges.** A regression of more than 10% in any baseline metric blocks the change until the regression is understood, named, and either fixed or explicitly accepted (which updates the committed baseline).
 
 ### Decision [A-PROC-1]: Walking-skeleton discipline applies to every major architectural claim
 
@@ -131,7 +131,7 @@ No major architectural claim merges without a walking skeleton that exercises it
 
 ### Decision [A-PROC-2]: Baseline-measured regression gate is permanent
 
-Every change merges against `docs/baseline.json`. The gate fires at 110% of the committed median of any metric. This is the mechanism that keeps D-PERF-1 true over time.
+Every change merges against the committed performance baseline. The gate fires at 110% of the committed median of any metric. This is the mechanism that keeps D-PERF-1 true over time.
 
 ### Decision [A-PROC-3]: Each frontend has its own walking-skeleton milestone
 
@@ -145,9 +145,7 @@ The engine is the product's durable intelligence. Everything else is a frontend.
 
 ### 3.1 Document Model
 
-**Decision [A-CORE-1]: naive UTF-8 `String`.** The `Document` struct uses a standard Rust `String`. All three candidates (piece table, rope, `String`) were measured against the committed baseline with 5-run medians. Both piece table and rope regressed beyond the 10% threshold; `String` matched the baseline within measurement noise at the document sizes the product targets.
-
-See `docs/engine-comparison.json` for the full data and `docs/engine-decision.md` for the rationale. If large-file performance becomes a product concern, the decision revisits with new measurements.
+**Decision [A-CORE-1]: naive UTF-8 `String`.** The `Document` struct uses a standard Rust `String`. All three candidates (piece table, rope, `String`) were measured against the committed baseline with 5-run medians. Both piece table and rope regressed beyond the 10% threshold; `String` matched the baseline within measurement noise at the document sizes the product targets. If large-file performance becomes a product concern, the decision revisits with new measurements.
 
 ### 3.2 Parser
 
@@ -158,7 +156,7 @@ Why tree-sitter: C library, runs everywhere (native and WASM). Incremental parsi
 **CommonMark compliance**: tree-sitter-markdown is not fully CommonMark-compliant. The largest current divergence is reference-style link resolution, which the grammar's syntax tree does not carry; other gaps exist in lazy continuation and some nested-construct edge cases. Closing the reference-link gap is the highest-priority correctness work on the core, because rendering AI-authored documents beautifully is the product's primary job (D-MKT-1).
 
 **Mitigation**:
-- The CommonMark spec test suite runs in CI; current pass/skip status is tracked in `docs/commonmark_status.md`
+- The CommonMark spec test suite runs in CI; current pass/skip status is tracked by that suite
 - An explicit, documented skip-list covers every known divergence; any skip-listed test that starts passing is flagged so the entry can be removed
 - Fixes are contributed upstream where the grammar is the right place to fix them
 - The target is high compliance on the constructs real documents use, with the reference-link gap closed first
@@ -393,7 +391,7 @@ These align with the product roadmap in `PRODUCT.md`. The roadmap describes user
 | **Stabilization and v1.0** | Reference-link compliance closed, rich content (Mermaid, math, images, wikilinks), extended doctor rules, PDF export, custom themes, cross-platform hardening | In progress — outline, PDF export, math, inline images, extended doctor rules, custom themes, Quick Open built on Apple; Mermaid SVG rendering and reference-link compliance remain |
 | **AI (deferred, post-v1.0)** | Local inference, user-key mode, smart completions — gated on ecosystem stabilization (D-ROAD-3) | Deferred |
 
-Every item in every phase measures against `docs/baseline.json` before merging (A-PROC-2).
+Every item in every phase measures against the committed baseline before merging (A-PROC-2).
 
 ---
 
@@ -419,7 +417,4 @@ Every item in every phase measures against `docs/baseline.json` before merging (
 
 - `PRODUCT.md` — what the product is, who it serves, the user-facing contract. All product decisions (`D-*`) live there.
 - `CONTRIBUTING.md` — how contributions work: the agent-driven development model, review loop, and agent-legibility maintenance.
-- `docs/baseline.json` — the committed performance baseline enforced by the regression gate.
-- `docs/engine-comparison.json` — the measurement data behind A-CORE-1.
-- `docs/engine-decision.md` — the rationale for A-CORE-1.
-- `docs/commonmark_status.md` — tree-sitter-markdown CommonMark compliance status.
+- `docs/baseline-corpus/` — representative `.md` fixtures the regression gate measures against.

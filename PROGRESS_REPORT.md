@@ -49,8 +49,7 @@ themes, Dynamic Type, accessibility, outline, PDF export (Core Text), inline mat
 - **Mermaid is partial** — blocks are detected and rendered distinctly, but full SVG
   diagram rendering (offscreen mermaid.js in a `WKWebView`) is the one remaining piece.
 - **CommonMark compliance is partial** — the spec suite runs in CI with a documented
-  skip-list; closing the reference-link gap is the top correctness task
-  (`docs/commonmark_status.md`).
+  skip-list; closing the reference-link gap is the top correctness task.
 - **Wikilink navigation + backlinks are no-ops in the web build.** They need real
   filesystem *paths*; the browser has file *handles*. Rendering of `[[links]]` works,
   and the path-based engine logic is intact in `markdown-core::wikilinks` for Apple.

@@ -72,8 +72,8 @@ swift test --package-path apple/Packages/MarkdownCoreFFI      # core binding rou
 **`backlog/backlog.json`** is the source of truth for what to work on next. Items are ordered by phase and priority. Do not hard-code feature lists in docs — check the backlog.
 
 **Key constraints that don't change:**
-- **Baseline regression gate is active.** `docs/baseline.json` contains 5-run median measurements. Every merge is checked against a 1.1x regression threshold via CI.
-- **Document model is `String`.** The engine decision measured all three candidates against baseline; piece table and rope both regressed beyond threshold. See `docs/engine-decision.md`. Revisit only if large-file performance data demands it.
+- **Baseline regression gate.** Every merge is checked against the committed performance baseline (5-run medians) at a 1.1x regression threshold via CI.
+- **Document model is `String`.** The engine decision measured all three candidates against baseline; piece table and rope both regressed beyond threshold (A-CORE-1 in `docs/ARCHITECTURE.md`). Revisit only if large-file performance data demands it.
 - **Phase ordering is not negotiable.** Dependencies in the backlog enforce this. Don't skip ahead.
 
 ## Reference Swift prototype

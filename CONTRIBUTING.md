@@ -86,7 +86,7 @@ Bring your own agent subscription. We do not prescribe which agent. We do prescr
 - Every acceptance criterion has a verifiable command in the PR description, with its output
 - No mocks. No stubs. No "will wire up later."
 - Real tests exercise the running system end-to-end
-- The PR runs the baseline measurement and reports the delta against the committed `docs/baseline.json`. Regressions >10% are named and either fixed or explicitly accepted.
+- The PR runs the baseline measurement and reports the delta against the committed performance baseline. Regressions >10% are named and either fixed or explicitly accepted.
 
 ### Submit the PR
 
@@ -192,4 +192,4 @@ These mirror the risks listed in `PRODUCT.md §9`, stated here in operational te
 
 - `PRODUCT.md` — what the product is. All product decisions (`D-*`) live there.
 - `ARCHITECTURE.md` — how the product is built. All architecture decisions (`A-*`) live there.
-- `docs/baseline.json` — the committed performance baseline that every PR is measured against.
+- `docs/baseline-corpus/` — representative `.md` fixtures the regression gate measures against.

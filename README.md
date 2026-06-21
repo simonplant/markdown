@@ -24,7 +24,7 @@ All three frontends are built and verified by running. This is **pre-release**: 
 | **Web frontend (CodeMirror 6)** | Built — read mode, WYSIWYM decorations, themes following system preference, find/replace, word count, spell check, live preview, the read↔author transition. |
 | **Core as WebAssembly + PWA** | Built — the core compiles to `wasm32-wasip1` and runs in the browser via a WASI shim; doctor and formatting call the WASM core; installable PWA shell. |
 | **Native Apple frontend (iOS lead, then macOS)** | Built and verified — Swift + TextKit 2 (`UITextView` on iOS, `NSTextView` on macOS) over the core via `uniffi`. Read mode, WYSIWYM, doctor underlines, Format Document, BOM-preserving save, find, themes, outline, PDF export, inline math (SwiftMath) and images, Quick Open. Verified on the iOS Simulator and on macOS. |
-| **CommonMark compliance** | Spec suite runs in CI with a documented skip-list; closing the reference-link gap is the top correctness task. See [`docs/commonmark_status.md`](docs/commonmark_status.md). |
+| **CommonMark compliance** | Spec suite runs in CI with a documented skip-list; closing the reference-link gap is the top correctness task. |
 | **Rich content** | Built on Apple, except **Mermaid** — blocks are detected and distinctly rendered, but full SVG diagram rendering is the one remaining piece. |
 | **AI** | Deferred post-v1.0, parked behind the off-by-default `ai` cargo feature. See the roadmap. |
 
@@ -95,8 +95,7 @@ This repo uses [aishore](./.aishore/) for agent-driven sprint execution.
 
 - [`docs/PRODUCT.md`](docs/PRODUCT.md) — product vision, principles, decisions, feature scope, honest risks
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — shared Rust core, native Apple frontend, CodeMirror 6 web frontend
-- [`docs/baseline.json`](docs/baseline.json) — performance baseline metrics and regression threshold
-- [`docs/commonmark_status.md`](docs/commonmark_status.md) — tree-sitter-markdown CommonMark compliance
+- [`docs/IOS_BUILD_SPEC.md`](docs/IOS_BUILD_SPEC.md) — authoritative spec for the native iOS + macOS app
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) — how the project gets built: the agent-driven model, review loop, sustainability bet
 - [`CLAUDE.md`](CLAUDE.md) — guidance for Claude Code and agent sprints
 - [`PRIVACY.md`](PRIVACY.md) — no telemetry, no network, files stay local

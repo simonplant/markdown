@@ -16,7 +16,7 @@
 >
 > **Status: authoritative.** This is the single source of truth for building the native iOS (and shared macOS) markdown editor: Swift + TextKit 2 frontend binding the shared Rust `markdown-core` in-process via **uniffi**. It synthesizes `docs/PRODUCT.md`, `docs/ARCHITECTURE.md`, the live backlog (`backlog/backlog.json` + archives), the `markdown-core` public API, and the `reference/` Swift prototype catalog.
 >
-> The dependency spine is fixed and non-negotiable: **EPIC-CORE-API (done) → EPIC-UNIFFI → EPIC-APPLE-SKELETON → EPIC-APPLE-FEATURES → Phase-4 rich content.** Phase ordering and `dependsOn` are binding (CLAUDE.md, A-PROC-3). The document model stays `String` (`docs/engine-decision.md`). Every merge is gated against `docs/baseline.json` at 1.1x per slice.
+> The dependency spine is fixed and non-negotiable: **EPIC-CORE-API (done) → EPIC-UNIFFI → EPIC-APPLE-SKELETON → EPIC-APPLE-FEATURES → Phase-4 rich content.** Phase ordering and `dependsOn` are binding (CLAUDE.md, A-PROC-3). The document model stays `String` (A-CORE-1). Every merge is gated against the committed baseline at 1.1x per slice.
 
 **Environment as built (verified 2026-06-20 on this host):** Xcode 26.5 (build 17F42), iOS SDK 26.5 (`iphoneos26.5`) + iOS Simulator SDK 26.5 present, `xcode-select` → `/Applications/Xcode.app`, Swift 6.3.2 (strict concurrency), Rust 1.94.1, all three Apple Rust targets installed (`aarch64-apple-ios`, `aarch64-apple-ios-sim`, `aarch64-apple-darwin`). **No iOS simulator runtime is installed** (`xcrun simctl list runtimes` → empty; iOS-26-3/26-4 listed *unavailable*). This single fact draws the line in §6 between what is verifiable here and what needs a runtime download or device.
 
@@ -521,8 +521,8 @@ Then proceed M2→M9 per §5, each milestone keeping every baseline slice within
 ---
 
 ### Binding constraints that hold across every step
-- Document model stays `String` (`docs/engine-decision.md`) — do not introduce a rope/piece-table.
-- Baseline gate fires at **1.1x per slice**; a new Apple/on-device slice is captured and kept green (`docs/baseline.json`, `docs/baseline-corpus/`).
+- Document model stays `String` (A-CORE-1) — do not introduce a rope/piece-table.
+- Baseline gate fires at **1.1x per slice**; a new Apple/on-device slice is captured and kept green (the committed baseline; fixtures in `docs/baseline-corpus/`).
 - Phase ordering and `dependsOn` are non-negotiable; no skipping ahead.
 - No vault / account / telemetry / AI in v1.0; the editor surface is TextKit 2, never a webview.
 - Commit with a meaningful message before signaling each step complete (CLAUDE.md).

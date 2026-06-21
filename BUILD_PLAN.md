@@ -15,7 +15,7 @@ This is the implementation sequencing plan that takes Markdown from where the co
 - **User-visible roadmap:** `docs/PRODUCT.md` §5
 - **Source of truth for what to work on next:** `backlog/backlog.json` (this plan defines the epics and ordering; the backlog tracks the items)
 
-The discipline that governs every phase is the **walking skeleton** (`docs/ARCHITECTURE.md` §2): each phase is anchored on an end-to-end milestone proven with real running code, and each frontend writes/maintains its **baseline slice** (`docs/baseline.json`, 1.1× regression gate) before any feature work proceeds on it.
+The discipline that governs every phase is the **walking skeleton** (`docs/ARCHITECTURE.md` §2): each phase is anchored on an end-to-end milestone proven with real running code, and each frontend writes/maintains its **baseline slice** (the committed baseline, 1.1× regression gate) before any feature work proceeds on it.
 
 ---
 
@@ -146,7 +146,7 @@ Phase 4  Stabilization & v1.0 (rich content, PDF, hardening, cross-platform pari
 ### Phase 4 — Stabilization & v1.0
 **Goal:** rich content, PDF export, extended doctor, custom themes, cross-platform hardening (ARCHITECTURE §9 + PRODUCT §5).
 
-- Kept backlog items, scoped per-frontend where needed, each measured against baseline: **FEAT-036** extended doctor, **FEAT-037** Mermaid (render-only for v1.0; AI-assist is post-v1.0), **FEAT-038** math, **FEAT-039** folding/outline, **FEAT-040** multi-doc, **FEAT-041** quick open, **FEAT-042** images, **FEAT-043** PDF export, **FEAT-044** custom themes. Close reference-link CommonMark compliance (`docs/commonmark_status.md` skip-list driven to target).
+- Kept backlog items, scoped per-frontend where needed, each measured against baseline: **FEAT-036** extended doctor, **FEAT-037** Mermaid (render-only for v1.0; AI-assist is post-v1.0), **FEAT-038** math, **FEAT-039** folding/outline, **FEAT-040** multi-doc, **FEAT-041** quick open, **FEAT-042** images, **FEAT-043** PDF export, **FEAT-044** custom themes. Close reference-link CommonMark compliance (the CI skip-list driven to target).
 
 **Exit:** v1.0 — rich content on web + Apple, PDF export, hardened, baselines green, CommonMark skip-list at target.
 
