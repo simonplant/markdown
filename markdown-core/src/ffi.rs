@@ -353,6 +353,36 @@ pub fn create_wikilink_target(
         .map_err(|msg| CoreError::Wikilink { msg })
 }
 
+/// A detected math region (byte offsets into the source). FEAT-038.
+#[derive(uniffi::Record)]
+pub struct MathSpan {
+    pub start: u64,
+    pub end: u64,
+    pub display: bool,
+    pub latex: String,
+}
+
+impl From<crate::math::MathSpan> for MathSpan {
+    fn from(m: crate::math::MathSpan) -> Self {
+        MathSpan {
+            start: m.start as u64,
+            end: m.end as u64,
+            display: m.display,
+            latex: m.latex,
+        }
+    }
+}
+
+/// Find the `$…$` / `$$…$$` math regions in `text` (rendering is the frontend's
+/// job — SwiftMath on Apple, KaTeX on web).
+#[uniffi::export]
+pub fn math_spans(text: String) -> Vec<MathSpan> {
+    crate::math::find_spans(&text)
+        .into_iter()
+        .map(Into::into)
+        .collect()
+}
+
 // ---------------------------------------------------------------------------
 // Stateful document object (Arc + interior Mutex; the core Document is untouched)
 // ---------------------------------------------------------------------------

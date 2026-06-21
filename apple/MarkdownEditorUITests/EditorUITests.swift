@@ -68,6 +68,23 @@ final class EditorUITests: XCTestCase {
     }
   }
 
+  // FEAT-038: $…$ / $$…$$ render as formulas in read mode (SwiftMath).
+  func testMathRendering() {
+    let app = XCUIApplication()
+    app.launch()
+    let view = openNewDocument(app)
+    view.tap()
+    let textView = app.textViews.firstMatch
+    XCTAssertTrue(textView.waitForExistence(timeout: 10))
+    textView.tap()
+    textView.typeText("$$E = mc^2$$\n\nAnd inline $a^2 + b^2 = c^2$ here.\n")
+    let done = app.buttons["Done"]
+    XCTAssertTrue(done.waitForExistence(timeout: 10))
+    done.tap()
+    Thread.sleep(forTimeInterval: 0.5)
+    attach("math-read-mode", app)
+  }
+
   // MARK: helpers
 
   /// Create a new document, retrying past the occasional simulator

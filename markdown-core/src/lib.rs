@@ -5,6 +5,7 @@ pub mod ai;
 pub mod ast;
 pub mod doctor;
 pub mod formatter;
+pub mod math;
 pub mod parser;
 pub mod wasm_api;
 pub mod wikilinks;

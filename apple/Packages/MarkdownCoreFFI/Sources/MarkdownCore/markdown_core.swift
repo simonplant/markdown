@@ -976,6 +976,91 @@ public func FfiConverterTypeDiagnostic_lower(_ value: Diagnostic) -> RustBuffer 
 }
 
 
+/**
+ * A detected math region (byte offsets into the source). FEAT-038.
+ */
+public struct MathSpan {
+    public var start: UInt64
+    public var end: UInt64
+    public var display: Bool
+    public var latex: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(start: UInt64, end: UInt64, display: Bool, latex: String) {
+        self.start = start
+        self.end = end
+        self.display = display
+        self.latex = latex
+    }
+}
+
+
+
+extension MathSpan: Equatable, Hashable {
+    public static func ==(lhs: MathSpan, rhs: MathSpan) -> Bool {
+        if lhs.start != rhs.start {
+            return false
+        }
+        if lhs.end != rhs.end {
+            return false
+        }
+        if lhs.display != rhs.display {
+            return false
+        }
+        if lhs.latex != rhs.latex {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(start)
+        hasher.combine(end)
+        hasher.combine(display)
+        hasher.combine(latex)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeMathSpan: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> MathSpan {
+        return
+            try MathSpan(
+                start: FfiConverterUInt64.read(from: &buf), 
+                end: FfiConverterUInt64.read(from: &buf), 
+                display: FfiConverterBool.read(from: &buf), 
+                latex: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: MathSpan, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.start, into: &buf)
+        FfiConverterUInt64.write(value.end, into: &buf)
+        FfiConverterBool.write(value.display, into: &buf)
+        FfiConverterString.write(value.latex, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeMathSpan_lift(_ buf: RustBuffer) throws -> MathSpan {
+    return try FfiConverterTypeMathSpan.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeMathSpan_lower(_ value: MathSpan) -> RustBuffer {
+    return FfiConverterTypeMathSpan.lower(value)
+}
+
+
 public struct Mutation {
     public var offset: UInt64
     public var delete: UInt64
@@ -1881,6 +1966,31 @@ fileprivate struct FfiConverterSequenceTypeDiagnostic: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeMathSpan: FfiConverterRustBuffer {
+    typealias SwiftType = [MathSpan]
+
+    public static func write(_ value: [MathSpan], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeMathSpan.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [MathSpan] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [MathSpan]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeMathSpan.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeMutation: FfiConverterRustBuffer {
     typealias SwiftType = [Mutation]
 
@@ -1969,6 +2079,17 @@ public func format(text: String) -> [Mutation] {
 })
 }
 /**
+ * Find the `$…$` / `$$…$$` math regions in `text` (rendering is the frontend's
+ * job — SwiftMath on Apple, KaTeX on web).
+ */
+public func mathSpans(text: String) -> [MathSpan] {
+    return try!  FfiConverterSequenceTypeMathSpan.lift(try! rustCall() {
+    uniffi_markdown_core_fn_func_math_spans(
+        FfiConverterString.lower(text),$0
+    )
+})
+}
+/**
  * Parse markdown into the typed AST root.
  */
 public func parse(text: String) -> AstNode {
@@ -2021,6 +2142,9 @@ private var initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_markdown_core_checksum_func_format() != 60704) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_markdown_core_checksum_func_math_spans() != 59175) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_markdown_core_checksum_func_parse() != 24317) {

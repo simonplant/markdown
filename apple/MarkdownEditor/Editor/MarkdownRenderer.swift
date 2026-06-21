@@ -15,8 +15,13 @@ import MarkdownCore
 /// Cross-platform (UIColor/NSColor via the Platform shims). IOS_BUILD_SPEC §4.3.
 enum MarkdownRenderer {
 
+  /// Math regions (from the core) for the document currently being rendered.
+  /// Render is single-threaded (the read view), so a render-scoped static is safe.
+  private static var currentMath: [MathSpan] = []
+
   static func render(_ text: String) -> NSAttributedString {
     let bytes = Array(text.utf8)
+    currentMath = mathSpans(text: text)
     let root = parse(text: text)
     let out = NSMutableAttributedString()
     for block in blocks(of: root) {
@@ -123,17 +128,29 @@ enum MarkdownRenderer {
                                    bytes: [UInt8], base: Style, into out: NSMutableAttributedString) {
     var styled: [AstNode] = []
     collectStyled(node, into: &styled)
-    styled.sort { $0.span.start < $1.span.start }
+    // Merge AST styled nodes with the document's math spans (FEAT-038) within this
+    // block, sorted by start; overlapping AST nodes inside math are skipped.
+    typealias Item = (start: Int, end: Int, node: AstNode?, math: MathSpan?)
+    var items: [Item] = styled.map { (Int($0.span.start), Int($0.span.end), $0, nil) }
+    for m in currentMath where Int(m.start) >= contentStart && Int(m.end) <= contentEnd {
+      items.append((Int(m.start), Int(m.end), nil, m))
+    }
+    items.sort { $0.start < $1.start }
 
     var cursor = contentStart
-    for s in styled {
-      let ss = Int(s.span.start), se = Int(s.span.end)
+    for item in items {
+      let ss = item.start, se = item.end
       if ss < cursor || se > contentEnd || se <= ss { continue }
       if ss > cursor {
         out.append(NSAttributedString(string: slice(bytes, cursor, ss), attributes: attributes(base)))
       }
-      // Images render as an attachment (data: URIs) or alt text — not a styled
-      // text slice (FEAT-042). Markdown markup is hidden either way.
+      if let m = item.math {
+        appendMath(m, into: out, base: base)
+        cursor = se
+        continue
+      }
+      guard let s = item.node else { cursor = se; continue }
+      // Images render as an attachment (data: URIs) or alt text (FEAT-042).
       if case .image(let source) = s.kind {
         appendImage(source: source, span: (ss, se), bytes: bytes, base: base, into: out)
         cursor = se
@@ -174,6 +191,18 @@ enum MarkdownRenderer {
       default:
         collectStyled(c, into: &arr)
       }
+    }
+  }
+
+  /// Render a math region (FEAT-038): a SwiftMath-rendered formula attachment,
+  /// or the raw LaTeX as a fallback if rendering fails.
+  private static func appendMath(_ m: MathSpan, into out: NSMutableAttributedString, base: Style) {
+    if let image = MathRenderer.image(latex: m.latex, display: m.display, fontSize: m.display ? 22 : 18) {
+      let attachment = NSTextAttachment()
+      attachment.image = image
+      out.append(NSAttributedString(attachment: attachment))
+    } else {
+      out.append(NSAttributedString(string: m.latex, attributes: attributes(base)))
     }
   }
 
