@@ -86,7 +86,7 @@
       "passes": false,
       "readyForSprint": false,
       "groomedAt": null,
-      "groomingNotes": "Reconciled 2026-06-19: descoped to render-only for v1.0; AI-assisted Mermaid editing moves to the post-v1.0 AI phase.",
+      "groomingNotes": "Reconciled 2026-06-19: descoped to render-only for v1.0; AI-assisted Mermaid editing moves to the post-v1.0 AI phase. Partial 2026-06-20: ```mermaid blocks are detected from the AST and rendered distinctly (labelled diagram box). Full SVG rendering needs mermaid.js in an offscreen WKWebView with async read-view refresh (the heaviest single item) — the documented remaining piece.",
       "phase": "4",
       "epic": null
     },

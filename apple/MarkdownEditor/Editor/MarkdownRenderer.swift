@@ -88,13 +88,18 @@ enum MarkdownRenderer {
         number += 1
       }
 
-    case .fencedCodeBlock, .indentedCodeBlock:
+    case .fencedCodeBlock(let language):
       blockSpacing(out)
-      out.append(NSAttributedString(string: codeBlockContent(node, bytes: bytes), attributes: [
-        .font: PlatformFont.monospacedSystemFont(ofSize: 14, weight: .regular),
-        .foregroundColor: PlatformColor.labelCompat,
-        .backgroundColor: PlatformColor.secondaryFillCompat,
-      ]))
+      let code = codeBlockContent(node, bytes: bytes)
+      if language?.lowercased() == "mermaid" {
+        appendMermaid(code, into: out)
+      } else {
+        out.append(NSAttributedString(string: code, attributes: codeAttributes))
+      }
+
+    case .indentedCodeBlock:
+      blockSpacing(out)
+      out.append(NSAttributedString(string: codeBlockContent(node, bytes: bytes), attributes: codeAttributes))
 
     case .thematicBreak:
       blockSpacing(out)
@@ -223,6 +228,29 @@ enum MarkdownRenderer {
     let full = slice(bytes, span.0, span.1)
     let alt = full.drop(while: { $0 != "[" }).dropFirst().prefix(while: { $0 != "]" })
     out.append(NSAttributedString(string: "🖼 \(alt)", attributes: attributes(base)))
+  }
+
+  private static var codeAttributes: [NSAttributedString.Key: Any] {
+    [
+      .font: PlatformFont.monospacedSystemFont(ofSize: 14, weight: .regular),
+      .foregroundColor: PlatformColor.labelCompat,
+      .backgroundColor: PlatformColor.secondaryFillCompat,
+    ]
+  }
+
+  /// Render a ```mermaid block distinctly (FEAT-037). Full SVG rendering needs
+  /// mermaid.js in an offscreen WKWebView (a later async pass); for now the block
+  /// is clearly labelled as a diagram with its source shown.
+  private static func appendMermaid(_ source: String, into out: NSMutableAttributedString) {
+    out.append(NSAttributedString(string: "◇ Mermaid diagram\n", attributes: [
+      .font: styledFont(PlatformFont.bodyFont, bold: true, italic: false),
+      .foregroundColor: PlatformColor.secondaryLabelCompat,
+    ]))
+    out.append(NSAttributedString(string: source, attributes: [
+      .font: PlatformFont.monospacedSystemFont(ofSize: 13, weight: .regular),
+      .foregroundColor: PlatformColor.secondaryLabelCompat,
+      .backgroundColor: PlatformColor.secondaryFillCompat,
+    ]))
   }
 
   private static func attributes(_ style: Style) -> [NSAttributedString.Key: Any] {
