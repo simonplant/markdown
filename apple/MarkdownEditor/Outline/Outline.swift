@@ -45,9 +45,19 @@ enum Outline {
 
   private static func trimTrailing(_ start: Int, _ end: Int, bytes: [UInt8]) -> Int {
     var e = min(end, bytes.count)
+    // Trim trailing whitespace/newlines.
     while e > start {
       let b = bytes[e - 1]
-      if b == 0x0A || b == 0x0D || b == 0x20 || b == 0x09 || b == 0x23 { e -= 1 } else { break }
+      if b == 0x0A || b == 0x0D || b == 0x20 || b == 0x09 { e -= 1 } else { break }
+    }
+    // Strip an ATX closing '#' run only when it is separated from the heading
+    // text by whitespace (`# Heading ###`). A '#' fused to the text — `# C#`,
+    // `# F#`, `# C++ vs C#` — is content and must be kept.
+    var h = e
+    while h > start, bytes[h - 1] == 0x23 { h -= 1 }
+    if h < e, h > start, bytes[h - 1] == 0x20 || bytes[h - 1] == 0x09 {
+      e = h
+      while e > start, bytes[e - 1] == 0x20 || bytes[e - 1] == 0x09 { e -= 1 }
     }
     return e
   }

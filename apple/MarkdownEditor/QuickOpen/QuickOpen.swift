@@ -15,7 +15,12 @@ enum QuickOpen {
                                                  options: [.skipsHiddenFiles]) else { return [] }
     for case let url as URL in e {
       let ext = url.pathExtension.lowercased()
-      if ext == "md" || ext == "markdown" { files.append(url) }
+      guard ext == "md" || ext == "markdown" else { continue }
+      // A directory can carry a `.md` extension; only list real files (reading
+      // the prefetched .isRegularFileKey that was previously ignored).
+      if (try? url.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true {
+        files.append(url)
+      }
     }
     return files.sorted { $0.lastPathComponent.localizedCaseInsensitiveCompare($1.lastPathComponent) == .orderedAscending }
   }

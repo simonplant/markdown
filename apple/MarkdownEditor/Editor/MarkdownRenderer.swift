@@ -64,11 +64,17 @@ enum MarkdownRenderer {
       out.append(NSAttributedString(string: "▏ ", attributes: [.foregroundColor: PlatformColor.tertiaryLabelCompat]))
       let inner = NSMutableAttributedString()
       for child in node.children { appendBlock(child, bytes: bytes, into: inner, indent: indent) }
-      inner.addAttribute(.foregroundColor, value: PlatformColor.secondaryLabelCompat, range: NSRange(location: 0, length: inner.length))
+      // Tint quote text to secondary, but preserve link runs (links carry an
+      // underline + link color from appendInline) so links stay identifiable.
+      inner.enumerateAttribute(.underlineStyle, in: NSRange(location: 0, length: inner.length)) { value, range, _ in
+        if value == nil {
+          inner.addAttribute(.foregroundColor, value: PlatformColor.secondaryLabelCompat, range: range)
+        }
+      }
       out.append(inner)
 
     case .unorderedList, .orderedList:
-      var number = 1
+      var number = node.kind.isOrdered ? orderedListStart(node, bytes: bytes) : 1
       for child in node.children where isListItem(child) {
         blockSpacing(out)
         let marker = node.kind.isOrdered ? "\(number).  " : "•  "
@@ -166,7 +172,12 @@ enum MarkdownRenderer {
       switch s.kind {
       case .strong: st.bold = true; innerStart = ss + 2; innerEnd = se - 2
       case .emphasis: st.italic = true; innerStart = ss + 1; innerEnd = se - 1
-      case .strikethrough: st.strike = true; innerStart = ss + 2; innerEnd = se - 2
+      case .strikethrough:
+        // The delimiter may be one tilde (`~x~`) or two (`~~x~~`); count it
+        // rather than assuming two, or single-tilde content gets eaten.
+        st.strike = true
+        let tildes = leadingCount(0x7E, from: ss, end: se, bytes: bytes)
+        innerStart = ss + tildes; innerEnd = se - tildes
       case .inlineCode:
         st.code = true
         let ticks = leadingCount(0x60, from: ss, end: se, bytes: bytes)
@@ -318,6 +329,24 @@ enum MarkdownRenderer {
   private static func isListItem(_ node: AstNode) -> Bool {
     if case .listItem = node.kind { return true }
     return false
+  }
+
+  /// The starting number of an ordered list, read from the first item's marker
+  /// digits (e.g. `3. first` starts at 3), defaulting to 1.
+  private static func orderedListStart(_ node: AstNode, bytes: [UInt8]) -> Int {
+    guard let first = node.children.first(where: isListItem) else { return 1 }
+    var i = Int(first.span.start)
+    let e = min(Int(first.span.end), bytes.count)
+    while i < e, bytes[i] == 0x20 || bytes[i] == 0x09 { i += 1 }
+    var n = 0
+    var found = false
+    while i < e, bytes[i] >= 0x30, bytes[i] <= 0x39 {
+      n = n * 10 + Int(bytes[i] - 0x30)
+      found = true
+      i += 1
+      if n > 1_000_000 { break } // guard against absurd input
+    }
+    return found ? n : 1
   }
 
   private static func blockSpacing(_ out: NSMutableAttributedString) {

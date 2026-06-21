@@ -36,6 +36,16 @@ final class MarkdownFileDocument: ReferenceFileDocument {
     self.hadUtf8Bom = core.hasUtf8Bom()
   }
 
+  /// Replace the document's content AND its BOM flag from raw file bytes. iOS
+  /// Quick Open loads a different file into this same instance; without updating
+  /// `hadUtf8Bom`, the next save would re-emit the *original* file's BOM against
+  /// the new content, corrupting the byte prefix (FEAT-054).
+  func load(from data: Data) throws {
+    let core = try MarkdownDocument.fromBytes(bytes: data)
+    text = core.currentText()
+    hadUtf8Bom = core.hasUtf8Bom()
+  }
+
   func snapshot(contentType: UTType) throws -> String { text }
 
   func fileWrapper(snapshot: String, configuration: WriteConfiguration) throws -> FileWrapper {

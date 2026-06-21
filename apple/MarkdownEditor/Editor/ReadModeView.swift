@@ -17,6 +17,7 @@ struct ReadModeView: NSViewRepresentable {
     textView.isEditable = false
     textView.textContainerInset = NSSize(width: 12, height: 16)
     textView.textStorage?.setAttributedString(MarkdownRenderer.render(text))
+    context.coordinator.renderedText = text
     let click = NSClickGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleClick))
     textView.addGestureRecognizer(click)
     context.coordinator.onEnterAuthor = onEnterAuthor
@@ -24,8 +25,11 @@ struct ReadModeView: NSViewRepresentable {
   }
 
   func updateNSView(_ scroll: NSScrollView, context: Context) {
-    if let textView = scroll.documentView as? NSTextView {
+    // Only re-render when the source actually changed; otherwise an unrelated
+    // SwiftUI update (a sheet, an appearance change) would reset scroll/selection.
+    if let textView = scroll.documentView as? NSTextView, context.coordinator.renderedText != text {
       textView.textStorage?.setAttributedString(MarkdownRenderer.render(text))
+      context.coordinator.renderedText = text
     }
     context.coordinator.onEnterAuthor = onEnterAuthor
   }
@@ -34,6 +38,7 @@ struct ReadModeView: NSViewRepresentable {
 
   final class Coordinator: NSObject {
     var onEnterAuthor: () -> Void
+    var renderedText: String?
     init(onEnterAuthor: @escaping () -> Void) { self.onEnterAuthor = onEnterAuthor }
     @objc func handleClick() { onEnterAuthor() }
   }
@@ -55,6 +60,7 @@ struct ReadModeView: UIViewRepresentable {
     textView.backgroundColor = .systemBackground
     textView.textContainerInset = UIEdgeInsets(top: 16, left: 16, bottom: 24, right: 16)
     textView.attributedText = MarkdownRenderer.render(text)
+    context.coordinator.renderedText = text
     let tap = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleTap))
     tap.cancelsTouchesInView = false
     textView.addGestureRecognizer(tap)
@@ -63,13 +69,19 @@ struct ReadModeView: UIViewRepresentable {
 
   func updateUIView(_ textView: UITextView, context: Context) {
     context.coordinator.onEnterAuthor = onEnterAuthor
-    textView.attributedText = MarkdownRenderer.render(text)
+    // Only re-render when the source actually changed; otherwise an unrelated
+    // SwiftUI update (a sheet, an appearance change) would reset scroll/selection.
+    if context.coordinator.renderedText != text {
+      textView.attributedText = MarkdownRenderer.render(text)
+      context.coordinator.renderedText = text
+    }
   }
 
   func makeCoordinator() -> Coordinator { Coordinator(onEnterAuthor: onEnterAuthor) }
 
   final class Coordinator: NSObject {
     var onEnterAuthor: () -> Void
+    var renderedText: String?
     init(onEnterAuthor: @escaping () -> Void) { self.onEnterAuthor = onEnterAuthor }
     @objc func handleTap() { onEnterAuthor() }
   }

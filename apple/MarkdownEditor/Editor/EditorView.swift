@@ -68,13 +68,26 @@ struct EditorView: View {
   private func resolvedFolder() -> URL? {
     guard !folderBookmark.isEmpty else { return nil }
     var stale = false
+    #if os(macOS)
+    // Under the App Sandbox a plain bookmark does not yield a security-scoped
+    // URL, so saved-folder access fails on relaunch. Resolve with security scope.
+    return try? URL(resolvingBookmarkData: folderBookmark, options: .withSecurityScope,
+                    relativeTo: nil, bookmarkDataIsStale: &stale)
+    #else
     return try? URL(resolvingBookmarkData: folderBookmark, bookmarkDataIsStale: &stale)
+    #endif
   }
 
   private func saveFolder(_ url: URL) {
     let scoped = url.startAccessingSecurityScopedResource()
     defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+    #if os(macOS)
+    folderBookmark = (try? url.bookmarkData(options: .withSecurityScope,
+                                            includingResourceValuesForKeys: nil,
+                                            relativeTo: nil)) ?? Data()
+    #else
     folderBookmark = (try? url.bookmarkData()) ?? Data()
+    #endif
   }
 
   /// Open a chosen file. macOS opens it in a new window (`openDocument`); iOS has
@@ -86,9 +99,10 @@ struct EditorView: View {
     let folder = resolvedFolder()
     let scoped = folder?.startAccessingSecurityScopedResource() ?? false
     defer { if scoped { folder?.stopAccessingSecurityScopedResource() } }
-    if let data = try? Data(contentsOf: url),
-       let core = try? MarkdownDocument.fromBytes(bytes: data) {
-      document.text = core.currentText()
+    if let data = try? Data(contentsOf: url) {
+      // load(from:) updates text AND the BOM flag together so the next save
+      // doesn't write the previous file's byte prefix onto this content.
+      try? document.load(from: data)
     }
     #endif
   }
