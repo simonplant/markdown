@@ -68,9 +68,8 @@ const doctorGutter = gutter({
     if (view.state.field(readModeField)) return null;
     const diags = view.state.field(diagnosticsField);
     for (const d of diags) {
-      // Convert byte offsets to line. CodeMirror's Text is char-indexed; for
-      // ASCII-heavy prose this matches bytes. Non-ASCII content produces
-      // off-by-a-few markers, acceptable for v1.
+      // d.start/d.end are CodeMirror char offsets (core byte offsets are
+      // translated in core-wasm.diagnose), so this maps to the correct line.
       const lineAt = view.state.doc.lineAt(Math.min(d.start, view.state.doc.length));
       if (lineAt.from === line.from) {
         return new DoctorGutterMarker(d.severity);

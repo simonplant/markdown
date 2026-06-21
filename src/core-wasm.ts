@@ -80,14 +80,66 @@ function callJson<T>(ex: CoreExports, fn: (ptr: number, len: number) => number, 
   return JSON.parse(new TextDecoder().decode(bytes)) as T;
 }
 
-/** Parse + run the document doctor, returning diagnostics. */
-export async function diagnose(text: string): Promise<Diagnostic[]> {
-  const ex = await core();
-  return callJson<Diagnostic[]>(ex, ex.mc_diagnose.bind(ex), text);
+/** UTF-8 byte length of a Unicode code point. */
+function utf8Len(cp: number): number {
+  if (cp <= 0x7f) return 1;
+  if (cp <= 0x7ff) return 2;
+  if (cp <= 0xffff) return 3;
+  return 4;
 }
 
-/** Parse + run the formatter, returning the mutations to apply. */
+/**
+ * The core reports spans as UTF-8 *byte* offsets, but CodeMirror positions are
+ * UTF-16 code units (JS string indices). For any document containing multi-byte
+ * characters the two diverge, so format mutations and diagnostic spans must be
+ * translated before they touch the editor. Returns a fast mapper over the text.
+ */
+function byteToCharMapper(text: string): (byteOffset: number) => number {
+  // ASCII fast path: byte offset == char offset, no table needed.
+  const encodedLen = new TextEncoder().encode(text).length;
+  if (encodedLen === text.length) return (b) => b;
+
+  // Breakpoints at each code-point boundary: parallel byte/char positions.
+  const bytePoints: number[] = [0];
+  const charPoints: number[] = [0];
+  let bytePos = 0;
+  let charPos = 0;
+  for (const ch of text) {
+    bytePos += utf8Len(ch.codePointAt(0)!);
+    charPos += ch.length; // 1 for BMP, 2 for a surrogate pair
+    bytePoints.push(bytePos);
+    charPoints.push(charPos);
+  }
+  return (byteOffset: number): number => {
+    if (byteOffset <= 0) return 0;
+    // Largest breakpoint <= byteOffset (binary search).
+    let lo = 0;
+    let hi = bytePoints.length - 1;
+    while (lo < hi) {
+      const mid = (lo + hi + 1) >> 1;
+      if (bytePoints[mid] <= byteOffset) lo = mid;
+      else hi = mid - 1;
+    }
+    return charPoints[lo];
+  };
+}
+
+/** Parse + run the document doctor, returning diagnostics with char offsets. */
+export async function diagnose(text: string): Promise<Diagnostic[]> {
+  const ex = await core();
+  const diags = callJson<Diagnostic[]>(ex, ex.mc_diagnose.bind(ex), text);
+  const toChar = byteToCharMapper(text);
+  return diags.map((d) => ({ ...d, start: toChar(d.start), end: toChar(d.end) }));
+}
+
+/** Parse + run the formatter, returning mutations with char-based offsets. */
 export async function format(text: string): Promise<Mutation[]> {
   const ex = await core();
-  return callJson<Mutation[]>(ex, ex.mc_format.bind(ex), text);
+  const muts = callJson<Mutation[]>(ex, ex.mc_format.bind(ex), text);
+  const toChar = byteToCharMapper(text);
+  return muts.map((m) => {
+    const start = toChar(m.offset);
+    const end = toChar(m.offset + m.delete);
+    return { offset: start, delete: end - start, insert: m.insert };
+  });
 }

@@ -3,8 +3,9 @@
 /**
  * Service worker for Markdown PWA — caches the app shell for offline use.
  *
- * Strategy: cache-first for app shell assets, network-first for everything else.
- * On install a new cache version replaces the old one so users get updates.
+ * Strategy: network-first for navigations/HTML (so deployed updates are picked
+ * up, falling back to the cached shell offline), cache-first for content-hashed
+ * assets (immutable). `activate` evicts caches whose key != CACHE_NAME.
  */
 
 declare const self: ServiceWorkerGlobalScope;
@@ -39,29 +40,46 @@ self.addEventListener("activate", (event: ExtendableEvent) => {
   self.clients.claim();
 });
 
-self.addEventListener("fetch", (event: FetchEvent) => {
-  const url = new URL(event.request.url);
+function cachePut(request: Request, response: Response): Response {
+  if (response.status === 200) {
+    const clone = response.clone();
+    caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+  }
+  return response;
+}
 
-  // Only cache same-origin requests
+self.addEventListener("fetch", (event: FetchEvent) => {
+  const { request } = event;
+  if (request.method !== "GET") return;
+
+  const url = new URL(request.url);
   if (url.origin !== location.origin) return;
 
-  event.respondWith(
-    caches.match(event.request).then((cached) => {
-      if (cached) return cached;
+  const isNavigation =
+    request.mode === "navigate" ||
+    (request.headers.get("accept") || "").includes("text/html");
 
-      return fetch(event.request).then((response) => {
-        // Cache successful GET responses for offline use
-        if (
-          event.request.method === "GET" &&
-          response.status === 200
-        ) {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, clone);
-          });
-        }
-        return response;
-      });
+  if (isNavigation) {
+    // Network-first for the HTML shell: a cache-first shell would pin the old
+    // index.html (and its old hashed asset references) forever, so deploys are
+    // never seen. Fall back to the cached shell only when offline.
+    event.respondWith(
+      fetch(request)
+        .then((response) => cachePut(request, response))
+        .catch(async () => {
+          const cached = await caches.match(request);
+          return cached ?? (await caches.match("/index.html")) ?? Response.error();
+        })
+    );
+    return;
+  }
+
+  // Cache-first for other assets — content-hashed bundles are immutable, so a
+  // new deploy produces new filenames rather than stale hits.
+  event.respondWith(
+    caches.match(request).then((cached) => {
+      if (cached) return cached;
+      return fetch(request).then((response) => cachePut(request, response));
     })
   );
 });

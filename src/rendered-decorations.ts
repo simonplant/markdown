@@ -61,6 +61,18 @@ class CheckboxWidget extends WidgetType {
   }
 }
 
+/**
+ * Allow only http(s) URLs and relative/same-origin paths as an image source.
+ * A leading `scheme:` token that is not http/https (data:, file:, vbscript:,
+ * javascript:, …) is rejected; paths with no scheme are treated as relative.
+ */
+function isSafeImageSrc(src: string): boolean {
+  const scheme = src.match(/^([a-zA-Z][a-zA-Z0-9+.-]*):/);
+  if (!scheme) return true; // relative or scheme-relative ("//host/x")
+  const s = scheme[1].toLowerCase();
+  return s === "https" || s === "http";
+}
+
 class ImageWidget extends WidgetType {
   constructor(
     private src: string,
@@ -75,11 +87,9 @@ class ImageWidget extends WidgetType {
     const img = document.createElement("img");
     img.alt = this.alt;
 
-    // Only allow relative paths and https URLs
-    if (
-      this.src.startsWith("https://") ||
-      (!this.src.includes("://") && !this.src.startsWith("javascript"))
-    ) {
+    // Only allow http(s) URLs and relative/same-origin paths. A src with any
+    // other scheme (data:, file:, vbscript:, javascript:, …) is rejected.
+    if (isSafeImageSrc(this.src)) {
       img.src = this.src;
     }
 
@@ -181,30 +191,35 @@ function buildDecorations(view: EditorView): DecorationSet {
         case "Image": {
           if (cursorInside) return;
 
-          // Extract alt text and URL from child nodes
-          let alt = "";
+          // The parser exposes URL/LinkTitle/LinkMark children but NOT a node
+          // spanning the alt label, so derive src from the URL node and the alt
+          // from the source text between the opening `![` and the closing `]`.
           let src = "";
+          let altEnd = -1;
           const imgNode = node.node;
           const cursor = imgNode.cursor();
           if (cursor.firstChild()) {
             do {
               if (cursor.name === "URL") {
                 src = view.state.doc.sliceString(cursor.from, cursor.to);
-              } else if (
-                cursor.name !== "LinkMark" &&
-                cursor.name !== "Image"
-              ) {
-                alt += view.state.doc.sliceString(cursor.from, cursor.to);
+              } else if (cursor.name === "LinkMark" && altEnd === -1) {
+                if (view.state.doc.sliceString(cursor.from, cursor.to) === "]") {
+                  altEnd = cursor.from;
+                }
               }
             } while (cursor.nextSibling());
           }
+          // Strip a pointy-bracket destination `<url>`.
+          src = src.replace(/^<(.*)>$/, "$1");
+          let alt =
+            altEnd >= 0 ? view.state.doc.sliceString(node.from + 2, altEnd) : "";
 
-          if (!alt && !src) {
-            // Fallback: parse from text
+          if (!src) {
+            // Fallback: parse from the raw source slice.
             const fullText = view.state.doc.sliceString(node.from, node.to);
-            const match = fullText.match(/!\[([^\]]*)\]\(([^)]*)\)/);
+            const match = fullText.match(/!\[([^\]]*)\]\(\s*<?([^)\s>]*)>?/);
             if (match) {
-              alt = match[1];
+              if (!alt) alt = match[1];
               src = match[2];
             }
           }

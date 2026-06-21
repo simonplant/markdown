@@ -8,11 +8,16 @@ function wrapSelection(view: EditorView, mark: string): boolean {
     const selected = state.sliceDoc(range.from, range.to);
     const len = mark.length;
 
-    // Check if selection is already wrapped with the mark
+    // Check if selection is already wrapped with exactly this mark. For the
+    // single-char italic mark `*`, a `**…**` / `***…***` run is bold (or
+    // bold+italic), not italic — don't strip a star from it (which would
+    // silently downgrade **bold** to *bold* or delete a bare `**`).
+    const doubled = mark[0] + mark[0];
     if (
       selected.length >= len * 2 &&
       selected.startsWith(mark) &&
-      selected.endsWith(mark)
+      selected.endsWith(mark) &&
+      !(len === 1 && (selected.startsWith(doubled) || selected.endsWith(doubled)))
     ) {
       const unwrapped = selected.slice(len, -len);
       return {
