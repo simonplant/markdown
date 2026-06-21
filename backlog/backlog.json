@@ -255,11 +255,11 @@
         "markdown-core/src/lib.rs"
       ],
       "dependsOn": [],
-      "status": "todo",
-      "passes": false,
+      "status": "done",
+      "passes": true,
       "readyForSprint": false,
       "groomedAt": null,
-      "groomingNotes": "Reconciled 2026-06-19: file discovery/IO moved from src-tauri to markdown-core (reached via the WASM/uniffi binding).",
+      "groomingNotes": "Reconciled 2026-06-19: file discovery/IO moved from src-tauri to markdown-core (reached via the WASM/uniffi binding). Done 2026-06-20 (Apple): folder picker (security-scoped) + fuzzy search + open. macOS opens in a new window via openDocument; iOS (no programmatic DocumentGroup open) loads the content into the current view.",
       "phase": "4",
       "epic": null
     },

@@ -14,7 +14,12 @@ struct EditorView: View {
   @State private var pdfFile: PDFFile?
   @State private var showPDFExport = false
   @State private var showSettings = false
+  @State private var showQuickOpen = false
   @AppStorage(AppSettings.appearanceKey) private var appearance = "system"
+  @AppStorage("quickOpenFolderBookmark") private var folderBookmark = Data()
+  #if os(macOS)
+  @Environment(\.openDocument) private var openDocument
+  #endif
 
   var body: some View {
     VStack(spacing: 0) {
@@ -32,7 +37,8 @@ struct EditorView: View {
                     onFormat: formatDocument,
                     onOutline: { showOutline = true },
                     onExportPDF: exportPDF,
-                    onSettings: { showSettings = true })
+                    onSettings: { showSettings = true },
+                    onQuickOpen: { showQuickOpen = true })
     }
     .preferredColorScheme(AppSettings.colorScheme(appearance))
     .navigationTitle("Markdown")
@@ -49,6 +55,42 @@ struct EditorView: View {
     .fileExporter(isPresented: $showPDFExport, document: pdfFile,
                   contentType: .pdf, defaultFilename: "Document") { _ in }
     .sheet(isPresented: $showSettings) { SettingsView() }
+    .sheet(isPresented: $showQuickOpen) {
+      QuickOpenView(
+        folderBase: resolvedFolder(),
+        onPickFolder: saveFolder,
+        onOpen: openSelected
+      )
+    }
+  }
+
+  /// Resolve the saved security-scoped folder bookmark (Quick Open, FEAT-041).
+  private func resolvedFolder() -> URL? {
+    guard !folderBookmark.isEmpty else { return nil }
+    var stale = false
+    return try? URL(resolvingBookmarkData: folderBookmark, bookmarkDataIsStale: &stale)
+  }
+
+  private func saveFolder(_ url: URL) {
+    let scoped = url.startAccessingSecurityScopedResource()
+    defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+    folderBookmark = (try? url.bookmarkData()) ?? Data()
+  }
+
+  /// Open a chosen file. macOS opens it in a new window (`openDocument`); iOS has
+  /// no programmatic DocumentGroup open, so it loads the content into this view.
+  private func openSelected(_ url: URL) {
+    #if os(macOS)
+    Task { try? await openDocument(at: url) }
+    #else
+    let folder = resolvedFolder()
+    let scoped = folder?.startAccessingSecurityScopedResource() ?? false
+    defer { if scoped { folder?.stopAccessingSecurityScopedResource() } }
+    if let data = try? Data(contentsOf: url),
+       let core = try? MarkdownDocument.fromBytes(bytes: data) {
+      document.text = core.currentText()
+    }
+    #endif
   }
 
   private func formatDocument() {
@@ -105,6 +147,7 @@ private struct CoreStatusBar: View {
   let onOutline: () -> Void
   let onExportPDF: () -> Void
   let onSettings: () -> Void
+  let onQuickOpen: () -> Void
 
   var body: some View {
     let issues = diagnose(text: text).count
@@ -115,6 +158,8 @@ private struct CoreStatusBar: View {
         .foregroundStyle(issues == 0 ? Color.secondary : Color.orange)
         .accessibilityLabel(issues == 0 ? "No issues" : "\(issues) issue\(issues == 1 ? "" : "s")")
       Spacer()
+      Button("Quick Open", systemImage: "magnifyingglass", action: onQuickOpen)
+        .labelStyle(.iconOnly)
       Button("Outline", systemImage: "list.bullet.indent", action: onOutline)
         .labelStyle(.iconOnly)
       Button("Export PDF", systemImage: "arrow.up.doc", action: onExportPDF)
