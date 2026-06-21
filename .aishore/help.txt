@@ -16,9 +16,12 @@ Commands:
   backlog edit <ID> --json '{..}'  Update fields (merges onto existing item)
   backlog check <ID> Check readiness gates (title, intent, steps, AC, step length)
     --all           Audit every non-done item and print a summary table
+    --quick         Skip verify command execution (metadata gates only)
   backlog rm <ID>   Remove an item (with confirmation)
     --force         Skip confirmation
   backlog populate  Populate backlog from PRODUCT.md (AI-assisted)
+  backlog stats     Show sprint velocity and success metrics from archive
+  backlog next      Show what item would be auto-picked next (read-only)
 
   run [count]       Run N sprints (default: 1, feature branches, push/pull)
   run <ID>          Run specific item by ID (e.g., TEST-006)
@@ -28,6 +31,7 @@ Commands:
     p1              Complete all P0+P1 (must + should) items
     p2              Complete all P0-P2 (must + should + could) items
     --limit N       Cap session at N successful items then exit cleanly
+    --filter <kw>   Only consider items whose title or intent contains <kw>
     --max-failures N  Consecutive failures before stopping (default: 5)
     --retries N     Per-item retry attempts on failure
     --no-merge      Keep feature branches for review
@@ -49,6 +53,8 @@ Commands:
   checksums         Regenerate checksums.sha256 manifest
   init              Setup wizard — checks prerequisites, configures project
     -y, --yes       Accept all detected defaults (non-interactive)
+  doctor            Health check — verify tools, backlog, config, core status
+  logs              Show recent agent run history (--last N, default 20)
   version, -v, --version   Show version
   help, -h, --help         Show this help
 
@@ -64,6 +70,10 @@ Files:
   backlog/backlog.json    Your feature backlog (user content)
   backlog/bugs.json       Your bugs/tech debt (user content)
   backlog/sprint.json     Current sprint state
-  .aishore/config.yaml    Optional configuration overrides
+  .aishore/config.yaml    Optional configuration overrides (including custom gates)
+
+Custom gates:
+  Add a gates section to config.yaml to run custom commands at each pipeline
+  phase (pre_flight, post_develop, pre_merge). See: aishore help run
 
 See README.md for environment variables, agent permissions, and configuration.

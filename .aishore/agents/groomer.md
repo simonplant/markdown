@@ -44,6 +44,8 @@ For each item, ensure:
   - **NEVER:** `grep -q 'functionName' src/file.js` (tests structure, not behavior)
   - **INSTEAD:** `test -f dist/path/index.html` (file exists), `test -d dist/tags` (directory exists), `curl -s localhost:3000/page | grep -qi pattern` (test running app), or `node -e "require('./src/module').func()"` (execute the code)
   - **Rule of thumb:** if the verify command uses `grep` on a file that goes through a build step, it's wrong. Test the behavior, not the text.
+- **Verify commands must be stateless** — NEVER use `backlog add`, `backlog rm`, or any command that mutates backlog state in a verify command. Temporary items created by verify commands leak on failure and pollute the backlog. Use static checks (grep, jq, test, curl) that read state without side effects.
+- **No-op verify commands are banned** — NEVER use `"true"`, `"echo ok"`, or `"command || true"` as verify commands. These always pass regardless of implementation, causing the developer agent to skip work and the validator to reject the sprint. If you cannot write a real verify command, omit the `--ac-verify` flag entirely.
 - Set `readyForSprint` only when the item meets all checklist gates
 
 ## Track Assignment & Core Awareness

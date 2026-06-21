@@ -17,6 +17,7 @@ cmd_scaffold() {
     print_groom_summary
 
     local -a context_args
+    # shellcheck disable=SC2034  # passed by nameref to run_groom_flow
     mapfile -t context_args < <(_build_groom_context)
 
     run_groom_flow "architect" "groom" context_args

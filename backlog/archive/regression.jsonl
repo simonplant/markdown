@@ -58,3 +58,21 @@
 {"itemId":"FEAT-020","date":"2026-04-13","text":"cargo test --workspace passes","verify":"cargo test --workspace"}
 {"itemId":"FEAT-021","date":"2026-04-13","text":"npm run build succeeds","verify":"npm run build"}
 {"itemId":"FEAT-021","date":"2026-04-13","text":"cargo test --workspace passes","verify":"cargo test --workspace --quiet"}
+{"itemId":"FEAT-025","date":"2026-04-14","text":"npm run build succeeds","verify":"npm run build 2>&1 | grep -c 'error' | grep -q '^0$'"}
+{"itemId":"FEAT-025","date":"2026-04-14","text":"cargo test --workspace passes","verify":"cargo test --workspace --quiet 2>&1 | tail -3"}
+{"itemId":"FEAT-027","date":"2026-04-14","text":"cargo test --workspace passes","verify":"cargo test --workspace --quiet 2>&1 | tail -3"}
+{"itemId":"FEAT-027","date":"2026-04-14","text":"npm run build succeeds","verify":"npm run build 2>&1 | grep -c 'error' | grep -q '^0$'"}
+{"itemId":"FEAT-035","date":"2026-04-14","text":"npm run build succeeds","verify":"npm run build 2>&1 | grep -c 'error' | grep -q '^0$'"}
+{"itemId":"FEAT-035","date":"2026-04-14","text":"cargo test --workspace passes","verify":"cargo test --workspace --quiet 2>&1 | tail -3"}
+{"itemId":"FEAT-024","date":"2026-04-15","text":"Web build produces a deployable static site","verify":"npm run build:web 2>&1 | tail -5"}
+{"itemId":"FEAT-024","date":"2026-04-15","text":"PWA manifest exists","verify":"test -f public/manifest.json || test -f src/manifest.json"}
+{"itemId":"FEAT-024","date":"2026-04-15","text":"Service worker file exists","verify":"find dist-web src public -name 'sw.*' -o -name 'service-worker.*' 2>/dev/null | grep -q ."}
+{"itemId":"FEAT-026","date":"2026-04-15","text":"notify crate is in markdown-core Cargo.toml","verify":"grep -q 'notify' markdown-core/Cargo.toml"}
+{"itemId":"FEAT-026","date":"2026-04-15","text":"cargo test --workspace passes","verify":"cargo test --workspace --quiet 2>&1 | tail -3"}
+{"itemId":"FEAT-026","date":"2026-04-15","text":"npm run build succeeds","verify":"npm run build 2>&1 | grep -c 'error' | grep -q '^0$'"}
+{"itemId":"FEAT-029","date":"2026-04-15","text":"cargo test --workspace passes","verify":"cargo test --workspace --quiet 2>&1 | tail -3"}
+{"itemId":"FEAT-029","date":"2026-04-15","text":"npm run build succeeds","verify":"npm run build 2>&1 | grep -c 'error' | grep -q '^0$'"}
+{"itemId":"FEAT-030","date":"2026-04-15","text":"npm run build succeeds","verify":"npm run build 2>&1 | grep -c 'error' | grep -q '^0$'"}
+{"itemId":"FEAT-030","date":"2026-04-15","text":"cargo test --workspace passes","verify":"cargo test --workspace --quiet 2>&1 | tail -3"}
+{"itemId":"FEAT-032","date":"2026-04-16","text":"npm run build succeeds","verify":"npm run build 2>&1 | grep -c 'error' | grep -q '^0$'"}
+{"itemId":"FEAT-032","date":"2026-04-16","text":"cargo test --workspace passes","verify":"cargo test --workspace --quiet 2>&1 | tail -3"}

@@ -27,6 +27,7 @@ cmd_groom() {
     print_groom_summary
 
     local -a context_args
+    # shellcheck disable=SC2034  # passed by nameref to run_groom_flow
     mapfile -t context_args < <(_build_groom_context)
 
     run_groom_flow "groomer" "groom" context_args
@@ -252,6 +253,7 @@ ${formatted_specs}"
     echo ""
 
     GROOM_MONITOR=true run_agent "$agent" "$mode" "$MODEL_FAST" "$_gf_ctx_name" "" "$specs_that_worked_section"
+    # shellcheck disable=SC2034  # reset env var after run_agent
     GROOM_MONITOR=
 
     protect_items_from_groom "$snap_dir"

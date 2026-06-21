@@ -21,6 +21,7 @@ cmd_review() {
     echo ""
 
     local -a context_args
+    # shellcheck disable=SC2034  # passed by nameref to run_agent
     mapfile -t context_args < <(_build_groom_context)
 
     local extra_prompt
@@ -30,6 +31,7 @@ $([[ "$update_docs" == "true" ]] && echo "You may update documentation and add b
 
     # Override permissions for --update-docs mode
     if [[ "$update_docs" == "true" ]]; then
+        # shellcheck disable=SC2034  # used by run_agent
         PERMS_REVIEWER="$PERMS_REVIEWER_DOCS"
     fi
 

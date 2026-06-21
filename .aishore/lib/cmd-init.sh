@@ -264,10 +264,302 @@ _init_scaffold_files() {
     echo ""
 }
 
-cmd_init() {
-    local auto_yes=false
+_init_demo() {
+    local demo_dir="$PROJECT_ROOT/aishore-demo"
 
-    parse_opts "bool:auto_yes:-y|--yes" -- "$@" || return 1
+    log_header "aishore demo — experience the full sprint lifecycle"
+    echo ""
+    echo "  This creates a tiny demo project and runs sprints on it so you"
+    echo "  can see aishore pick items, develop them, validate, and merge."
+    echo ""
+
+    # ── Guard: don't overwrite existing demo ──
+    if [[ -d "$demo_dir" ]]; then
+        log_warning "Demo directory already exists: $demo_dir"
+        echo "  Remove it first if you want to start fresh:"
+        echo "    rm -rf $demo_dir"
+        return 1
+    fi
+
+    # ── 1. Create demo project ──
+    log_subheader "Step 1/3 — Scaffolding demo project"
+
+    mkdir -p "$demo_dir"
+    (
+        cd "$demo_dir" || exit 1
+        git init -q
+
+        # Create the starter script — just a shebang so the AI has something to build on
+        cat > txtstat <<'SCRIPT'
+#!/usr/bin/env bash
+# txtstat — text statistics CLI (demo project for aishore)
+set -euo pipefail
+
+echo "txtstat: not yet implemented — run aishore to build this!"
+SCRIPT
+        chmod +x txtstat
+
+        # Sample input file
+        cat > sample.txt <<'SAMPLE'
+The quick brown fox jumps over the lazy dog.
+Pack my box with five dozen liquor jugs.
+How vexingly quick daft zebras jump.
+SAMPLE
+
+        # PRODUCT.md
+        mkdir -p docs
+        cat > docs/PRODUCT.md <<'PRODUCT'
+# txtstat — Text Statistics CLI
+
+## Vision
+txtstat is a tiny command-line tool that analyzes text and reports statistics.
+It reads from files or stdin and prints word count, line count, and character count.
+
+## Core
+A user runs `./txtstat sample.txt` and sees accurate word, line, and character counts printed to stdout in a clear format.
+
+## Features
+- Word count
+- Line count
+- Character count
+- Read from file arguments or stdin
+- Show --help usage information
+PRODUCT
+
+        # CLAUDE.md
+        cat > CLAUDE.md <<'CLAUDEMD'
+# txtstat
+
+A tiny text statistics CLI tool. Pure Bash, no dependencies.
+
+## Code Style
+- `set -euo pipefail` at the start
+- Quote all variables
+- `[[ ]]` for conditionals
+CLAUDEMD
+
+        # .gitignore
+        cat > .gitignore <<'GITIGNORE'
+.aishore/data/logs/
+.aishore/data/status/result.json
+.aishore/data/status/.aishore.lock
+GITIGNORE
+
+        # Copy the aishore tool
+        cp -r "$AISHORE_ROOT" .aishore
+
+        # Create config
+        cat > .aishore/config.yaml <<'CONFIG'
+# aishore configuration — demo project
+project:
+  name: "txtstat"
+
+core:
+  command: "./txtstat sample.txt 2>&1 | grep -qE 'words|lines|characters'"
+  timeout: 30
+CONFIG
+
+        # Create backlog directory
+        mkdir -p backlog/archive
+        touch backlog/archive/sprints.jsonl
+        touch backlog/archive/regression.jsonl
+
+        # Sprint (idle)
+        echo '{"sprintId": null, "status": "idle", "item": null}' > backlog/sprint.json
+
+        # Bugs (empty)
+        echo '{"description": "Bug backlog", "items": []}' > backlog/bugs.json
+
+        # DEFINITIONS.md
+        if [[ -f "$AISHORE_ROOT/templates/DEFINITIONS.md" ]]; then
+            cp "$AISHORE_ROOT/templates/DEFINITIONS.md" backlog/DEFINITIONS.md
+        fi
+
+        # ── Pre-groomed backlog with 5 sprint-ready items ──
+        cat > backlog/backlog.json <<'BACKLOG'
+{
+  "description": "Feature backlog",
+  "items": [
+    {
+      "id": "FEAT-001",
+      "title": "Add --help flag with usage information",
+      "intent": "A user who runs ./txtstat --help must see clear usage instructions showing available options and what the tool does, so they know how to use it.",
+      "steps": [
+        "Parse --help and -h flags in txtstat",
+        "Print usage text showing: usage line, description, and available options",
+        "Exit 0 after printing help"
+      ],
+      "acceptanceCriteria": [
+        {
+          "text": "--help flag prints usage information",
+          "verify": "./txtstat --help 2>&1 | grep -qi 'usage'"
+        }
+      ],
+      "priority": "must",
+      "size": "xs",
+      "status": "todo",
+      "track": "core",
+      "readyForSprint": true
+    },
+    {
+      "id": "FEAT-002",
+      "title": "Count lines in input",
+      "intent": "When a user passes a file or pipes stdin, txtstat must count and display the number of lines so they can quickly see how long the text is.",
+      "steps": [
+        "Read input from file argument or stdin",
+        "Count newlines to determine line count",
+        "Print the line count with a 'lines' label"
+      ],
+      "acceptanceCriteria": [
+        {
+          "text": "Line count is printed for file input",
+          "verify": "./txtstat sample.txt 2>&1 | grep -qE '3.*lines|lines.*3'"
+        }
+      ],
+      "priority": "must",
+      "size": "xs",
+      "status": "todo",
+      "track": "core",
+      "readyForSprint": true
+    },
+    {
+      "id": "FEAT-003",
+      "title": "Count words in input",
+      "intent": "When a user passes a file or pipes stdin, txtstat must count and display the number of words so they can gauge the size of the text.",
+      "steps": [
+        "Read input from file argument or stdin",
+        "Count words using whitespace splitting",
+        "Print the word count with a 'words' label"
+      ],
+      "acceptanceCriteria": [
+        {
+          "text": "Word count is printed for file input",
+          "verify": "./txtstat sample.txt 2>&1 | grep -qE '[0-9]+.*words|words.*[0-9]+'"
+        }
+      ],
+      "priority": "must",
+      "size": "xs",
+      "status": "todo",
+      "track": "core",
+      "readyForSprint": true
+    },
+    {
+      "id": "FEAT-004",
+      "title": "Count characters in input",
+      "intent": "When a user passes a file or pipes stdin, txtstat must count and display the number of characters so they can see the exact text size.",
+      "steps": [
+        "Read input from file argument or stdin",
+        "Count total characters including whitespace and newlines",
+        "Print the character count with a 'characters' label"
+      ],
+      "acceptanceCriteria": [
+        {
+          "text": "Character count is printed for file input",
+          "verify": "./txtstat sample.txt 2>&1 | grep -qE '[0-9]+.*characters|characters.*[0-9]+|[0-9]+.*chars|chars.*[0-9]+'"
+        }
+      ],
+      "priority": "should",
+      "size": "xs",
+      "status": "todo",
+      "track": "feature",
+      "readyForSprint": true
+    },
+    {
+      "id": "FEAT-005",
+      "title": "Support reading from stdin when no file given",
+      "intent": "A user must be able to pipe text into txtstat (e.g., echo hello | ./txtstat) and get the same statistics output as file input, so the tool works in shell pipelines.",
+      "steps": [
+        "Detect when no file argument is given",
+        "Read from stdin instead of a file",
+        "Produce the same output format as file mode"
+      ],
+      "acceptanceCriteria": [
+        {
+          "text": "stdin input produces statistics output",
+          "verify": "echo 'hello world' | ./txtstat 2>&1 | grep -qE 'words|lines|characters'"
+        }
+      ],
+      "priority": "should",
+      "size": "xs",
+      "status": "todo",
+      "track": "feature",
+      "readyForSprint": true
+    }
+  ]
+}
+BACKLOG
+
+        # Initial commit
+        git add -A
+        git commit -q -m "initial: txtstat demo project scaffolded by aishore"
+    ) || {
+        log_error "Failed to scaffold demo project"
+        return 1
+    }
+
+    log_success "Created demo project at $demo_dir"
+    log_success "5 sprint-ready items in backlog"
+    echo ""
+
+    # ── 2. Run sprints ──
+    log_subheader "Step 2/3 — Running demo sprints"
+    echo ""
+    echo "  aishore will now pick items and develop them autonomously."
+    echo "  Watch the full lifecycle: pick → branch → develop → validate → merge"
+    echo ""
+
+    local demo_aishore="$demo_dir/.aishore/aishore"
+    local sprint_count=0
+
+    # Run up to 2 sprints
+    for _i in 1 2; do
+        if "$demo_aishore" run 2>&1; then
+            sprint_count=$((_i))
+        else
+            log_warning "Sprint $_i did not complete — that's OK for a demo"
+            break
+        fi
+    done
+
+    echo ""
+
+    # ── 3. Summary ──
+    log_subheader "Step 3/3 — What just happened"
+    echo ""
+
+    if [[ "$sprint_count" -gt 0 ]]; then
+        log_success "Completed $sprint_count demo sprint(s)"
+    else
+        log_info "No sprints completed (the demo project is still set up for you)"
+    fi
+
+    echo ""
+    echo "  aishore picked items from the backlog, created feature branches,"
+    echo "  had an AI agent implement each one, validated the results against"
+    echo "  acceptance criteria, and merged the changes."
+    echo ""
+    echo "  Explore the demo:"
+    echo "    cd $demo_dir"
+    echo "    git log --oneline          # see the commits aishore made"
+    echo "    ./txtstat sample.txt       # try the tool it built"
+    echo "    .aishore/aishore status    # see backlog progress"
+    echo "    .aishore/aishore run       # run more sprints"
+    echo ""
+    echo -e "  ${CYAN}Ready to use aishore on your own project?${NC}"
+    echo "    cd /path/to/your/project"
+    echo "    .aishore/aishore init      # or copy .aishore/ from the demo"
+    echo ""
+}
+
+cmd_init() {
+    local auto_yes=false demo_mode=false
+
+    parse_opts "bool:auto_yes:-y|--yes" "bool:demo_mode:--demo" -- "$@" || return 1
+
+    if [[ "$demo_mode" == "true" ]]; then
+        _init_demo
+        return $?
+    fi
 
     log_header "aishore setup wizard"
     echo ""
@@ -279,14 +571,17 @@ cmd_init() {
     fi
     echo ""
 
+    # shellcheck disable=SC2034  # documented as outer-scope local for future use
     local reinit=false
     if [[ -f "$BACKLOG_DIR/backlog.json" ]]; then
         log_warning "aishore already initialized (backlog.json exists)"
         if [[ "$auto_yes" == "true" ]]; then
+            # shellcheck disable=SC2034
             reinit=true
         else
             read -r -p "  Reinitialize? This preserves existing backlogs. [y/N] " c
             [[ $c != [yY] ]] && return 0
+            # shellcheck disable=SC2034
             reinit=true
         fi
         echo ""

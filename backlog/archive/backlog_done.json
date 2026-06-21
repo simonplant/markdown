@@ -46,5 +46,95 @@
     "passes": false,
     "readyForSprint": true,
     "resolved_at": "2026-04-12T05:32:33Z"
+  },
+  {
+    "id": "FEAT-012",
+    "title": "Phase1-lang-markdown: CodeMirror 6 markdown language extension and syntax highlighting",
+    "intent": "The editor understands markdown structure — headings, bold, italic, code, links each render with distinct visual treatment. A plain-text view with no markdown awareness is not acceptable after Phase 1.",
+    "description": "Add @codemirror/lang-markdown to the frontend and configure it as the editor language. Add a syntax highlight style that visually distinguishes the key markdown token types. This replaces the plain-text CodeMirror setup from M0 with a proper markdown-aware one. After this item, WYSIWYM decorations (FEAT-013) become possible because the syntax tree is available.\n\nScope boundary: this item is highlighting only. WYSIWYM hiding/showing of syntax characters comes in FEAT-013. Do not add WYSIWYM behavior here.",
+    "priority": "must",
+    "category": "editor",
+    "steps": [
+      "Add @codemirror/lang-markdown and @codemirror/language to package.json, run npm install",
+      "Replace the current plain-text CodeMirror setup in src/editor.ts with markdown() language extension",
+      "Define a HighlightStyle that assigns distinct styles to: ATXHeading, StrongEmphasis, Emphasis, InlineCode, FencedCode, Link, URL",
+      "Apply the HighlightStyle via syntaxHighlighting() in the CodeMirror extensions array",
+      "Verify the existing IPC open/save loop from FEAT-005 still works with the new language extension"
+    ],
+    "acceptanceCriteria": [
+      {
+        "text": "npm run build succeeds with @codemirror/lang-markdown installed",
+        "verify": "npm run build 2>&1 | grep -c 'error' | grep -q '^0$'"
+      },
+      {
+        "text": "@codemirror/lang-markdown is present in package.json",
+        "verify": "grep -q 'lang-markdown' /Users/simonp/dev/markdown/package.json"
+      },
+      {
+        "text": "cargo test --workspace passes — Rust core unaffected",
+        "verify": "cargo test --workspace --quiet 2>&1 | tail -3"
+      },
+      "Bold (**text**) and italic (*text*) tokens have distinct visual styling from plain text",
+      "Inline code and fenced code blocks are visually distinguished from prose"
+    ],
+    "scope": [
+      "src/editor.ts",
+      "src/main.ts",
+      "package.json"
+    ],
+    "dependsOn": [],
+    "status": "done",
+    "passes": false,
+    "readyForSprint": true,
+    "groomedAt": null,
+    "groomingNotes": null,
+    "lastFailReason": "Implementation failed",
+    "lastFailAt": "2026-04-12T16:47:57-07:00",
+    "failCount": 3,
+    "resolved_at": "2026-04-13T20:36:31Z"
+  },
+  {
+    "id": "FEAT-015",
+    "title": "Phase1-the-render: Source-to-rich toggle animation (The Render)",
+    "intent": "Toggling between source and rich view transforms the document — syntax characters animate out, styled content materializes. This is the single most important demo moment in the product. A mode swap without transition is not acceptable.",
+    "description": "Implement a source/rich toggle that, when activated, animates markdown syntax characters fading out while rendered elements (styled headings, bold text, rendered links) fade in. Target: ~400ms, spring-eased CSS transitions at 60fps.\n\nRich view is still CodeMirror — we use Mark and Replace decorations to hide/replace syntax characters with styled equivalents. This is not a renderer switch (no separate preview pane). It is a decoration pass on top of the same editor.\n\nReduced Motion alternative: instant crossfade (no animation, just state swap).\n\nTrigger: Cmd+Shift+R (macOS) / Ctrl+Shift+R (other), or a visible toggle button in the UI.\n\nDependency: FEAT-013 (WYSIWYM) must land first since The Render extends the same decoration architecture.",
+    "priority": "should",
+    "category": "editor",
+    "steps": [
+      "Add a richMode boolean state and a Compartment in src/editor.ts",
+      "Create src/render.ts: a DecorationSet builder that in rich mode replaces heading markers with styled spans, collapses ** ** markers and applies font-weight: bold via widget decorations, renders links as styled text",
+      "Add CSS transitions in src/style.css for .cm-rich-* classes (opacity, transform, ~400ms spring)",
+      "Implement a toggleRender() command that flips richMode and reconfigures the compartment",
+      "Wire Cmd+Shift+R / Ctrl+Shift+R keymap to toggleRender()",
+      "Add a toolbar button that calls toggleRender() and shows current mode",
+      "Check prefers-reduced-motion: if set, apply changes without transition (instant swap)"
+    ],
+    "acceptanceCriteria": [
+      {
+        "text": "npm run build succeeds with The Render animation included",
+        "verify": "npm run build"
+      },
+      {
+        "text": "cargo test --workspace passes",
+        "verify": "cargo test --workspace"
+      }
+    ],
+    "scope": [
+      "src/render.ts",
+      "src/editor.ts",
+      "src/style.css"
+    ],
+    "dependsOn": [
+      "FEAT-013"
+    ],
+    "status": "done",
+    "passes": false,
+    "readyForSprint": true,
+    "groomedAt": null,
+    "groomingNotes": null,
+    "lastFailReason": "Implementation failed",
+    "lastFailAt": "2026-04-13T13:57:27-07:00",
+    "failCount": 1,
+    "resolved_at": "2026-04-13T20:59:47Z"
   }
 ]

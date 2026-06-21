@@ -1,5 +1,14 @@
 # BUILD_PLAN — current state → v1.0
 
+> **Execution status (pre-release).** Phases 0–3′ are **done** and merged to `main`:
+> the command surface lives in `markdown-core`, the Tauri→WASM cutover shipped (Tauri
+> retired, web runs the core as `wasm32-wasip1`), the uniffi binding and the native
+> iOS + macOS TextKit 2 app are built and verified by running. **Phase 4** is in
+> progress — most rich content (outline, PDF export, math, inline images, extended
+> doctor rules, custom themes, Quick Open) is built on Apple; **Mermaid SVG rendering
+> and reference-link CommonMark compliance remain**. AI stays deferred post-v1.0.
+> The sequencing below is kept as the historical plan and the remaining-work map.
+
 This is the implementation sequencing plan that takes Markdown from where the code is **today** to **v1.0**. It is the bridge `docs/ARCHITECTURE.md` and `docs/PRODUCT.md` deliberately punt to "the backlog": the docs describe the destination architecture and the user-visible roadmap; this file orders the engineering work that gets there and says, for each step, what existing code is reused, rebuilt, or retired.
 
 - **Destination architecture:** `docs/ARCHITECTURE.md` (A-STACK-1, A-STACK-2, §9 engineering phases)
@@ -23,7 +32,7 @@ The project is **mid-pivot between two architectures**:
 
 The **code on disk and the backlog are still the origin architecture**; the **docs are the destination**. This plan implements the docs: reuse what is good (`markdown-core`, the CodeMirror editor logic in `src/`), build the two real bindings, retire Tauri, and ship Apple native + everything-else-as-PWA. **AI stays deferred post-v1.0** (D-ROAD-3 / A-AI-DEFERRED) behind the off-by-default `ai` cargo feature.
 
-### Verified current state (`main` @ 05f1b14)
+### Starting state when this plan was written (`main` @ 05f1b14, pre-pivot — now historical; see the execution-status note at the top)
 
 | Fact | Reality |
 |---|---|

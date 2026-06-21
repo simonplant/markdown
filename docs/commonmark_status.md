@@ -17,9 +17,9 @@ Zero unexplained failures. Every failing test is in the skip-list with a documen
 
 ## How It Works
 
-The test runner (`em-core/tests/commonmark.rs`) loads the official CommonMark spec examples from `em-core/tests/fixtures/spec.json`, parses each markdown input through `em_core::parser::parse()`, renders the AST to HTML via a test-only renderer, and compares against the expected HTML output.
+The test runner (`markdown-core/tests/commonmark.rs`) loads the official CommonMark spec examples from `markdown-core/tests/fixtures/spec.json`, parses each markdown input through `markdown_core::parser::parse()`, renders the AST to HTML via a test-only renderer, and compares against the expected HTML output.
 
-A skip-list (`em-core/tests/commonmark_skip.json`) documents known divergences. The CI contract:
+A skip-list (`markdown-core/tests/commonmark_skip.json`) documents known divergences. The CI contract:
 - Any test that fails without a skip-list entry **breaks the build**.
 - Any skip-listed test that starts passing is flagged in test output (signal to remove it from the list).
 
@@ -72,6 +72,6 @@ tree-sitter-markdown treats HTML entities as literal text; the CommonMark spec r
 
 Two paths to improvement:
 1. **Upstream contributions to tree-sitter-markdown** for parsing divergences.
-2. **Improve the test renderer** — some failures are in the HTML rendering layer, not the parser. The test renderer (`em-core/tests/commonmark.rs`) is intentionally minimal; making it handle more edge cases would improve the pass rate without changing the parser.
+2. **Improve the test renderer** — some failures are in the HTML rendering layer, not the parser. The test renderer (`markdown-core/tests/commonmark.rs`) is intentionally minimal; making it handle more edge cases would improve the pass rate without changing the parser.
 
 The pass rate is expected to improve over time as both the parser and renderer mature.

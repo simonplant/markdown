@@ -138,6 +138,12 @@ cmd_backlog_add() {
             log_warning "Readiness warnings for $new_id:"
             printf '%b\n' "$gates_warnings"
         fi
+    else
+        # Show what's missing for items not marked ready
+        local gates_warnings
+        if ! gates_warnings=$(check_readiness_gates "$new_id" 2>/dev/null); then
+            log_info "Not sprint-ready yet. Check what's missing: .aishore/aishore backlog check $new_id"
+        fi
     fi
 }
 
@@ -317,5 +323,131 @@ Accepts the same fields as 'add', plus:
 
 Example:
   .aishore/aishore backlog edit FEAT-001 --json '{"priority": "must", "readyForSprint": true}'
+EOF
+}
+
+cmd_backlog_move() {
+    local id="" target=""
+
+    # Parse arguments: move <ID> --to <bugs|backlog>
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --to) shift; target="${1:-}"; shift || true ;;
+            --help|-h) _backlog_move_usage; return 0 ;;
+            -*) log_error "Unknown option: $1"; _backlog_move_usage; return 1 ;;
+            *) if [[ -z "$id" ]]; then id="$1"; else log_error "Unexpected argument: $1"; return 1; fi; shift ;;
+        esac
+    done
+
+    [[ -z "$id" ]] && { log_error "Usage: backlog move <ID> --to <bugs|backlog>"; return 1; }
+    [[ -z "$target" ]] && { log_error "Missing --to flag. Usage: backlog move <ID> --to <bugs|backlog>"; return 1; }
+
+    # Validate destination target
+    local dest_file
+    case "$target" in
+        bugs)    dest_file="bugs.json" ;;
+        backlog) dest_file="backlog.json" ;;
+        *) log_error "Invalid target: $target (must be: bugs, backlog)"; return 1 ;;
+    esac
+
+    # Find the item
+    local item
+    item=$(find_item "$id") || return 1
+
+    # Resolve source file
+    local src_file
+    src_file=$(resolve_backlog_file "$id") || return 1
+
+    # Reject if already in destination
+    if [[ "$src_file" == "$dest_file" ]]; then
+        log_error "$id is already in $dest_file"
+        return 1
+    fi
+
+    # Add item to destination
+    if ! add_item "$dest_file" \
+        --argjson item "$item" \
+        '.items += [$item]'; then
+        log_error "Failed to add $id to $dest_file"
+        return 1
+    fi
+
+    # Remove item from source
+    if ! remove_item "$src_file" "$id"; then
+        log_error "Failed to remove $id from $src_file"
+        return 1
+    fi
+
+    log_success "Moved $id from $src_file to $dest_file"
+}
+
+cmd_backlog_set_priority() {
+    local id="${1:-}"
+    local priority="${2:-}"
+
+    if [[ -z "$id" || -z "$priority" || "$id" == "--help" || "$id" == "-h" ]]; then
+        log_error "Usage: backlog set-priority <ID> <priority>"
+        echo "  Priority must be one of: must, should, could, future" >&2
+        return 1
+    fi
+
+    validate_priority "$priority" || return 1
+
+    find_item "$id" >/dev/null || return 1
+
+    local file
+    file=$(resolve_backlog_file "$id") || return 1
+
+    if ! dal_update_item "$file" "$id" \
+        '| .priority = $p' \
+        --arg p "$priority"; then
+        log_error "Failed to update priority for $id"
+        return 1
+    fi
+
+    log_success "$id priority set to $priority"
+}
+
+cmd_backlog_set_track() {
+    local id="${1:-}"
+    local track="${2:-}"
+
+    if [[ -z "$id" || -z "$track" || "$id" == "--help" || "$id" == "-h" ]]; then
+        log_error "Usage: backlog set-track <ID> <track>"
+        echo "  Track must be one of: core, feature" >&2
+        return 1
+    fi
+
+    validate_track "$track" || return 1
+
+    find_item "$id" >/dev/null || return 1
+
+    local file
+    file=$(resolve_backlog_file "$id") || return 1
+
+    if ! dal_update_item "$file" "$id" \
+        '| .track = $t' \
+        --arg t "$track"; then
+        log_error "Failed to update track for $id"
+        return 1
+    fi
+
+    log_success "Track updated: $id → $track"
+}
+
+_backlog_move_usage() {
+    cat <<'EOF'
+Usage: aishore backlog move <ID> --to <bugs|backlog>
+
+Moves an item between backlog.json and bugs.json. The item retains all
+its fields; only its source file changes.
+
+Targets:
+  bugs       Move item to bugs.json
+  backlog    Move item to backlog.json
+
+Example:
+  .aishore/aishore backlog move FEAT-001 --to bugs
+  .aishore/aishore backlog move BUG-003 --to backlog
 EOF
 }

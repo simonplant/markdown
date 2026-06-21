@@ -13,9 +13,11 @@ This project uses aishore for autonomous sprint execution. Backlog lives in `bac
 - **Stay in scope.** Implement only the assigned item. Don't fix unrelated code, add unrequested features, or refactor surrounding code.
 - **Commit before signaling.** Always commit with a meaningful message before writing result.json.
 
+**Typical flow:** `init` → `refine` (fill PRODUCT.md) → `backlog populate` → `groom` → `run`
+
 ```bash
 .aishore/aishore run [N|ID|scope]    # Run sprints (scope: done, p0, p1, p2)
-.aishore/aishore groom              # Groom backlog items
+.aishore/aishore groom              # Groom backlog items (AI adds steps, AC, priority)
 .aishore/aishore scaffold           # Establish working core, detect fragment risk
 .aishore/aishore review             # Architecture review
 .aishore/aishore status             # Backlog overview

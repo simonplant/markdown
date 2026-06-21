@@ -1,1 +1,45 @@
-{"sprintId": null, "status": "idle", "item": null}
+{
+  "sprintId": "sprint-1776836804",
+  "startedAt": "2026-04-21T22:46:44-07:00",
+  "status": "in_progress",
+  "item": {
+    "id": "FEAT-046",
+    "title": "Restore committed baseline.json and referenced engineering artifacts",
+    "intent": "ARCHITECTURE A-PROC-2 makes docs/baseline.json permanent — it is the regression gate's source of truth. Current git status shows it deleted along with docs/engine-comparison.json, docs/engine-decision.md, docs/commonmark_status.md, and docs/large-file-performance.md. The regression CI job cannot work without baseline.json, and ARCHITECTURE §3.1 cites the engine artifacts as the defense for A-CORE-1. Either restore them or remove the references.",
+    "description": "Recover docs/baseline.json (the canonical ubuntu-latest-measured numbers) and the engine-decision artifacts. Preferred path: run the baseline-capture workflow to regenerate baseline.json on the CI runner and commit. For the deleted engine docs, restore from git history if possible, otherwise rewrite brief summaries sufficient to defend A-CORE-1 and document large-file behavior.\n\nScope boundary: this item restores the artifacts. Extending the baseline to the four-slice distribution described in ARCHITECTURE §2 is FEAT-047, not this item.",
+    "sourceBacklog": "backlog.json",
+    "steps": [
+      "git log --diff-filter=D to find the commit that deleted each file",
+      "git checkout <commit>^ -- docs/baseline.json docs/engine-comparison.json docs/engine-decision.md docs/commonmark_status.md docs/large-file-performance.md",
+      "If baseline.json values are stale, trigger the Capture Baseline workflow on main to regenerate",
+      "Verify scripts/measure_baseline.sh --check runs cleanly against the restored file",
+      "Commit the restored files"
+    ],
+    "acceptanceCriteria": [
+      {
+        "text": "docs/baseline.json exists and is valid JSON",
+        "verify": "jq . docs/baseline.json >/dev/null"
+      },
+      {
+        "text": "scripts/measure_baseline.sh --check exits 0 against the restored baseline",
+        "verify": "bash scripts/measure_baseline.sh --check"
+      },
+      {
+        "text": "Engine-decision artifacts restored",
+        "verify": "test -f docs/engine-decision.md && test -f docs/engine-comparison.json"
+      },
+      {
+        "text": "Large-file performance doc restored",
+        "verify": "test -f docs/large-file-performance.md"
+      }
+    ],
+    "scope": [
+      "docs/baseline.json",
+      "docs/engine-comparison.json",
+      "docs/engine-decision.md",
+      "docs/commonmark_status.md",
+      "docs/large-file-performance.md"
+    ],
+    "startedAt": "2026-04-21T22:46:44-07:00"
+  }
+}

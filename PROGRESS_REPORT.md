@@ -1,72 +1,65 @@
-# Progress report — Tauri removed, core runs as WASM
+# Progress report — three frontends over one Rust core, built and running
 
-The pivot is done: **Tauri is gone, the codebase is clean, and everything builds.**
-The web frontend now reaches the engine through `markdown-core` compiled to
-WebAssembly. All on branch `build/phase0-core-extraction` (not yet merged to main).
+The pivot is done and the build is well past it. **Tauri is gone, the codebase is
+clean, and all three frontends run over a single shared `markdown-core`:** a
+CodeMirror 6 web PWA with the core as WebAssembly, and a native iOS + macOS app
+on TextKit 2 with the core bound in-process via uniffi. All merged to `main`.
 
 ## The codebase now
 
-- **One Rust crate** (`markdown-core`) — the workspace has no `src-tauri`, no glib
-  patch. Builds in ~1.6s.
-- **One web frontend** — a CodeMirror 6 PWA (`src/`, single `main.ts` / `index.html`
-  / `vite.config.ts`). No `@tauri-apps` anywhere.
-- **The engine runs as WASM** — `markdown-core` → `wasm32-wasip1`
-  (`public/markdown_core.wasm`, 1.1 MB), loaded in the browser via a WASI shim
-  (`src/core-wasm.ts`). `doctor.ts` and `format.ts` call it directly.
+- **One Rust crate** (`markdown-core`) — `crate-type = ["rlib", "cdylib", "staticlib"]`.
+  No `src-tauri`, no glib patch. Parser, formatter, doctor, `String` document model,
+  wikilinks, math span detection. `ffi.rs` is the uniffi surface; `wasm_api.rs` is the
+  hand-rolled C ABI for the browser. AI is parked behind the off-by-default `ai` feature.
+- **Web frontend** (`src/`) — a CodeMirror 6 PWA (single `main.ts` / `index.html` /
+  `vite.config.ts`, no `@tauri-apps` anywhere). The engine runs as WASM —
+  `markdown-core` → `wasm32-wasip1` (`public/markdown_core.wasm`), loaded in the browser
+  via a WASI shim (`src/core-wasm.ts`). `doctor.ts` and `format.ts` call it directly.
+- **Native Apple frontend** (`apple/`) — a SwiftUI `DocumentGroup` app over TextKit 2
+  (`UITextView` on iOS, `NSTextView` on macOS, shared sources via `#if os`), binding the
+  core through uniffi (`MarkdownCore.xcframework`). Read mode renders via a span-based
+  `MarkdownRenderer`. XcodeGen (`project.yml`) is the checked-in project source.
 
-## Verified green
+## Verified green (this host)
 
 | Check | Result |
 |---|---|
-| `cargo build --workspace` | ✅ core only, no Tauri/glib |
-| `cargo test -p markdown-core` | ✅ 81 passed |
+| `cargo test -p markdown-core` | ✅ 95 passed |
 | `npm run build` (tsc + vite) | ✅ PWA bundle, zero `@tauri-apps` |
 | `npm run test:wasm` (Node `node:wasi`) | ✅ JS↔WASM boundary PASS |
-| `node scripts/wasm-shim-check.mjs` (the **browser** `@bjorn3/browser_wasi_shim` path) | ✅ PASS |
+| `node scripts/wasm-shim-check.mjs` (browser `@bjorn3/browser_wasi_shim` path) | ✅ PASS |
+| `swift test` (macOS binding round-trip) | ✅ 4/4 |
+| `xcodebuild test -scheme MarkdownEditor` (iOS Simulator UI suite) | ✅ 3/3 |
+| `xcodebuild build` (iOS + macOS targets) | ✅ BUILD SUCCEEDED |
 
-The only thing not machine-verified is the visual run in a real browser DOM (no
-headless browser installed here). The exact browser code path *is* verified in
-Node; to see it live: **`npm run dev`**.
+Verified by running, with screenshots in `apple/docs/`. This is **pre-release**:
+verified on the iOS Simulator and in the browser/Node, not yet shipped to any store
+or host, and not yet exercised in a real browser DOM on this host (no headless
+browser installed — `npm run dev` to see it live).
 
-## What changed (commits on the branch)
+## Feature status
 
-```
-EPIC-CUTOVER + EPIC-RETIRE-TAURI: replace Tauri IPC with the WASM core; delete Tauri
-EPIC-WASM: npm build:wasm/test:wasm scripts + progress report
-EPIC-WASM: JS<->WASM binding — core diagnose/format callable from a JS host
-EPIC-WASM: markdown-core runs in WebAssembly (wasm32-wasip1) — proven
-EPIC-WASM spike: tree-sitter compiles to wasm; libc gate identified
-EPIC-CORE-API: extract wikilink/backlink surface into markdown-core
-docs: BUILD_PLAN + reconcile backlog
-(+ CI repoint, backlog status)
-```
+The iOS/macOS lead phase (M1–M9) and the Phase 4 rich-content work are **done**:
+read mode, WYSIWYM, doctor underlines, Format Document, BOM-preserving save, find,
+themes, Dynamic Type, accessibility, outline, PDF export (Core Text), inline math
+(SwiftMath + core `math_spans`), inline images, multi-doc tabs, Quick Open.
 
-## Honest gaps / deliberate degradations (early-dev, fine to revisit)
+## Honest gaps / deliberate degradations
 
+- **Mermaid is partial** — blocks are detected and rendered distinctly, but full SVG
+  diagram rendering (offscreen mermaid.js in a `WKWebView`) is the one remaining piece.
+- **CommonMark compliance is partial** — the spec suite runs in CI with a documented
+  skip-list; closing the reference-link gap is the top correctness task
+  (`docs/commonmark_status.md`).
 - **Wikilink navigation + backlinks are no-ops in the web build.** They need real
-  filesystem *paths*; the browser has file *handles*. Rendering of `[[links]]`
-  still works. The path-based engine logic is intact in `markdown-core::wikilinks`
-  for the future native Apple frontend; the browser needs a directory-handle model.
-- **AI front-end files deleted** (`ai/settings/completions.ts`) — they were
-  orphaned and Tauri-coupled. AI stays parked behind the Rust `ai` cargo feature.
-- **The generated wasm is gitignored** — rebuild with `npm run build:wasm`
-  (needs `brew install llvm wasi-libc wasmtime` + `rustup target add wasm32-wasip1`).
-- **CI `wasm` job is `continue-on-error`** until its wasi-sdk pin is validated on
-  CI; the build is proven locally.
+  filesystem *paths*; the browser has file *handles*. Rendering of `[[links]]` works,
+  and the path-based engine logic is intact in `markdown-core::wikilinks` for Apple.
+- **The generated wasm and the Apple build products are gitignored** — rebuild with
+  `npm run build:wasm` and `apple/scripts/build-rust.sh` (see `README.md`).
 
-## To merge
+## Next
 
-```
-git checkout main && git merge --ff-only build/phase0-core-extraction
-npm run dev        # see the PWA with the WASM engine
-```
-
-Pre-existing uncommitted working-tree changes (`.aishore/*`, some `docs/*`,
-`CLAUDE.md`) were left untouched.
-
-## Next (separate tracks, not blocking)
-
+- Mermaid full SVG rendering on Apple (FEAT-037, the one open Phase 4 item).
+- Close reference-link CommonMark compliance against the skip-list.
 - Browser directory-handle model → restore wikilinks/backlinks in the web build.
-- Native Apple frontend (EPIC-UNIFFI → EPIC-APPLE-*): the uniffi binding over the
-  same `markdown-core` command surface, then TextKit 2.
-- Grow the WASM ABI to the rest of `docs/CORE-API.md` as features need it.
+- Harden + ship: PWA distribution and the Apple release path.

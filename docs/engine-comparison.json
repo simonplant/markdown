@@ -45,7 +45,7 @@
       "platform_specific_code": false
     },
     "C_string": {
-      "description": "M0 String-backed Document (control — no changes)",
+      "description": "String-backed Document (control — no changes)",
       "median_metrics": {
         "cold_startup_ms": 0.0000,
         "open_small_ms": 0.0257,

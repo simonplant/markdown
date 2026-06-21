@@ -12,7 +12,7 @@ This document owns:
 - Module boundaries and internal interfaces
 - Concrete engineering budgets (millisecond targets, memory targets, binary size targets)
 - The document model, parser, formatter, doctor, and AI integration at an implementation level
-- Per-platform shell decisions and distribution mechanics
+- Per-platform frontend decisions and distribution mechanics
 - The engineering discipline: walking skeleton, baseline measurement, regression gates
 - Engineering risks and their mitigations
 
@@ -22,33 +22,27 @@ This document does **not** own:
 - The user-facing quality bar (`PRODUCT.md` §Performance, §User Experience)
 - The contribution workflow (`CONTRIBUTING.md`)
 
-**Decision IDs**: architecture decisions use `A-*` identifiers. Product decisions use `D-*` identifiers and live in `PRODUCT.md`. Every architecture decision must cite the product decision it implements; every product decision that depends on an architectural choice should reference the relevant `A-*` ID.
+**Decision IDs**: architecture decisions use `A-*` identifiers. Product decisions use `D-*` identifiers and live in `PRODUCT.md`. Every architecture decision cites the product decision it implements; every product decision that depends on an architectural choice references the relevant `A-*` ID.
 
 ---
 
 ## 1. Overview
 
-Markdown is a three-layer application. Each layer has a single codebase that runs everywhere.
+Markdown is built from one shared engine and a native editor frontend on each platform. There is no cross-platform UI framework. The engine is the durable, shared asset; each frontend is built to the native standard of the platform it runs on.
 
 ```
 +------------------------------------------------------------------+
-|                       Platform Shells (thin)                      |
-|   macOS   |   Linux   |  Windows  |    Web    |   iOS    | Android|
-+-----+-----+-----+-----+-----+-----+-----+-----+----+-----+---+----+
-      |           |           |           |          |         |
-      +-----------+-----------+-----+-----+----------+---------+
-                                    |
-                                    v
-                  +----------------------------------+
-                  |         Editor Frontend          |
-                  |  Read mode rendering             |
-                  |  Author mode editing (WYSIWYM)   |
-                  |  Mode transition                 |
-                  |  Themes, accessibility           |
-                  |  Hot-path formatting             |
+|                         Editor Frontends                          |
+|                                                                   |
+|   Native Apple frontend          |        Web frontend            |
+|   (Swift + TextKit 2)            |        (CodeMirror 6)          |
+|   iOS  ·  macOS                  |        Web · Windows · Linux    |
++-----------------+----------------+----------------+---------------+
+                  |                                  |
+       uniffi (in-process FFI)          WebAssembly (in-process)
+                  |                                  |
                   +----------------+-----------------+
                                    |
-                                   | IPC (JSON messages)
                                    v
                   +----------------------------------+
                   |         Core Engine (Rust)       |
@@ -65,28 +59,36 @@ Markdown is a three-layer application. Each layer has a single codebase that run
 
 The layers map to the product contracts in `PRODUCT.md`:
 
-- **Core engine** makes the editor-is-smart contract (D-EDIT-1) viable at the performance bar (D-PERF-1). It owns the document, the AST, and the long-running intelligence.
-- **Editor frontend** makes the platform-idiomatic contract (DP-4) and the accessibility contract (DP-10) viable — browser engines already solved CJK, RTL, IME, and screen reader integration.
-- **Platform shells** make cross-platform day-one (D-PLAT-1) affordable. Each shell is thin enough to be rewritten if the underlying framework needs replacing.
+- **Core engine** makes the editor-is-smart contract (D-EDIT-1) viable at the performance bar (D-PERF-1). It owns the document, the AST, and the long-running intelligence, and it is identical on every platform.
+- **Editor frontends** make the platform-native feel (DP-4) and the accessibility contract (DP-10) viable. Each frontend is built to the highest standard of its platform rather than to a lowest common denominator.
 
-### Decision [A-STACK-1]: The three-layer model
+### Decision [A-STACK-1]: One shared core, native frontends, no cross-platform UI framework
 
-The product requirements fully determine the shape of the solution. Reading `PRODUCT.md`:
+The product requirements determine the shape of the solution. Reading `PRODUCT.md`:
 
-- D-PLAT-1 says every platform is first-class — ruling out Apple-only native UI.
+- D-PLAT-1 says every platform is first-class, with iOS and macOS leading — the editing experience must feel native on each.
 - D-PERF-1 says nothing blocks typing and large documents remain usable — ruling out an interpreted-language core for the hot path.
-- D-A11Y-1 says screen-reader support is a ship-blocker on every platform — ruling out a custom rendering engine that would have to reimplement accessibility per platform.
-- D-AI-1 says on-device inference is the default — ruling out a thin client model.
+- DP-2 sets the bar at an editing experience nothing else matches; on touch platforms in particular, a web-canvas text surface does not clear that bar.
+- D-A11Y-1 says screen-reader support is a ship-blocker on every platform.
 
-The intersection of these constraints is: a compiled-language core for performance, a web-based editor for cross-platform UI with accessibility for free, and a thin shell per platform.
+The intersection: a compiled-language core shared everywhere, and an editor frontend on each platform that uses that platform's own text system. On Apple platforms that is the native text stack; on the web and on desktops that already run web content well, that is a mature browser-grade editor. A single cross-platform UI toolkit was considered and rejected — every option either reintroduces the web-canvas feel that fails the bar on iOS, or forces rebuilding the editor on immature text tooling. The shared code is the engine, not the UI.
 
-### Decision [A-STACK-2]: Rust + CodeMirror 6 + Tauri
+### Decision [A-STACK-2]: Rust core + native Apple frontend + CodeMirror 6 web frontend
 
-- **Rust** for the core engine — compiled performance, memory safety, single codebase that runs everywhere the shells run, mature cross-platform filesystem and concurrency primitives.
-- **CodeMirror 6** for the editor frontend — battle-tested, extensible, handles the hard problems (CJK, RTL, IME, accessibility, unicode edge cases) because browsers do.
-- **Tauri 2.0** for the shells — webview hosting, Rust backend integration, file system access, native menus, auto-updater, and mobile support in one framework. MIT-licensed, well-funded, active. Alternative (building shells from scratch) costs a quarter per platform.
+- **Rust** for the core engine — compiled performance, memory safety, one codebase that runs everywhere, mature cross-platform filesystem and concurrency primitives. Compiles to a native library on Apple platforms and to WebAssembly for the web frontend.
+- **Swift + TextKit 2** for the Apple frontend (iOS and macOS) — the native text system Apple's own best editors use. Native selection physics, keyboard, dictation, magnifier, share sheet, Files integration, and VoiceOver. iOS is the lead platform and sets the bar; macOS shares the bulk of this frontend through TextKit 2's common surface (`UITextView` / `NSTextView`).
+- **CodeMirror 6** for the web frontend (Web, Windows, Linux) — a battle-tested editor that handles CJK, RTL, IME, accessibility, and unicode edge cases because browsers do. Runs as an installable PWA; the same build serves the web and packages for Windows and Linux.
 
-This stack is not sacred. Each choice is defended by the decisions above and can be revisited if the defense stops holding. The three-layer *model* is more load-bearing than the specific tech.
+This stack is not sacred. Each choice is defended by the decisions above and can be revisited if the defense stops holding. The layered *model* — one shared core, native frontends — is more load-bearing than any specific frontend technology.
+
+### Decision [A-BIND-1]: The core binds in-process on every platform — no separate process, no network IPC
+
+The Rust core is linked directly into each frontend and called in-process:
+
+- **Apple frontend**: the core is compiled to a native static library and exposed to Swift through a `uniffi`-generated binding. Calls are direct function calls across the FFI boundary.
+- **Web frontend**: the core is compiled to WebAssembly and loaded in the same context as the editor. Calls are direct WASM invocations.
+
+There is no daemon, no localhost socket, and no JSON-over-network bridge. This keeps keystroke round-trips at function-call latency and removes a class of lifecycle and security problems that an out-of-process model would introduce.
 
 ---
 
@@ -102,76 +104,74 @@ A walking skeleton passes when it runs, not when it compiles.
 
 We use this discipline at three levels:
 
-1. **Project-level (M0)**: the initial walking skeleton proved the three-layer model works end-to-end on at least one platform. It is described below and has shipped on macOS.
-2. **Platform-level**: each new platform shell starts from its own walking skeleton that proves the platform-specific shell code works with the existing core and editor before any platform-specific features are added.
+1. **Project-level**: the initial walking skeleton proves the layered model works end-to-end on at least one platform — open, edit, save, reopen against the real core.
+2. **Frontend-level**: each editor frontend starts from its own walking skeleton that proves the frontend works with the existing core before any frontend-specific features are added.
 3. **Capability-level**: major new capabilities (AI integration, plugin host, large-file handling) start with a walking skeleton that proves the integration point before feature work begins.
 
 ### Baseline measurement and the regression gate
 
 Every walking skeleton, on pass, writes a set of measured performance numbers to `docs/baseline.json`. These become the regression budget for every change that follows.
 
-**Baseline environment**: measurements are captured on a GitHub Actions `ubuntu-latest` runner. This is the only environment whose numbers are committed and enforced. Local runs are for exploration. The reasons for standardizing on CI runners are: free, reproducible, available to every contributor (human or agent), and slower than most dev machines — which gives us headroom and makes regressions visible earlier.
+**Methodology**: each metric captures N≥5 measurements and takes the median. The regression gate fires when a change's median exceeds 110% of the committed baseline median. Single-run gates produce random failures because runners have inherent variance on cold metrics.
 
-**Methodology**: each metric captures N≥5 measurements and takes the median. The regression gate fires when a PR's median exceeds 110% of the committed baseline median. Single-run gates produce random failures because CI runners have 10–15% inherent variance on cold metrics.
-
-**User-representative load distribution.** A single "typical document" baseline is insufficient — performance that looks healthy on a 5 KB test file can hide pathological behavior on documents users actually open. From the Foundation phase onward, `baseline.json` captures each core metric (open, keystroke latency, format, save, reopen) across a distribution that represents how real users load the product:
+**User-representative load distribution.** A single "typical document" baseline is insufficient — performance that looks healthy on a 5 KB test file can hide pathological behavior on documents users actually open. `baseline.json` captures each core metric (open, keystroke latency, format, save, reopen) across a distribution that represents how real users load the product:
 
 - **Small document** (≈1 KB, ~30 lines): a short note or brief AI response
 - **Medium document** (≈25 KB, ~800 lines): a typical long-form document — a research report, a PRD, a meeting summary with tables
 - **Large document** (≈250 KB, ~8,000 lines): a substantial architecture doc, a long-form article, or an AI-generated report with rich content
 - **Synthetic session** (a scripted sequence of open → scroll → edit → format → save across several documents of mixed sizes): exercises steady-state behavior rather than just cold-start numbers
 
-The regression gate fires on any of these slices independently — a 12% regression on the large-document open time blocks a merge even if small and medium documents are unchanged. The distribution is committed to the repository as `docs/baseline-corpus/` (representative `.md` fixtures) and is versioned alongside `baseline.json`. The distribution is extended, not replaced, as new usage patterns emerge (e.g., mobile load profiles when the mobile phase begins per A-PROC-3).
+The regression gate fires on any of these slices independently. The distribution lives in `docs/baseline-corpus/` (representative `.md` fixtures) and is versioned alongside `baseline.json`. It is extended, not replaced, as new usage patterns emerge — including per-platform load profiles as each frontend matures.
 
-**The gate blocks merges.** A regression of more than 10% in any baseline metric blocks the PR until the regression is understood, named, and either fixed or explicitly accepted (which updates `baseline.json`).
+**The gate blocks merges.** A regression of more than 10% in any baseline metric blocks the change until the regression is understood, named, and either fixed or explicitly accepted (which updates `baseline.json`).
 
 ### Decision [A-PROC-1]: Walking-skeleton discipline applies to every major architectural claim
 
-No major architectural claim merges without a walking skeleton that exercises it end-to-end against real infrastructure. Forbidden acceptance criteria include `grep` checks for code existence, `test -f` checks for file existence, unit tests that mock the IPC bridge or the filesystem, and "component X compiles." Compilation is a precondition, not an eval.
+No major architectural claim merges without a walking skeleton that exercises it end-to-end against real infrastructure. Forbidden acceptance criteria include `grep` checks for code existence, `test -f` checks for file existence, unit tests that mock the binding boundary or the filesystem, and "component X compiles." Compilation is a precondition, not an eval.
 
 ### Decision [A-PROC-2]: Baseline-measured regression gate is permanent
 
 Every change merges against `docs/baseline.json`. The gate fires at 110% of the committed median of any metric. This is the mechanism that keeps D-PERF-1 true over time.
 
-### Decision [A-PROC-3]: Architectural claims require a documented walking skeleton
+### Decision [A-PROC-3]: Each frontend has its own walking-skeleton milestone
 
-Each major subsystem (core engine, editor frontend, each platform shell, AI integration, plugin host) has or will have a named walking-skeleton milestone with its own baseline metrics. The table in §Phases below tracks which have shipped.
+Each editor frontend (native Apple, web) and each major subsystem (core engine, AI integration, plugin host) has a named walking-skeleton milestone with its own baseline metrics. The table in §9 tracks status.
 
 ---
 
 ## 3. Core Engine (Rust)
 
-The engine is the product's durable intelligence. Everything else is a frontend.
+The engine is the product's durable intelligence. Everything else is a frontend. It is one crate, `markdown-core`, compiled to a native library for Apple platforms and to WebAssembly for the web frontend.
 
 ### 3.1 Document Model
 
-**Decision [A-CORE-1]: naive UTF-8 `String`.** The `Document` struct uses a standard Rust `String`. All three candidates (piece table, rope, `String`) were measured against the M0 baseline with 5-run medians. Both piece table and rope regressed beyond the 10% threshold — piece table regressed keystroke latency by 1.33x and save by 1.28x; rope regressed open-10k by 2.91x and memory by 1.35x. `String` matched the baseline within measurement noise.
+**Decision [A-CORE-1]: naive UTF-8 `String`.** The `Document` struct uses a standard Rust `String`. All three candidates (piece table, rope, `String`) were measured against the committed baseline with 5-run medians. Both piece table and rope regressed beyond the 10% threshold; `String` matched the baseline within measurement noise at the document sizes the product targets.
 
-See `docs/engine-comparison.json` for the full data and `docs/engine-decision.md` for the rationale. If large-file performance becomes a product concern (implementing the "remain usable for tens of thousands of lines" clause of D-PERF-1), the decision revisits with new measurements.
+See `docs/engine-comparison.json` for the full data and `docs/engine-decision.md` for the rationale. If large-file performance becomes a product concern, the decision revisits with new measurements.
 
 ### 3.2 Parser
 
-**Decision [A-CORE-2]: tree-sitter with the `tree-sitter-markdown` grammar (split_parser branch).**
+**Decision [A-CORE-2]: tree-sitter with the `tree-sitter-markdown` grammar.**
 
-Why tree-sitter: C library, runs everywhere (native + WASM). Incremental parsing — sub-millisecond reparse on keystroke, which realizes the "nothing blocks typing" clause of D-PERF-1. Concrete syntax tree preserves all whitespace and punctuation for round-trip fidelity, which realizes the "standard markdown in, standard markdown out" clause of DP-7.
+Why tree-sitter: C library, runs everywhere (native and WASM). Incremental parsing — sub-millisecond reparse on keystroke, which realizes the "nothing blocks typing" clause of D-PERF-1. The concrete syntax tree preserves all whitespace and punctuation for round-trip fidelity, which realizes the "standard markdown in, standard markdown out" clause of DP-7.
 
-**CommonMark compliance**: tree-sitter-markdown is not 100% CommonMark-compliant. Known divergences exist in lazy continuation lines, complex nested link references, and some edge cases.
+**CommonMark compliance**: tree-sitter-markdown is not fully CommonMark-compliant. The largest current divergence is reference-style link resolution, which the grammar's syntax tree does not carry; other gaps exist in lazy continuation and some nested-construct edge cases. Closing the reference-link gap is the highest-priority correctness work on the core, because rendering AI-authored documents beautifully is the product's primary job (D-MKT-1).
 
 **Mitigation**:
-- CommonMark spec test suite runs in CI
-- Explicit skip-list for known divergences, documented for users
-- Contribute fixes upstream
-- Accept 98%+ compliance — the remaining edge cases are rarely hit in practice
+- The CommonMark spec test suite runs in CI; current pass/skip status is tracked in `docs/commonmark_status.md`
+- An explicit, documented skip-list covers every known divergence; any skip-listed test that starts passing is flagged so the entry can be removed
+- Fixes are contributed upstream where the grammar is the right place to fix them
+- The target is high compliance on the constructs real documents use, with the reference-link gap closed first
 
 **Extensions**:
 - GFM: tables, strikethrough, task lists, autolinks — supported by the grammar
 - Frontmatter: YAML block detection in the grammar
-- Math: `$inline$` and `$$display$$` — post-parse detection over code spans if not in grammar
-- Mermaid: fenced code block with `mermaid` info string — rendering is an editor-frontend concern
+- Math: `$inline$` and `$$display$$` — post-parse detection over code spans
+- Mermaid: fenced code block with a `mermaid` info string — rendering is a frontend concern
 
 ### 3.3 Formatting Engine
 
-Rule-based, ordered evaluation. Rules are implemented in Rust. Current rules:
+Rule-based, ordered evaluation. Rules are implemented in Rust:
 
 - List continuation (auto-bullet on Enter)
 - Table alignment
@@ -179,7 +179,7 @@ Rule-based, ordered evaluation. Rules are implemented in Rust. Current rules:
 - Blank line separation
 - Trailing whitespace trim
 
-**Decision [A-CORE-3]: hot-path duplication between core and editor frontend.** Rules that must respond within a single frame (Enter, Tab, Backspace triggers) are duplicated in the editor frontend for zero-latency response. Complex rules (full reformat, doctor) run only in the Rust core. The duplication is small, well-bounded, and covered by tests that ensure the two implementations produce identical output on the same input.
+**Decision [A-CORE-3]: hot-path formatting is mirrored in each frontend.** Rules that must respond within a single frame (Enter, Tab, Backspace triggers) are duplicated in each editor frontend for zero-latency response; complex rules (full reformat, doctor) run only in the Rust core. The duplication is small, well-bounded, and covered by parity tests that ensure each frontend's hot-path implementation produces output identical to the core on the same input.
 
 ### 3.4 Doctor Engine
 
@@ -189,9 +189,9 @@ Diagnostic rules, also implemented in Rust:
 - Broken relative links
 - Duplicate headings
 - Unclosed formatting
-- Passive voice detection (later phase)
+- Passive voice detection (later)
 
-Runs asynchronously after edits on a background thread. Results sent to the editor as diagnostics (underlines, gutter markers).
+Runs asynchronously after edits on a background thread. Results are delivered to the frontend as diagnostics (underlines, gutter markers).
 
 ### 3.5 Undo/Redo
 
@@ -199,295 +199,227 @@ Command-based with coalescing. Each edit produces an undo command (byte range + 
 
 ### 3.6 Selections
 
-`Vec<(anchor: usize, head: usize)>` of byte offsets. Single selection is the common case. Multi-cursor support comes free from the data structure.
+`Vec<(anchor: usize, head: usize)>` of byte offsets. Single selection is the common case; multi-cursor support comes free from the data structure.
 
 ### 3.7 File Operations
 
 All in the Rust core:
 
-- **File watching**: `notify` crate (cross-platform inotify/FSEvents/ReadDirectoryChanges).
-- **Auto-save**: debounced write (1 second after last edit). Content hash comparison to skip no-op saves.
-- **Conflict detection**: mtime + content hash on watch event. If external change detected while dirty, surface conflict to the shell.
-- **Line ending preservation**: detect on open, preserve on save. Realizes D-FILE-3.
-- **Encoding preservation**: UTF-8 is the default assumption; BOM detection handles UTF-8 with BOM and flags non-UTF-8 files to the user rather than silently mangling them.
+- **File watching**: `notify` crate (cross-platform inotify/FSEvents/ReadDirectoryChanges) where the platform exposes filesystem watching to the process; on sandboxed platforms the frontend forwards the platform's own change notifications to the core.
+- **Auto-save**: debounced write (1 second after last edit), with content-hash comparison to skip no-op saves.
+- **Conflict detection**: mtime + content hash on watch event. If an external change is detected while the buffer is dirty, the conflict is surfaced to the frontend.
+- **Line ending preservation**: detected on open, preserved on save. Realizes D-FILE-3.
+- **Encoding preservation**: UTF-8 is the default assumption; BOM detection handles UTF-8 with BOM, and non-UTF-8 files are flagged to the user rather than silently mangled.
 
 ### 3.8 Core API
 
-The Rust core integrates directly as a dependency of the Tauri backend — no FFI boundary, no separate process. Commands are exposed to the editor frontend via Tauri's `#[tauri::command]` macro and IPC bridge.
+The core exposes a single, transport-agnostic command surface. The same Rust functions are reached through `uniffi` on Apple and through WebAssembly bindings on the web — there is no separate API per platform, only a separate binding.
 
-**Current IPC commands (implemented):**
-
-```rust
-#[tauri::command] fn open_file(state, path: String) -> Result<String, Error>;
-#[tauri::command] fn edit(state, offset: usize, delete: usize, insert: String);
-#[tauri::command] fn save_file(state, path: String, content: String) -> Result<(), Error>;
-#[tauri::command] fn current_text(state) -> String;
-#[tauri::command] fn create_window(app, path: Option<String>);
-#[tauri::command] fn get_recent_files(state) -> Vec<String>;
-#[tauri::command] fn add_recent_file(state, path: String);
-```
-
-State is held in a Tauri `AppState` struct with per-window document management (`HashMap<window_label, Document>`).
-
-**Planned API additions (not yet implemented):**
+**Current commands:**
 
 ```rust
-#[tauri::command] fn document_viewport(h, start: usize, end: usize) -> Viewport;
-#[tauri::command] fn document_diagnose(h) -> Vec<Diagnostic>;
-#[tauri::command] fn document_format(h) -> Vec<Mutation>;
-#[tauri::command] fn document_undo(h);
-#[tauri::command] fn document_redo(h);
-#[tauri::command] fn document_close(h);
+fn open_file(path: String) -> Result<String, Error>;
+fn edit(offset: usize, delete: usize, insert: String);
+fn save_file(path: String, content: String) -> Result<(), Error>;
+fn current_text() -> String;
+fn get_recent_files() -> Vec<String>;
+fn add_recent_file(path: String);
 ```
 
-Each lands with the subsystem that needs it (doctor, formatter, undo) and carries its own regression-check against `docs/baseline.json`.
+**Planned additions**, each landing with the subsystem that needs it and carrying its own regression check:
 
-A C FFI layer via `cbindgen` is possible as a second-order output for embedding the core in external tools, but it is **not** a v1 deliverable and does not drive the core's shape.
+```rust
+fn document_viewport(start: usize, end: usize) -> Viewport;
+fn document_diagnose() -> Vec<Diagnostic>;
+fn document_format() -> Vec<Mutation>;
+fn document_undo();
+fn document_redo();
+```
+
+Document state is held per open document inside the core; each frontend owns the mapping from its windows/scenes to core document handles.
 
 ### 3.9 Concurrency Model
 
-The Rust core is single-threaded per document. Each document gets its own handle. The shell/bridge serializes access. No internal locking needed. Parsing and formatting run synchronously within an edit call — they're fast enough (sub-ms incremental, <16ms full reparse of large documents) to meet the "nothing blocks typing" clause of D-PERF-1.
-
-Background operations (doctor diagnostics, export, AI calls) run on separate threads and return results via callback.
+The core is single-threaded per document; each document gets its own handle and the frontend serializes access, so no internal locking is needed. Parsing and formatting run synchronously within an edit call — they are fast enough (sub-ms incremental, <16ms full reparse of large documents) to meet the "nothing blocks typing" clause of D-PERF-1. Background operations (doctor diagnostics, export, future AI calls) run on separate threads and return results via callback.
 
 ### 3.10 Plugin Host (first-party only)
 
 **Decision [A-CORE-4]: internal plugin architecture, first-party plugins only.**
 
-Features like Mermaid rendering, math rendering, wikilinks, image handling, and extended doctor rules are built as plugins against a stable internal plugin API. This gives us modularity and a clean way to feature-flag capabilities without bloating the core.
+Features like Mermaid rendering, math rendering, wikilinks, image handling, and extended doctor rules are built as plugins against a stable internal plugin API. This gives modularity and a clean way to feature-flag capabilities without bloating the core.
 
-The plugin API is *not* exposed to users. D-NO-6 (no third-party extension ecosystem) is a product decision; this is the engineering mechanism that makes it maintainable without becoming a liability. Plugins ship compiled into the binary. There is no runtime plugin loading, no marketplace, no user-installable `.plugin` files.
+The plugin API is *not* exposed to users. D-NO-7 (no third-party extension ecosystem) is a product decision; this is the engineering mechanism that makes it maintainable. Plugins ship compiled into the binary — no runtime loading, no marketplace, no user-installable plugin files.
 
-The host provides: parser access, AST query, formatting rule registration, doctor rule registration, diagnostic emission, editor-side rendering hooks for widget decorations, and an AI-capability registration interface. Plugins cannot modify the core engine, touch the filesystem directly, or make network calls outside the AI-capability interface.
+The host provides: parser access, AST query, formatting-rule registration, doctor-rule registration, diagnostic emission, frontend-side rendering hooks for widget decorations, and an AI-capability registration interface. Plugins cannot modify the core engine, touch the filesystem directly, or make network calls outside the AI-capability interface.
 
 ---
 
-## 4. Editor Frontend (CodeMirror 6)
+## 4. Editor Frontends
 
-### 4.1 Why CodeMirror 6
+Two frontends share one core. Each is responsible for rendering read mode, editing in author mode, the transition between them, themes, and platform accessibility — using its platform's own text system.
 
-Write the editor UI once. Browser engines already solved:
+### 4.1 Two modes, one document
 
-- CJK input method composition
-- RTL and bidirectional text
-- Accessibility (ARIA, screen readers)
-- Text selection, context menus, spell check
-- Unicode edge cases (emoji, grapheme clusters, zero-width joiners)
-
-These are multi-year, multi-team problems on native platforms. CodeMirror 6 handles all of this because browsers handle it. This is the defense for DP-4 and DP-10 — the cross-platform polish and accessibility guarantees are grounded in infrastructure we don't have to build.
-
-### 4.2 Two modes, one editor
-
-Decision D-UX-1 commits the product to read mode by default with author mode one gesture away. The editor frontend implements this as two CodeMirror EditorView states over the same document, with a designed transition between them.
+Decision D-UX-1 commits the product to read mode by default with author mode one gesture away. Each frontend implements two views over the same core document, with a designed transition between them.
 
 **Read mode**:
-- Full rendering: headings styled, tables laid out, code blocks syntax-highlighted, Mermaid and math rendered inline, images inline
-- Source characters (`#`, `**`, ` ``` `) are hidden via widget decorations
+- Full rendering: headings styled, tables laid out, code blocks highlighted, Mermaid and math rendered inline, images inline
+- Source characters (`#`, `**`, fences) are hidden
 - Selection and copy work on rendered text
 - Screen-reader users get a document, not source
-- Single click / tap anywhere triggers the transition to author mode with the cursor placed at the click position
+- A single tap/click enters author mode with the cursor placed at the tap position
 
 **Author mode**:
-- Full CodeMirror 6 editing with HyperMD-style WYSIWYM decorations
-- Syntax characters hidden when cursor is outside a node, revealed on proximity
+- Full editing with WYSIWYM decorations — syntax characters hidden when the cursor is away from a node, revealed on proximity
 - Live formatting rules (list continuation, table alignment, heading spacing) active
-- Doctor diagnostics visible in the gutter
-- Find/replace, word count, spell check, AI actions all available
-- A visible affordance returns to read mode with the designed transition
+- Doctor diagnostics visible
+- Find/replace, word count, spell check available
+- A visible affordance returns to read mode
 
-**Mode transition**: D-UX-1 requires read mode as the default with author mode one gesture away. The transition is implemented via CodeMirror 6 decorations and CSS transitions; Reduced Motion users get an instant crossfade. The transition must be smooth (60fps minimum on every shell) but is not a named signature feature — it is expected polish, not a marketing moment.
+**Mode transition**: read mode is the default; author mode is one gesture away. Reduced-Motion users get an instant crossfade. The transition is expected polish, not a marketing moment.
 
-### 4.3 Bridge Protocol
+### 4.2 Native Apple frontend (iOS, macOS)
 
-Tauri's IPC bridge (`invoke()` from `@tauri-apps/api` in the webview, `#[tauri::command]` in Rust) handles the transport. We use it to send JSON-shaped messages in both directions:
+The lead frontend, and the one that sets the product's quality bar. iOS is the priority platform.
 
-**Editor → Core** (edit intents):
-```json
-{"type": "edit", "offset": 1024, "delete": 0, "insert": "hello"}
-{"type": "undo"}
-{"type": "save"}
-{"type": "format"}
-```
+- Built in Swift on **TextKit 2**. Read mode and author-mode WYSIWYM are rendered through the native text layout system, so selection physics, the magnifier, the caret, dictation, the keyboard accessory bar, and text interaction are the real platform behaviors rather than approximations.
+- The Rust core is linked as a native library via `uniffi`; edits, parsing results, formatting mutations, and diagnostics cross a direct FFI boundary.
+- Platform integration is native: the document browser and Files/iCloud access, the share sheet, multiple scenes/windows, and state restoration.
+- Accessibility uses the native stack (`UIAccessibility` / `NSAccessibility`), giving VoiceOver behavior that meets D-A11Y-1 without reimplementation.
+- macOS shares the large majority of this frontend through TextKit 2's common surface (`NSTextView`), plus AppKit shell work (standard menu bar, services, Quick Look).
 
-**Core → Editor** (state updates):
-```json
-{"type": "tokens", "ranges": [...]}
-{"type": "diagnostics", "items": [...]}
-{"type": "conflict", "path": "..."}
-```
+This frontend is what delivers the native-feel bar (DP-2, DP-4) on the platforms where users are most sensitive to it.
 
-**Latency budget**: keystroke → editor shows character immediately (optimistic render). Core processes edit, reparses (sub-ms), returns updated tokens. Total round-trip 10-15ms on desktop; perceived latency <5ms because of optimistic rendering. Realizes the "edits feel instant" clause of D-PERF-1.
+### 4.3 Web frontend (Web, Windows, Linux)
 
-### 4.4 Accessibility
+One frontend covers the platforms where a browser-grade editor already clears the bar and a web canvas is the pragmatic, high-quality choice.
 
-CodeMirror 6 provides:
-- Hidden textarea for screen reader interaction
-- ARIA live regions for content changes
-- Screen reader cursor tracking
-- Keyboard navigation
+- Built on **CodeMirror 6** in TypeScript. WYSIWYM via decorations; CJK, RTL, IME, spell check, and unicode handling come from the browser.
+- The Rust core runs as **WebAssembly** loaded alongside the editor; edits and queries are direct WASM calls.
+- Delivered as an installable **PWA**: a service worker caches the app shell for offline use, and the File System Access API provides open/save on browsers that support it, with an input/download fallback elsewhere. The same build is the web product and the Windows/Linux desktop product.
+- Accessibility relies on CodeMirror 6's screen-reader support (hidden textarea, ARIA live regions, keyboard navigation), validated with NVDA and Orca.
 
-This is narrower than a hand-tuned native text view but functional on every platform. Specific gaps are tested with VoiceOver (macOS/iOS), NVDA (Windows), Orca (Linux), and TalkBack (Android) and documented per release. Read mode must pass screen-reader review separately — it is often *more* accessible than source view for document consumption, and the review enforces that.
+### 4.4 Hot-path parity
+
+Both frontends mirror the frame-critical formatting rules locally (A-CORE-3) so Enter/Tab/Backspace never wait on a binding round-trip. Parity tests assert that each frontend's hot-path output matches the core's reference implementation on the same input, so the two never drift.
 
 ---
 
 ## 5. AI Integration (deferred, post-v1.0)
 
-**Status: deferred.** Per D-ROAD-3 in `PRODUCT.md`, AI ships after v1.0. This section exists as an architectural placeholder: it names the constraints the eventual implementation must satisfy and the engineering protocol that will govern how it's designed, without pre-committing to specific runtimes or vendors that may not be the right answer when we actually start building.
-
-> **Rollback note (FEAT-045).** An earlier sprint (FEAT-029/030/032) shipped a local llama.cpp inference engine, a BYO-key cloud mode, and inline smart completions, getting ahead of D-ROAD-3. That code is now gated off — the `ai` cargo feature is off by default in both `markdown-core` and `src-tauri`, the `ai_*` Tauri commands are cfg-gated, and the AI editor extensions and settings UI are unwired from the default build. The code remains in the tree so that when the AI phase formally begins, re-enabling is a feature-flag flip plus a proper walking skeleton (per §5.3) rather than a ground-up rewrite. Any API keys previously stored in the OS keychain are untouched.
+**Status: deferred.** Per D-ROAD-3 in `PRODUCT.md`, AI ships after v1.0. This section names the constraints the eventual implementation must satisfy and the protocol that will govern it, without pre-committing to runtimes or vendors that may not be the right answer when work begins.
 
 ### 5.1 Constraints (locked now)
 
-These derive from product decisions D-AI-1, D-AI-2, D-AI-3 and do not depend on which runtime or vendor we eventually pick:
+Derived from D-AI-1, D-AI-2, D-AI-3, independent of runtime or vendor:
 
 - **Local-first**: on-device inference is the default path for core capabilities. The product works fully without any network access to AI providers.
-- **No relay**: user-key cloud requests go direct from the user's machine to the provider they chose. The project operates no server infrastructure that touches user content or API keys.
-- **Keychain-stored credentials**: API keys live in the OS keychain, never in plaintext config files or project servers.
-- **Plugin-hosted**: AI capabilities are built against the plugin host described in §3.10, not wired into the core. This means AI can be disabled, deferred, replaced, or reimplemented without touching the core engine.
-- **Consent-gated**: AI never modifies the document without an explicit user action. Inline suggestions appear as ghosted text or diffs; acceptance is an explicit user action.
-- **Degrades gracefully**: if AI is unavailable (no model, no network, API error, account issue), the editor works perfectly without it.
+- **No relay**: user-key cloud requests go directly from the user's machine to the provider they chose. The project operates no server infrastructure that touches user content or keys.
+- **Keychain-stored credentials**: API keys live in the OS keychain, never in plaintext config or project servers.
+- **Plugin-hosted**: AI capabilities are built against the plugin host (§3.10), not wired into the core, so AI can be disabled, deferred, replaced, or reimplemented without touching the engine.
+- **Consent-gated**: AI never modifies the document without an explicit user action. Suggestions appear as ghosted text or diffs; acceptance is explicit.
+- **Degrades gracefully**: if AI is unavailable, the editor works perfectly without it.
 
 ### 5.2 Deferred decisions
 
-The following decisions are deferred until the AI tooling landscape is stable enough to choose durably:
-
-- Which local inference runtime(s) to use per platform. Candidates today include Core ML, MLX, llama.cpp, ONNX Runtime (native and web), and others; the right answer in 18 months may be none of these.
-- Which cloud providers to support at launch of the AI phase. The right set depends on which providers have durable OpenAI-compatible endpoints and which don't.
-- Which AI capabilities to ship first and in what form. Today's candidates (improve, summarize, continue, smart completions) may not be what users want by the time we ship.
+Deferred until the AI tooling landscape is stable enough to choose durably: which local inference runtime(s) to use per platform, which cloud providers to support at launch of the AI phase, and which capabilities to ship first.
 
 ### 5.3 Engineering protocol for the AI phase
 
-When the AI phase begins, it starts with its own walking skeleton (per A-PROC-3) that proves the plugin-host integration, the keychain-stored credentials path, the consent-gated UI pattern, and the graceful-degradation behavior — before any specific runtime or capability work begins. The constraints in §5.1 are the acceptance criteria for that walking skeleton.
+When the AI phase begins, it starts with its own walking skeleton (per A-PROC-3) that proves plugin-host integration, the keychain-stored credentials path, the consent-gated UI pattern, and graceful degradation — before any runtime or capability work. The constraints in §5.1 are the acceptance criteria for that walking skeleton.
 
 **Decision [A-AI-DEFERRED]**: AI runtime and vendor decisions are deferred until the AI phase begins. The constraints in §5.1 are locked and inherited by any future implementation.
 
 ---
 
-## 6. Platform Shells
+## 6. Platforms and Distribution
 
-### 6.1 Per-Platform Details
+### 6.1 Per-platform summary
 
-| Platform | Webview | Shell-specific work |
-|----------|---------|---------------------|
-| macOS | WKWebView | Spotlight indexing, Quick Look, Services menu, standard menu bar |
-| Linux | WebKitGTK | XDG desktop integration, D-Bus, `.desktop` file, AppStream metadata |
-| Windows | WebView2 (pre-installed Win 10 21H2+) | Explorer integration, jump lists |
-| iOS | WKWebView | Files app integration, share sheet, virtual keyboard handling |
-| Android | Android WebView | Storage Access Framework, intent filters |
-| Web | IS the browser | PWA manifest, service worker for offline, File System Access API |
+| Platform | Frontend | Text system | Core binding | Distribution |
+|----------|----------|-------------|--------------|--------------|
+| iOS | Native (Swift) | TextKit 2 | uniffi | App Store |
+| macOS | Native (Swift/AppKit) | TextKit 2 (`NSTextView`) | uniffi | Homebrew Cask, direct `.dmg`, optionally Mac App Store |
+| Web | CodeMirror 6 | Browser | WebAssembly | Static hosting, PWA |
+| Windows | CodeMirror 6 | Browser | WebAssembly | PWA install, WinGet, Microsoft Store |
+| Linux | CodeMirror 6 | Browser | WebAssembly | PWA install, packaged builds (Flatpak, AUR, COPR, nixpkgs) |
+| Android | CodeMirror 6 | Browser | WebAssembly | PWA install, Google Play, F-Droid |
 
-**Shell size target**: 500–2000 lines each. Tauri boilerplate handles ~80% of the work.
+Android is served by the web frontend as an installable PWA. A native Android frontend is a later consideration, justified only if the platform's quality bar demands it the way iOS does. App Store channels are one distribution path among many. Homebrew, Flatpak, direct download, and PWA install are the primary channels for users who want software that isn't gated by a store review process. Full open source is non-negotiable for distro inclusion.
 
-### 6.2 WebKitGTK on Linux
+### 6.2 Why this split
 
-WebKitGTK lags Chromium by 6–12 months and has known rendering quirks. For most of the editor the demands are modest and CodeMirror 6 runs reliably.
+iOS and macOS are where the native-feel bar is highest and where a native text system pays for itself; they share a frontend. The web, Windows, and Linux are where a browser-grade editor already clears the bar and where a single web build delivers all three at once. The split is along the line where native effort is justified by the platform, not arbitrary.
 
-The area where WebKitGTK will visibly cost us is animation smoothness — the mode transition and other animated affordances will run at 60fps on Linux where modern Apple hardware hits 120fps. This is an accepted tradeoff: bundling Chromium/CEF would add ~100MB per install and defeat the lightweight goal. We ship with system WebKitGTK and tune animations within its budget.
+### 6.3 Binary size and footprint
 
-### 6.3 Mobile shell notes
-
-Tauri 2.0 mobile (iOS and Android) is behind desktop in maturity. The mobile shells will start from their own walking-skeleton milestones (per A-PROC-3) and will not ship user-visible until their baseline metrics are captured and the per-platform accessibility review passes.
+Each frontend bundles only what it needs: the native library on Apple, the WASM module plus editor assets on the web. There is no bundled browser engine — the web frontend uses the platform's own webview where it is packaged as a desktop app, and is otherwise just a website.
 
 ---
 
-## 7. Distribution
+## 7. Reference algorithms (read-only)
 
-### 7.1 Linux (most important for ubiquity)
-
-1. Use system WebKitGTK — no bundled webview.
-2. Static Rust binary + JS/CSS/HTML assets.
-3. Standard `.desktop` file, AppStream metadata, MIME `text/markdown` registration.
-4. Flatpak first (dependency isolation), then AUR, COPR, PPA.
-5. Reproducible builds, no network during build, standard install paths.
-6. Fully open source — non-negotiable for distro inclusion.
-
-### 7.2 All platforms
-
-- **macOS**: Homebrew Cask, direct `.dmg` download, optionally Mac App Store.
-- **Linux**: Flatpak, AUR, COPR, PPA, nixpkgs.
-- **Windows**: Microsoft Store, WinGet, direct `.msi`/`.exe` download.
-- **iOS**: App Store.
-- **Android**: Google Play + F-Droid (full open source, no Play Services dependency).
-- **Web**: static hosting, PWA with service worker.
-
-App Store channels are not required for the product to work — they're one distribution path among many. Homebrew / Flatpak / direct-download are the primary channels for users who want software that isn't gated by a store review process.
+A Swift prototype in `reference/` contains algorithm work from an earlier Apple-only version of the product. Its formatting rules, doctor rules, and tree-sitter node-type → AST mapping were ported to the Rust core (`markdown-core/src/formatter.rs`, `doctor.rs`, `ast.rs`, `parser.rs`). The reference is consulted for rule behavior only; the native Apple frontend is a fresh build on TextKit 2, not a continuation of that prototype.
 
 ---
 
-## 8. Legacy Swift prototype (reference only)
+## 8. Engineering Risks and Mitigations
 
-A Swift prototype in `reference/` contains algorithm work from an earlier Apple-only version of the product. **No Swift code transfers.** The Swift code was used as algorithm *reference* when implementing the Rust equivalents:
+Architecture-level risks. Product-level risks (sustainability, market) live in `PRODUCT.md`.
 
-- Formatting rules — **ported** to `em-core/src/formatter.rs`
-- Doctor rules — **ported** to `em-core/src/doctor.rs`
-- Tree-sitter node type → AST mapping — **ported** to `em-core/src/ast.rs` and `em-core/src/parser.rs`
-
-Do not add Swift targets to this repo. Do not invoke `swift build` or `swift test`.
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| tree-sitter CommonMark divergence (reference links first) | Incorrect rendering of some constructs | Spec tests in CI, documented skip-list, reference-link gap prioritized, upstream contributions |
+| Native Apple editor effort | TextKit 2 WYSIWYM is real work; the lead platform must clear a high bar | Frontend walking skeleton on a real device before feature work; the bar is validated by use, not by compile |
+| Two editor frontends drift | Behavioral inconsistencies between Apple and web | Shared core owns all logic; frontends own only rendering and hot-path formatting, gated by parity tests (§4.4) |
+| Core-to-WASM viability | Web frontend depends on the Rust core compiling to WASM | tree-sitter and the core are WASM-targetable; the web frontend's walking skeleton proves it end-to-end before features land |
+| App Store rejection as "web wrapper" | Can't ship on iOS / Mac App Store | The Apple frontend is genuinely native (TextKit 2, native file management, share, Spotlight) — not a web wrapper |
+| Webview memory on low-end devices | OOM pressure on the web frontend | Memory-pressure handling, release caches, warn on very large files |
+| Large-document performance | `String` model may not scale | The decision is measured, not assumed; revisit with new measurements if large-file use cases regress user-facing performance |
+| Six platforms, one reviewer | Review bottleneck | Lead with Apple, then web-for-three; the shared core keeps per-platform surface small — see `CONTRIBUTING.md` |
+| AI runtime churn | Pre-committing to a runtime now wastes work | Defer per A-AI-DEFERRED; keep the §5.1 constraints locked |
 
 ---
 
 ## 9. Engineering Phases
 
-These align with the product roadmap in `PRODUCT.md §7`. The roadmap describes user-visible outcomes; this table describes the engineering work that delivers them and its current status.
-
-**Current status is honestly mixed — some items have shipped on macOS, some are in flight, some haven't started. Rows marked `{{STATUS: confirm}}` are guesses that need a pass from the architect to set accurately.**
+These align with the product roadmap in `PRODUCT.md`. The roadmap describes user-visible outcomes; this table describes the engineering work that delivers them and its status.
 
 | Phase | Engineering deliverables | Status |
 |-------|--------------------------|--------|
-| **M0 — Walking skeleton** | Rust workspace + `em-core` crate (`String`-backed), Tauri 2.0 macOS shell, CodeMirror 6 editor in plain-text mode, IPC bridge with four commands (`open_file`, `edit`, `save_file`, `current_text`), end-to-end open → edit → save → reopen loop, baseline metrics committed to `docs/baseline.json`, CI regression gate | **Shipped (macOS)** |
-| **Foundation (post-M0)** | tree-sitter-markdown parser and AST, engine decision locked to `String` (measured), 5-rule formatting engine, 5-rule doctor engine, CommonMark spec suite in CI with skip-list | **Shipped (macOS)** `{{STATUS: confirm per-item}}` |
-| **Editor** | Read mode rendering, author mode with WYSIWYM decorations, mode transition animation, light/dark themes, keyboard shortcuts, typography, find/replace, word count, recent files, spell check, plugin host | **In flight (macOS)** `{{STATUS: confirm which items are done vs in flight}}` |
-| **Platform expansion** | Linux shell (WebKitGTK), Windows shell (WebView2), Web shell (PWA), auto-save, file watching, conflict detection, Flatpak packaging, first public pre-release | Planned |
-| **Mobile** | iOS shell, Android shell, mobile-specific walking skeleton per A-PROC-3 | Planned |
-| **Stabilization and v1.0** | Rich content: Mermaid plugin, math plugin, image handling, wikilinks plugin, extended doctor rules, PDF export plugin, custom themes. Cross-platform performance and stability hardening. v1.0. | Planned |
-| **AI (deferred, post-v1.0)** | Platform-appropriate local inference runtimes, user-key mode, smart completions, large-file handling. **Gated on ecosystem stabilization — see D-ROAD-3 in `PRODUCT.md`.** | Deferred |
+| **Core engine** | `markdown-core` crate (`String`-backed), tree-sitter parser and AST, formatting engine, doctor engine, file I/O, CommonMark spec suite in CI with skip-list, baseline metrics and regression gate | Built and measured |
+| **Web frontend** | CodeMirror 6 editor (read mode, WYSIWYM, themes, find/replace, word count, spell check), core compiled to WebAssembly, PWA shell with offline and File System Access, auto-save, file watching, conflict detection | Built — editor plus the core running as `wasm32-wasip1` in the browser via a WASI shim; PWA shell. Verified in the browser, not yet shipped |
+| **Apple frontend (lead)** | Swift + TextKit 2 editor (read mode, WYSIWYM, mode transition), core via uniffi, native file management, share sheet, accessibility; iOS first, macOS sharing the TextKit 2 surface | Built — `UITextView`/`NSTextView` over the core via uniffi; read mode, WYSIWYM, doctor, Format, find, themes, accessibility. Verified on the iOS Simulator and on macOS, not yet shipped |
+| **Stabilization and v1.0** | Reference-link compliance closed, rich content (Mermaid, math, images, wikilinks), extended doctor rules, PDF export, custom themes, cross-platform hardening | In progress — outline, PDF export, math, inline images, extended doctor rules, custom themes, Quick Open built on Apple; Mermaid SVG rendering and reference-link compliance remain |
+| **AI (deferred, post-v1.0)** | Local inference, user-key mode, smart completions — gated on ecosystem stabilization (D-ROAD-3) | Deferred |
 
-**Every item in every phase measures against `docs/baseline.json` before merging** (per A-PROC-2). A regression of more than 10% in the median of the measurement run blocks the merge until the regression is understood, named, and either fixed or explicitly accepted.
+Every item in every phase measures against `docs/baseline.json` before merging (A-PROC-2).
 
 ---
 
-## 10. Engineering Risks and Mitigations
-
-These are architecture-level risks. Product-level risks (sustainability, market) live in `PRODUCT.md §9`.
-
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| tree-sitter CommonMark divergence | Incorrect rendering of edge cases | Spec tests in CI, skip-list, upstream contributions |
-| WebKitGTK rendering quirks | Visual glitches on Linux, lower animation ceiling | Modest rendering demands, test on major distros, file upstream bugs, accept the animation ceiling (§6.2) |
-| Webview memory on low-end mobile | OOM on 3GB devices | Memory pressure handling, release caches, warn user on large files |
-| App Store rejection as "web wrapper" | Can't ship on iOS / macOS store | Substantial native shell work (file management, share, Spotlight integration). Obsidian precedent is relevant. |
-| Tauri mobile immaturity | Phase slippage on iOS / Android | Walking skeleton per platform before any user-visible work; accept that mobile ships later |
-| Six platforms, one human reviewer | Review bottleneck | Ship desktop first, add mobile last. Thin shells via Tauri keep per-platform surface area small. Review load is the binding constraint — see `CONTRIBUTING.md` |
-| Tauri project health | Upstream dependency risk | MIT-licensed, can fork. Shell code is thin enough to rewrite against a different framework if needed. |
-| Bridge latency on slow devices | Perceived input lag | Optimistic rendering in the editor. Hot-path formatting duplicated in editor. Benchmark on target devices. |
-| Large-document performance | `String` model may not scale | The decision is measured, not assumed. Revisit (re-running the piece-table / rope comparison) if large-file use cases start regressing user-facing performance. |
-| AI runtime churn | Pre-committing to a specific inference runtime now may waste work when the ecosystem shakes out | Defer per A-AI-DEFERRED. Keep the constraints (local-first, no relay, plugin-hosted, consent-gated) locked; defer the runtime choice until the AI phase begins. |
-
----
-
-## 11. Architecture Decision Log
-
-Consolidated reference. Each entry names the product decision it implements.
+## 10. Architecture Decision Log
 
 | ID | Decision | Implements |
 |----|----------|-----------|
-| A-STACK-1 | Three-layer model: Rust core, web-based editor, thin platform shells | D-PLAT-1, D-PERF-1, D-A11Y-1 |
-| A-STACK-2 | Rust + CodeMirror 6 + Tauri 2.0 | A-STACK-1 |
+| A-STACK-1 | One shared Rust core, native frontends per platform, no cross-platform UI framework | D-PLAT-1, D-PERF-1, D-A11Y-1 |
+| A-STACK-2 | Rust core + native Apple frontend (Swift/TextKit 2) + CodeMirror 6 web frontend | A-STACK-1 |
+| A-BIND-1 | Core binds in-process (uniffi on Apple, WebAssembly on web); no separate process or network IPC | D-PERF-1 |
 | A-PROC-1 | Walking-skeleton discipline for every major architectural claim | D-PERF-1, D-PROC-1 |
 | A-PROC-2 | Baseline-measured regression gate at 110% of committed median | D-PERF-1 |
-| A-PROC-3 | Each major subsystem has its own walking-skeleton milestone | D-PROC-1 |
+| A-PROC-3 | Each frontend and subsystem has its own walking-skeleton milestone | D-PROC-1 |
 | A-CORE-1 | Document model is `String` (measured, not assumed) | D-PERF-1 |
 | A-CORE-2 | tree-sitter with `tree-sitter-markdown` grammar | D-PERF-1, DP-7 |
-| A-CORE-3 | Hot-path formatting duplicated between core and editor | D-PERF-1 |
-| A-CORE-4 | Internal plugin architecture, first-party plugins only | D-NO-6 |
-| A-AI-DEFERRED | AI runtime and vendor decisions deferred until the AI phase begins; constraints in §5.1 locked | D-AI-1, D-AI-2, D-AI-3, D-ROAD-3 |
+| A-CORE-3 | Hot-path formatting mirrored in each frontend, gated by parity tests | D-PERF-1 |
+| A-CORE-4 | Internal plugin architecture, first-party plugins only | D-NO-7 |
+| A-AI-DEFERRED | AI runtime and vendor decisions deferred; §5.1 constraints locked | D-AI-1, D-AI-2, D-AI-3, D-ROAD-3 |
 
 ---
 
 ## Appendix: Related documents
 
 - `PRODUCT.md` — what the product is, who it serves, the user-facing contract. All product decisions (`D-*`) live there.
-- `CONTRIBUTING.md` — how contributions work. The agent-driven development model, review loop, and agent-legibility maintenance.
+- `CONTRIBUTING.md` — how contributions work: the agent-driven development model, review loop, and agent-legibility maintenance.
 - `docs/baseline.json` — the committed performance baseline enforced by the regression gate.
-- `docs/engine-comparison.json` — the full measurement data behind A-CORE-1.
-- `docs/engine-decision.md` — the rationale for A-CORE-1 written up for reviewers.
+- `docs/engine-comparison.json` — the measurement data behind A-CORE-1.
+- `docs/engine-decision.md` — the rationale for A-CORE-1.
+- `docs/commonmark_status.md` — tree-sitter-markdown CommonMark compliance status.

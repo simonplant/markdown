@@ -1,0 +1,11 @@
+{
+  "state": "developing",
+  "lastTransition": "2026-04-21T22:46:44-07:00",
+  "pid": 91714,
+  "itemId": "FEAT-046",
+  "sprintId": "sprint-1776836804",
+  "worktreeDir": "/var/folders/75/mfg0mjx14tzb0txfjb_03rgw0000gn/T//aishore-wt-FEAT-046.9R3Bgd",
+  "featureBranch": "aishore/FEAT-046",
+  "baseBranch": "main",
+  "attempt": 1
+}

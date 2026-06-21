@@ -1,11 +1,11 @@
-# Large-File Performance Characteristics (FEAT-027)
+# Large-File Performance Characteristics
 
 Measured on Apple M2, macOS 26.3.1, 16 GB RAM.
 Release build (`cargo run --release`), 5-run medians.
 
 ## Summary
 
-The String-backed document model (FEAT-008 decision) handles 10k+ line files
+The String-backed document model handles 10k+ line files
 well within the baseline thresholds from `docs/baseline.json`. Performance
 degrades linearly with file size — expected for a contiguous `String` — but
 stays usable through 100k lines.

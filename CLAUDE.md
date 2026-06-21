@@ -33,6 +33,40 @@ One shared engine, a native editor frontend per platform. No cross-platform UI f
 - Not N hand-built native editors — only the Apple frontend is native; the web frontend covers everything else.
 - Not a CLI-first architecture with the editor as an afterthought.
 
+There is **no Tauri** in this repo — it was retired during the cutover. If you find a reference to a Tauri shell, `src-tauri/`, or `invoke()` as the current transport, it is stale; the web frontend talks to the core as WebAssembly in-process.
+
+## Repository layout
+
+| Path | What |
+|------|------|
+| `markdown-core/` | The shared Rust crate — parser, formatter, doctor, `String` document model, wikilinks, math span detection. `crate-type = ["rlib", "cdylib", "staticlib"]`. `ffi.rs` is the uniffi surface; `wasm_api.rs` is the hand-rolled C ABI for the browser. `notify`/uniffi are `cfg(not(target_arch = "wasm32"))`; AI is behind the off-by-default `ai` feature. |
+| `src/` | Web frontend — CodeMirror 6 in TypeScript. Loads the core as WebAssembly (`core-wasm.ts` is the browser WASI loader); `doctor.ts`/`format.ts` call the WASM core. |
+| `apple/` | Native iOS + macOS app — Swift on TextKit 2 (`UITextView`/`NSTextView`) over the core via uniffi. `project.yml` (XcodeGen) is the source of truth; the `.xcodeproj`, `MarkdownCore.xcframework`, and `Info.plist` are gitignored build products. Authoritative spec: `docs/IOS_BUILD_SPEC.md`. |
+| `scripts/` | `build-wasm.sh` (core → `wasm32-wasip1`), `measure_baseline.sh`, WASM smoke tests. |
+
+**Current state:** the shared core, the web WASM/PWA build, and the native iOS+macOS app are all built and verified by running (iOS Simulator + macOS). The iOS/macOS lead phase and the Phase 4 rich-content work are done **except Mermaid**, which is detected and distinctly rendered but not yet rendered as full SVG. This is pre-release — verified, not shipped. Be honest about this in docs; do not claim more than is verified.
+
+## Build & run
+
+```bash
+# Rust core
+cargo test -p markdown-core                                   # core test suite
+cargo test -p markdown-core --test commonmark -- --nocapture  # CommonMark spec suite
+
+# Web frontend (core as WebAssembly)
+npm install
+npm run build:wasm   # compile the core to wasm32-wasip1 → public/markdown_core.wasm (needs LLVM + wasi sysroot)
+npm run dev          # run the editor; npm run build for the production PWA
+
+# Native Apple frontend
+apple/scripts/build-rust.sh                                   # staticlibs + uniffi Swift bindings → MarkdownCore.xcframework
+cd apple && xcodegen generate                                 # regenerate the .xcodeproj after ADDING files
+xcodebuild test -scheme MarkdownEditor -destination 'platform=iOS Simulator,name=iPhone 17 Pro'
+swift test --package-path apple/Packages/MarkdownCoreFFI      # core binding round-trip on macOS
+```
+
+**Apple gotchas:** uniffi-generated Swift needs Swift-5 language mode (`swiftLanguageModes: [.v5]`); do not re-declare the system UTI `net.daringfireball.markdown` ("duplicate type identifier") — the app exports its own `com.markdown.editor.markdown`. Web gotcha: Apple `clang` can't target wasm and `wasm32-unknown-unknown` is libc-less, so the WASM build uses `wasm32-wasip1` with a wasi-libc sysroot via LLVM `clang`.
+
 ## How to find current priorities
 
 **`backlog/backlog.json`** is the source of truth for what to work on next. Items are ordered by phase and priority. Do not hard-code feature lists in docs — check the backlog.
@@ -58,18 +92,6 @@ The full list lives in `docs/PRODUCT.md` §5. A short version for agents running
 - Not closed-source, not open-core — Apache 2.0 whole stack
 
 If a backlog item drifts toward any of these, flag it during grooming.
-
-<!-- This section is managed by aishore and will be overwritten on `aishore update`. -->
-<!-- Customizations here will be lost. Add project-specific instructions above this section. -->
-
-<!-- This section is managed by aishore and will be overwritten on `aishore update`. -->
-<!-- Customizations here will be lost. Add project-specific instructions above this section. -->
-
-<!-- This section is managed by aishore and will be overwritten on `aishore update`. -->
-<!-- Customizations here will be lost. Add project-specific instructions above this section. -->
-
-<!-- This section is managed by aishore and will be overwritten on `aishore update`. -->
-<!-- Customizations here will be lost. Add project-specific instructions above this section. -->
 
 <!-- This section is managed by aishore and will be overwritten on `aishore update`. -->
 <!-- Customizations here will be lost. Add project-specific instructions above this section. -->
