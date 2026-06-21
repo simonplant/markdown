@@ -46,8 +46,16 @@ pub fn find_spans(text: &str) -> Vec<MathSpan> {
         }
         match c {
             b'\\' => {
-                i += 2; // skip the escaped character
-                at_line_start = false;
+                // Skip the escaped character, but never skip across a newline or
+                // past the end: a trailing `\` before '\n' must not swallow the
+                // line break, or the next line's fence marker is missed and
+                // `in_fence` desyncs for the rest of the document.
+                if i + 1 >= n || b[i + 1] == b'\n' {
+                    i += 1;
+                } else {
+                    i += 2;
+                    at_line_start = false;
+                }
                 continue;
             }
             b'`' => {

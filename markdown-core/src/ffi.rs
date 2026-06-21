@@ -321,7 +321,12 @@ pub fn apply_mutations(text: String, mutations: Vec<Mutation>) -> String {
     muts.sort_by(|a, b| b.offset.cmp(&a.offset));
     for m in muts {
         let start = m.offset as usize;
-        let end = start + m.delete as usize;
+        // `delete` is a caller-controlled u64; a plain `start + delete` can
+        // overflow usize and wrap to an inverted range that slips past the
+        // bounds check and panics in replace_range. checked_add rejects it.
+        let Some(end) = start.checked_add(m.delete as usize) else {
+            continue;
+        };
         if end <= out.len() && out.is_char_boundary(start) && out.is_char_boundary(end) {
             out.replace_range(start..end, &m.insert);
         }

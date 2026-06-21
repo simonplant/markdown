@@ -96,21 +96,16 @@ impl Document {
     }
 
     pub fn edit(&mut self, offset: usize, delete: usize, insert: &str) {
-        debug_assert!(
-            offset <= self.content.len(),
-            "edit offset {} exceeds document length {}",
-            offset,
-            self.content.len()
-        );
-        debug_assert!(
-            offset + delete <= self.content.len(),
-            "edit range {}..{} exceeds document length {}",
-            offset,
-            offset + delete,
-            self.content.len()
-        );
+        // Offsets cross the FFI as raw u64 from the host; clamp and validate
+        // rather than asserting. `saturating_add` avoids overflow (which would
+        // wrap and produce an inverted range), and the char-boundary guard keeps
+        // `replace_range` from panicking on a mid-character index — a panic here
+        // would poison the document mutex and brick the object for all later calls.
         let offset = offset.min(self.content.len());
-        let end = (offset + delete).min(self.content.len());
+        let end = offset.saturating_add(delete).min(self.content.len());
+        if !self.content.is_char_boundary(offset) || !self.content.is_char_boundary(end) {
+            return;
+        }
         self.content.replace_range(offset..end, insert);
     }
 

@@ -189,7 +189,21 @@ fn check_empty_sections(tree: &SyntaxTree, text: &str, diagnostics: &mut Vec<Dia
 /// Detect a contiguous run of bullet-list lines that mixes `-`, `*`, and `+`
 /// markers. CommonMark splits a marker change into separate lists, so this scans
 /// the source lines (matching user intent) rather than the AST. (FEAT-036.)
-fn check_inconsistent_list_markers(_tree: &SyntaxTree, text: &str, diagnostics: &mut Vec<Diagnostic>) {
+fn check_inconsistent_list_markers(tree: &SyntaxTree, text: &str, diagnostics: &mut Vec<Diagnostic>) {
+    // Byte ranges of code blocks: a `- `/`* `/`+ ` line inside a fenced or
+    // indented code block is content, not a list item, and must not be flagged.
+    let code_ranges: Vec<(usize, usize)> = tree
+        .walk()
+        .filter(|n| {
+            matches!(
+                n.kind,
+                NodeKind::FencedCodeBlock { .. } | NodeKind::IndentedCodeBlock
+            )
+        })
+        .map(|n| (n.span.start, n.span.end))
+        .collect();
+    let in_code = |pos: usize| code_ranges.iter().any(|&(s, e)| pos >= s && pos < e);
+
     let mut byte = 0usize;
     let mut run_start: Option<usize> = None;
     let mut run_end = 0usize;
@@ -199,6 +213,10 @@ fn check_inconsistent_list_markers(_tree: &SyntaxTree, text: &str, diagnostics: 
     for line in text.split_inclusive('\n') {
         let start = byte;
         byte += line.len();
+        // Skip code-block lines like blank lines: neutral, keep any run open.
+        if in_code(start) {
+            continue;
+        }
         let t = line.trim_start();
         let is_item = matches!(t.chars().next(), Some('-') | Some('*') | Some('+'))
             && matches!(t.chars().nth(1), Some(' ') | Some('\t'));
@@ -248,6 +266,27 @@ fn flush_list_run(
 }
 
 /// Detect relative links that point to non-existent files.
+/// Decode `%XX` percent-escapes in a link path. Invalid escapes are left as-is.
+fn percent_decode(s: &str) -> String {
+    let bytes = s.as_bytes();
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'%' && i + 2 < bytes.len() {
+            let hi = (bytes[i + 1] as char).to_digit(16);
+            let lo = (bytes[i + 2] as char).to_digit(16);
+            if let (Some(hi), Some(lo)) = (hi, lo) {
+                out.push((hi * 16 + lo) as u8);
+                i += 3;
+                continue;
+            }
+        }
+        out.push(bytes[i]);
+        i += 1;
+    }
+    String::from_utf8_lossy(&out).into_owned()
+}
+
 fn check_broken_links(
     tree: &SyntaxTree,
     _text: &str,
@@ -268,6 +307,13 @@ fn check_broken_links(
             _ => continue,
         };
 
+        // CommonMark allows a pointy-bracket destination `<file.md>`; unwrap it
+        // so both the scheme checks and the path resolution see the real target.
+        let dest = dest
+            .strip_prefix('<')
+            .and_then(|d| d.strip_suffix('>'))
+            .unwrap_or(dest);
+
         // Skip non-file destinations.
         if dest.starts_with('#')
             || dest.starts_with("http://")
@@ -285,7 +331,9 @@ fn check_broken_links(
             continue;
         }
 
-        let resolved = doc_dir.join(file_part);
+        // Percent-decode so a link like `./my%20file.md` resolves to the real
+        // on-disk `my file.md` instead of being reported as broken.
+        let resolved = doc_dir.join(percent_decode(file_part));
 
         // Check against siblings list first, then fall back to filesystem.
         let exists = ctx.siblings.iter().any(|s| s == &resolved) || resolved.exists();

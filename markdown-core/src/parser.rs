@@ -83,11 +83,16 @@ fn maybe_wrap_frontmatter(mut root: SyntaxNode, text: &str) -> SyntaxNode {
 /// a line.
 fn find_closing_frontmatter(rest: &str) -> Option<usize> {
     let mut offset = 0;
-    for line in rest.lines() {
-        if line.trim_end() == "---" {
+    // Walk by real line boundaries so the accumulated byte offset is exact for
+    // both LF and CRLF endings. `str::lines()` strips the trailing '\r', so a
+    // `line.len() + 1` accumulator under-counts CRLF terminators by one byte per
+    // line, which drifts the returned offset and can later slice mid-character.
+    for line in rest.split_inclusive('\n') {
+        let content = line.trim_end_matches('\n').trim_end_matches('\r');
+        if content == "---" {
             return Some(offset);
         }
-        offset += line.len() + 1; // +1 for '\n'
+        offset += line.len(); // true byte length, including any '\r\n'
     }
     None
 }

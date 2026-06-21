@@ -143,6 +143,9 @@ fn generate_realistic_markdown(line_count: usize) -> String {
 }
 
 fn median(values: &mut [f64]) -> f64 {
+    if values.is_empty() {
+        return 0.0;
+    }
     values.sort_by(|a, b| a.partial_cmp(b).unwrap());
     let mid = values.len() / 2;
     if values.len() % 2 == 0 {
@@ -158,7 +161,8 @@ fn main() {
 
     let num_runs: usize = std::env::var("MEASURE_RUNS")
         .ok()
-        .and_then(|s| s.parse().ok())
+        .and_then(|s| s.parse::<usize>().ok())
+        .map(|n| n.max(1)) // MEASURE_RUNS=0 would leave the sample vecs empty
         .unwrap_or(5);
 
     let sizes: Vec<usize> = if std::env::args().any(|a| a == "--large") {

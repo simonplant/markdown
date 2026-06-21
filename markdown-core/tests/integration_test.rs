@@ -40,18 +40,27 @@ fn edit_delete_past_end_clamps() {
     assert_eq!(doc.current_text(), "hel");
 }
 
-#[cfg(debug_assertions)]
 #[test]
-#[should_panic(expected = "edit offset")]
-fn edit_offset_past_end_panics_in_debug() {
+fn edit_offset_past_end_clamps() {
+    // Out-of-range offsets clamp to the document end instead of panicking.
     let mut doc = Document::from_content("hi".to_string());
     doc.edit(10, 0, "X");
+    assert_eq!(doc.current_text(), "hiX");
 }
 
-#[cfg(debug_assertions)]
 #[test]
-#[should_panic(expected = "edit range")]
-fn edit_delete_past_end_panics_in_debug() {
+fn edit_non_char_boundary_offset_is_ignored() {
+    // Offset 1 lands inside the 2-byte 'é'; the edit must be skipped, not panic
+    // (a panic here previously poisoned the document mutex across the FFI).
+    let mut doc = Document::from_content("é".to_string());
+    doc.edit(1, 0, "x");
+    assert_eq!(doc.current_text(), "é");
+}
+
+#[test]
+fn edit_huge_delete_does_not_overflow() {
+    // offset + delete must not overflow usize and wrap into an inverted range.
     let mut doc = Document::from_content("hello".to_string());
-    doc.edit(3, 100, "");
+    doc.edit(5, usize::MAX, "z");
+    assert_eq!(doc.current_text(), "helloz");
 }

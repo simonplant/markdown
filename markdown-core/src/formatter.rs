@@ -214,10 +214,22 @@ fn rule_table_alignment(tree: &SyntaxTree, text: &str, mutations: &mut Vec<Mutat
         let mut new_lines = Vec::new();
         for (i, row) in parsed_rows.iter().enumerate() {
             if Some(i) == sep_idx {
-                // Build separator row.
-                let sep_cells: Vec<String> = col_widths
-                    .iter()
-                    .map(|&w| "-".repeat(w))
+                // Build separator row, preserving each column's GFM alignment
+                // (`:---` left, `---:` right, `:--:` center) read from the
+                // original separator cells. Widths still match the data columns.
+                let sep_cells: Vec<String> = (0..col_count)
+                    .map(|j| {
+                        let orig = row.get(j).map(|s| s.as_str()).unwrap_or("");
+                        let left = orig.starts_with(':');
+                        let right = orig.ends_with(':') && orig.len() > 1;
+                        let w = col_widths[j];
+                        match (left, right) {
+                            (true, true) => format!(":{}:", "-".repeat(w.saturating_sub(2).max(1))),
+                            (true, false) => format!(":{}", "-".repeat(w.saturating_sub(1).max(1))),
+                            (false, true) => format!("{}:", "-".repeat(w.saturating_sub(1).max(1))),
+                            (false, false) => "-".repeat(w),
+                        }
+                    })
                     .collect();
                 new_lines.push(format!("| {} |", sep_cells.join(" | ")));
             } else {
@@ -249,8 +261,11 @@ fn rule_table_alignment(tree: &SyntaxTree, text: &str, mutations: &mut Vec<Mutat
 /// Parse a pipe-delimited table row into trimmed cell strings.
 fn parse_table_row(line: &str) -> Vec<String> {
     let trimmed = line.trim();
-    // Strip leading and trailing pipes.
-    let inner = if trimmed.starts_with('|') && trimmed.ends_with('|') {
+    // Strip leading and trailing pipes. Guard the both-pipes branch against a
+    // lone "|" (len 1), which would otherwise slice `[1..0]` and panic.
+    let inner = if trimmed.len() < 2 {
+        ""
+    } else if trimmed.starts_with('|') && trimmed.ends_with('|') {
         &trimmed[1..trimmed.len() - 1]
     } else if trimmed.starts_with('|') {
         &trimmed[1..]
@@ -259,7 +274,34 @@ fn parse_table_row(line: &str) -> Vec<String> {
     } else {
         trimmed
     };
-    inner.split('|').map(|s| s.trim().to_string()).collect()
+    split_table_cells(inner)
+}
+
+/// Split a table row's inner content on unescaped pipes, so a GFM
+/// backslash-escaped pipe (`\|`) inside a cell is not treated as a column
+/// delimiter. The escape is preserved in the emitted cell so it round-trips.
+fn split_table_cells(inner: &str) -> Vec<String> {
+    let mut cells = Vec::new();
+    let mut cur = String::new();
+    let mut chars = inner.chars();
+    while let Some(c) = chars.next() {
+        match c {
+            '\\' => {
+                // Keep the backslash and whatever it escapes together.
+                cur.push('\\');
+                if let Some(next) = chars.next() {
+                    cur.push(next);
+                }
+            }
+            '|' => {
+                cells.push(cur.trim().to_string());
+                cur = String::new();
+            }
+            _ => cur.push(c),
+        }
+    }
+    cells.push(cur.trim().to_string());
+    cells
 }
 
 /// Find the index of the separator row (cells are all dashes, possibly with colons).
