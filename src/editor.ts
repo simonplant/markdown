@@ -10,7 +10,7 @@ import { wysiwym } from "./wysiwym";
 import { theRender, toggleRender } from "./the-render";
 import { renderedDecorations, setRenderedTheme } from "./rendered-decorations";
 import { wikilinks } from "./wikilinks";
-import { readMode, toggleMode, isReadMode, enterReadMode } from "./read-mode";
+import { readMode, toggleMode, isReadMode, enterReadMode, programmaticEdit } from "./read-mode";
 import { doctorDiagnostics } from "./doctor";
 import { formatDocumentCommand } from "./format";
 // AI extensions are deferred per D-ROAD-3 — see docs/ARCHITECTURE.md §5.
@@ -109,7 +109,10 @@ export function getContent(): string {
 }
 
 export function setContent(text: string): void {
+  // Annotated programmatic so it loads even in read mode (the default view),
+  // where the read-mode guard otherwise drops doc-changing transactions.
   view.dispatch({
     changes: { from: 0, to: view.state.doc.length, insert: text },
+    annotations: programmaticEdit.of(true),
   });
 }

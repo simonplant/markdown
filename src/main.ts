@@ -28,10 +28,10 @@ function fnv1aHash(str: string): number {
 
 let lastSavedHash: number = 0;
 
-function showSaveIndicator(): void {
+function showSaveIndicator(label = "Saved"): void {
   const el = document.getElementById("stat-save");
   if (!el) return;
-  el.textContent = "Saved";
+  el.textContent = label;
   el.style.opacity = "1";
   setTimeout(() => {
     el.style.opacity = "0";
@@ -128,12 +128,28 @@ async function saveWithFSA(): Promise<void> {
     await saveAsWithFSA();
     return;
   }
+  // Conflict detection: if the file changed on disk since we loaded/saved it
+  // (another editor, a sync client like iCloud/Dropbox), don't silently clobber
+  // those external edits — ask first, and keep the buffer dirty if declined.
+  try {
+    const onDisk = await (await currentHandle.getFile()).text();
+    if (fnv1aHash(onDisk) !== lastSavedHash) {
+      const overwrite = confirm(
+        "This file changed on disk since you opened it. Overwrite those changes with your version?"
+      );
+      if (!overwrite) return;
+    }
+  } catch {
+    // Couldn't read current contents — fall through and attempt the write.
+  }
   const content = getContent();
   const writable = await currentHandle.createWritable();
   await writable.write(content);
   await writable.close();
-  hasUnsavedChanges = false;
   lastSavedHash = fnv1aHash(content);
+  // Edits typed during the awaits aren't in `content`; only clear the dirty flag
+  // if the live document still matches what we just wrote (else stay dirty).
+  hasUnsavedChanges = getContent() !== content;
   updateTitle();
   showSaveIndicator();
 }
@@ -154,8 +170,8 @@ async function saveAsWithFSA(): Promise<void> {
   const writable = await handle.createWritable();
   await writable.write(content);
   await writable.close();
-  hasUnsavedChanges = false;
   lastSavedHash = fnv1aHash(content);
+  hasUnsavedChanges = getContent() !== content;
   updateTitle();
   showSaveIndicator();
 }
@@ -169,10 +185,10 @@ function saveWithFallback(): void {
   a.download = currentFilename || "untitled.md";
   a.click();
   URL.revokeObjectURL(url);
-  hasUnsavedChanges = false;
-  lastSavedHash = fnv1aHash(content);
-  updateTitle();
-  showSaveIndicator();
+  // A browser download can't confirm the bytes reached disk (the user may cancel
+  // the Save dialog), so do NOT clear the dirty flag or disarm the beforeunload
+  // guard — that would silently lose work on tab close.
+  showSaveIndicator("Downloaded");
 }
 
 async function handleSave(): Promise<void> {

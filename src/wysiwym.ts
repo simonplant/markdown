@@ -67,7 +67,11 @@ const wysiwymPlugin = ViewPlugin.fromClass(
     }
 
     update(update: ViewUpdate) {
-      if (update.docChanged || update.selectionSet) {
+      // Also rebuild on viewport scroll and background-parse progress, or markers
+      // in newly-scrolled / late-parsed regions stay un-hidden (the syntax tree
+      // is parsed incrementally for documents larger than the viewport).
+      const treeChanged = syntaxTree(update.startState) !== syntaxTree(update.state);
+      if (update.docChanged || update.selectionSet || update.viewportChanged || treeChanged) {
         this.decorations = buildDecorations(update.view);
       }
     }

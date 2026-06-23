@@ -5,7 +5,9 @@ export interface DocumentStats {
 }
 
 export function countWords(text: string): DocumentStats {
-  const chars = text.length;
+  // Count Unicode code points, not UTF-16 units, so emoji / astral chars (and
+  // ZWJ sequences' components) aren't double-counted as 2.
+  const chars = [...text].length;
 
   // Strip fenced code block contents (``` or ~~~ blocks)
   let stripped = text.replace(/^(`{3,}|~{3,}).*\n[\s\S]*?^\1\s*$/gm, "");
@@ -38,8 +40,19 @@ export function countWords(text: string): DocumentStats {
   stripped = stripped.replace(/^[\s]*[-*+]\s+/gm, "");
   stripped = stripped.replace(/^[\s]*\d+\.\s+/gm, "");
 
-  // Split on whitespace and count non-empty tokens
-  const words = stripped.split(/\s+/).filter((t) => t.length > 0).length;
+  // Count words. CJK scripts (Chinese, Japanese kana) don't separate words with
+  // spaces, so a whitespace split alone would count a whole sentence as one word.
+  // Count each CJK ideograph/kana as a word (the Word/Pages convention), and
+  // whitespace-split the remaining (Latin-style) text.
+  // Ranges: CJK Unified Ideographs incl. Ext A (U+3400–U+9FFF), Compatibility
+  // Ideographs (U+F900–U+FAFF), Hiragana + Katakana (U+3040–U+30FF).
+  const cjk = /[㐀-鿿豈-﫿぀-ヿ]/g;
+  const cjkWords = (stripped.match(cjk) || []).length;
+  const latinWords = stripped
+    .replace(cjk, " ")
+    .split(/\s+/)
+    .filter((t) => t.length > 0).length;
+  const words = cjkWords + latinWords;
 
   // Reading time: words / 200, rounded, minimum 1 min
   const readingTime = words === 0 ? 0 : Math.max(1, Math.round(words / 200));

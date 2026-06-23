@@ -60,7 +60,15 @@ async function loadCore(): Promise<CoreExports> {
 }
 
 function core(): Promise<CoreExports> {
-  if (!exportsPromise) exportsPromise = loadCore();
+  // Memoize the load, but reset the cache if it *rejects* (a transient fetch /
+  // compile failure) so a later call can retry — otherwise one flaky load
+  // permanently breaks the doctor and Format for the whole page session.
+  if (!exportsPromise) {
+    exportsPromise = loadCore().catch((e) => {
+      exportsPromise = null;
+      throw e;
+    });
+  }
   return exportsPromise;
 }
 
@@ -70,14 +78,23 @@ function callJson<T>(ex: CoreExports, fn: (ptr: number, len: number) => number, 
   const inPtr = ex.mc_alloc(input.length);
   new Uint8Array(ex.memory.buffer, inPtr, input.length).set(input);
 
-  const resPtr = fn(inPtr, input.length);
-  // Re-read views after the call: a grow() may have detached the old buffer.
-  const len = new DataView(ex.memory.buffer).getUint32(resPtr, true);
-  const bytes = new Uint8Array(ex.memory.buffer, resPtr + 4, len).slice();
-
-  ex.mc_dealloc(inPtr, input.length);
-  ex.mc_dealloc(resPtr, 4 + len);
-  return JSON.parse(new TextDecoder().decode(bytes)) as T;
+  let resPtr = 0;
+  let resLen = 0;
+  try {
+    resPtr = fn(inPtr, input.length);
+    // A null result means the core's allocation failed; treat as empty rather
+    // than reading a garbage length from offset 0.
+    if (resPtr === 0) return JSON.parse("[]") as T;
+    // Re-read views after the call: a grow() may have detached the old buffer.
+    resLen = new DataView(ex.memory.buffer).getUint32(resPtr, true);
+    const bytes = new Uint8Array(ex.memory.buffer, resPtr + 4, resLen).slice();
+    return JSON.parse(new TextDecoder().decode(bytes)) as T;
+  } finally {
+    // Always free both buffers, even if the call traps or the read/parse throws,
+    // so failures don't leak the WASM heap on every debounced edit.
+    ex.mc_dealloc(inPtr, input.length);
+    if (resPtr !== 0) ex.mc_dealloc(resPtr, 4 + resLen);
+  }
 }
 
 /** UTF-8 byte length of a Unicode code point. */

@@ -18,7 +18,9 @@ import {
 } from "@codemirror/view";
 import { syntaxTree } from "@codemirror/language";
 import {
+  Annotation,
   Compartment,
+  EditorState,
   StateEffect,
   StateField,
   type Extension,
@@ -75,7 +77,14 @@ const readModeDecorations = ViewPlugin.fromClass(
     update(update: ViewUpdate) {
       const inRead = update.state.field(readModeField);
       const wasRead = update.startState.field(readModeField);
-      if (inRead !== wasRead || (inRead && update.docChanged)) {
+      // Also rebuild on viewport scroll and background-parse progress: the syntax
+      // tree is parsed incrementally for large docs, so markers in not-yet-parsed
+      // or newly-scrolled regions would otherwise show through raw in read mode.
+      const treeChanged = syntaxTree(update.startState) !== syntaxTree(update.state);
+      if (
+        inRead !== wasRead ||
+        (inRead && (update.docChanged || update.viewportChanged || treeChanged))
+      ) {
         this.decorations = inRead
           ? buildReadModeDecorations(update.view)
           : Decoration.none;
@@ -180,10 +189,35 @@ export function isReadMode(view: EditorView): boolean {
   return view.state.field(readModeField);
 }
 
+/**
+ * Annotation marking a transaction as a programmatic content load (file open,
+ * Format Document) so the read-mode edit guard lets it through.
+ */
+export const programmaticEdit = Annotation.define<boolean>();
+
+/**
+ * Read mode must be genuinely read-only. `contenteditable=false` only blocks
+ * native DOM input — keymap commands (Cmd+B/I, deleteLine, Enter list
+ * continuation) call `view.dispatch` programmatically and would still mutate the
+ * document with no visible caret. This filter drops any doc-changing transaction
+ * while in read mode unless it is an explicit programmatic load.
+ */
+const readModeEditGuard = EditorState.transactionFilter.of((tr) => {
+  if (
+    tr.docChanged &&
+    tr.startState.field(readModeField) &&
+    !tr.annotation(programmaticEdit)
+  ) {
+    return [];
+  }
+  return tr;
+});
+
 /** Full read-mode extension bundle — adds state, decorations, class sync, click handler. */
 export function readMode(): Extension {
   return [
     readModeField,
+    readModeEditGuard,
     readModeDecorations,
     readModeTheme,
     readModeClassAndClick,

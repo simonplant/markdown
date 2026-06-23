@@ -9,6 +9,7 @@
 
 import { EditorView } from "@codemirror/view";
 import { format } from "./core-wasm";
+import { programmaticEdit } from "./read-mode";
 
 export async function formatDocument(view: EditorView): Promise<boolean> {
   try {
@@ -24,7 +25,8 @@ export async function formatDocument(view: EditorView): Promise<boolean> {
         to: m.offset + m.delete,
         insert: m.insert,
       }));
-    view.dispatch({ changes });
+    // Programmatic so an explicit Format isn't dropped by the read-mode guard.
+    view.dispatch({ changes, annotations: programmaticEdit.of(true) });
     return true;
   } catch {
     return false;

@@ -140,7 +140,9 @@ function findWikilinkAtPos(
   while ((match = WIKILINK_RE.exec(text)) !== null) {
     const from = line.from + match.index;
     const to = from + match[0].length;
-    if (pos >= from && pos <= to) {
+    // Half-open upper bound: `to` is the cell just past `]]`, so clicking there
+    // (or the shared boundary of two adjacent links) must not activate this link.
+    if (pos >= from && pos < to) {
       return match[1]; // The link text inside [[ ]]
     }
   }
