@@ -44,7 +44,13 @@ struct MarkdownTextView: NSViewRepresentable {
   func updateNSView(_ scroll: NSScrollView, context: Context) {
     guard let textView = scroll.documentView as? NSTextView else { return }
     if textView.string != text {
+      // Preserve the selection/caret across a programmatic replacement (e.g.
+      // Format Document), clamped to the new length, instead of resetting it.
+      let sel = textView.selectedRange()
       textView.string = text
+      let len = (textView.string as NSString).length
+      let loc = min(sel.location, len)
+      textView.setSelectedRange(NSRange(location: loc, length: min(sel.length, len - loc)))
       context.coordinator.scheduleDiagnose()
     }
     if let target = scrollTarget {
@@ -137,7 +143,13 @@ struct MarkdownTextView: UIViewRepresentable {
 
   func updateUIView(_ textView: UITextView, context: Context) {
     if textView.text != text {
+      // Preserve the caret across a programmatic replacement (e.g. Format
+      // Document), clamped to the new length, instead of collapsing it to 0.
+      let sel = textView.selectedRange
       textView.text = text
+      let len = (textView.text as NSString).length
+      let loc = min(sel.location, len)
+      textView.selectedRange = NSRange(location: loc, length: min(sel.length, len - loc))
       context.coordinator.scheduleDiagnose()
     }
     if let target = scrollTarget {

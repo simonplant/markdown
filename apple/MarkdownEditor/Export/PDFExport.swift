@@ -21,6 +21,15 @@ enum PDFExport {
     let total = attributed.length
     var cursor = 0
 
+    // Empty document: still emit one blank page so the file is a valid PDF
+    // (a zero-page PDF is treated as corrupt by Preview/Acrobat).
+    if total == 0 {
+      ctx.beginPDFPage(nil)
+      ctx.endPDFPage()
+      ctx.closePDF()
+      return data as Data
+    }
+
     while cursor < total {
       ctx.beginPDFPage(nil)
       ctx.textMatrix = .identity
@@ -33,8 +42,14 @@ enum PDFExport {
 
       let visible = CTFrameGetVisibleStringRange(frame)
       ctx.endPDFPage()
-      if visible.length == 0 { break }                       // guard against no progress
-      cursor += visible.length
+      if visible.length == 0 {
+        // A single element (e.g. an over-height image/math attachment) laid out
+        // zero characters. Force progress past it so the REST of the document is
+        // still emitted instead of the export silently stopping here.
+        cursor += 1
+      } else {
+        cursor += visible.length
+      }
     }
 
     ctx.closePDF()

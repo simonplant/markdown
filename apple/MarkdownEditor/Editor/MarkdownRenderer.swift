@@ -233,6 +233,15 @@ enum MarkdownRenderer {
        let image = PlatformImage(data: data) {
       let attachment = NSTextAttachment()
       attachment.image = image
+      // Cap oversized images so a single attachment can't exceed the page/line
+      // height (which would otherwise drop the rest of a PDF). Preserve aspect.
+      let w = image.size.width, h = image.size.height
+      if w > 0, h > 0 {
+        let scale = min(1, min(480 / w, 640 / h))
+        if scale < 1 {
+          attachment.bounds = CGRect(x: 0, y: 0, width: w * scale, height: h * scale)
+        }
+      }
       out.append(NSAttributedString(attachment: attachment))
       return
     }
