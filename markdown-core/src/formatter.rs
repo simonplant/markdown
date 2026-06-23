@@ -47,10 +47,34 @@ pub fn format(tree: &SyntaxTree, text: &str) -> Vec<Mutation> {
         .collect();
     rule_trailing_whitespace(text, &covered, &mut mutations);
 
+    // Defensive de-overlap: drop any mutation whose byte range overlaps another's,
+    // and collapse exact-duplicate zero-width inserts at the same offset. Rules
+    // should already be disjoint; this guarantees the mutation set can never
+    // double-apply at one offset (which would silently corrupt or delete content).
+    mutations.sort_by(|a, b| a.offset.cmp(&b.offset).then(b.delete.cmp(&a.delete)));
+    let mut kept: Vec<Mutation> = Vec::with_capacity(mutations.len());
+    let mut covered_until = 0usize;
+    for m in mutations.drain(..) {
+        if m.offset < covered_until {
+            continue; // overlaps an already-kept mutation
+        }
+        if m.delete == 0
+            && kept
+                .iter()
+                .any(|k| k.offset == m.offset && k.delete == 0 && k.insert == m.insert)
+        {
+            continue; // exact-duplicate insert at the same point
+        }
+        if m.delete > 0 {
+            covered_until = m.offset + m.delete;
+        }
+        kept.push(m);
+    }
+
     // Sort by offset descending so the caller can apply them back-to-front
     // without invalidating earlier offsets.
-    mutations.sort_by(|a, b| b.offset.cmp(&a.offset));
-    mutations
+    kept.sort_by(|a, b| b.offset.cmp(&a.offset));
+    kept
 }
 
 /// Apply a list of mutations to text, producing the formatted result.
@@ -80,6 +104,12 @@ fn rule_list_continuation(tree: &SyntaxTree, text: &str, mutations: &mut Vec<Mut
         let item_text = &text[node.span.start..node.span.end];
         let item_start = node.span.start;
 
+        // Continuation lines that fall inside a NESTED list item belong to that
+        // inner item; skip them here so the inner and outer iterations don't both
+        // emit a mutation for the same line (which double-applies and loses text).
+        let mut nested: Vec<(usize, usize)> = Vec::new();
+        collect_descendant_list_items(node, &mut nested);
+
         // Determine the expected indentation: content offset after the marker.
         let content_indent = list_item_content_indent(item_text);
         if content_indent == 0 {
@@ -105,9 +135,15 @@ fn rule_list_continuation(tree: &SyntaxTree, text: &str, mutations: &mut Vec<Mut
                 continue;
             }
 
+            let abs_offset = item_start + offset;
+            // Owned by a nested list item — let that item handle it.
+            if nested.iter().any(|&(s, e)| abs_offset >= s && abs_offset < e) {
+                offset += line.len() + 1;
+                continue;
+            }
+
             let current_indent = line.len() - line.trim_start().len();
             if current_indent != content_indent {
-                let abs_offset = item_start + offset;
                 mutations.push(Mutation {
                     offset: abs_offset,
                     delete: current_indent,
@@ -117,6 +153,17 @@ fn rule_list_continuation(tree: &SyntaxTree, text: &str, mutations: &mut Vec<Mut
 
             offset += line.len() + 1;
         }
+    }
+}
+
+/// Collect the byte spans of every list item nested below `node` (excluding
+/// `node` itself), so a parent item won't reprocess lines an inner item owns.
+fn collect_descendant_list_items(node: &crate::ast::SyntaxNode, out: &mut Vec<(usize, usize)>) {
+    for child in &node.children {
+        if matches!(child.kind, NodeKind::ListItem { .. }) {
+            out.push((child.span.start, child.span.end));
+        }
+        collect_descendant_list_items(child, out);
     }
 }
 

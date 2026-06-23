@@ -95,7 +95,8 @@ fn heading_spacing_inserts_blank_line() {
 fn heading_spacing_preserves_existing() {
     let input = "Some text.\n\n# Heading\n";
     let result = fmt(input);
-    // Should not add extra blank lines.
+    // The existing blank line must survive (not just "no triple newline").
+    assert!(result.contains("\n\n# Heading"), "blank line before heading lost: {result:?}");
     assert!(!result.contains("\n\n\n"));
 }
 
@@ -136,7 +137,9 @@ fn blank_line_separation_list_after_paragraph() {
 fn blank_line_separation_preserves_existing() {
     let input = "Para one.\n\nPara two.\n\n- list\n";
     let result = fmt(input);
-    // Should not add extra blank lines.
+    // The existing separators must survive (not just "no triple newline").
+    assert!(result.contains("\n\n- list"), "blank line before list lost: {result:?}");
+    assert!(result.contains("Para one.\n\nPara two."), "blank line between paragraphs lost: {result:?}");
     assert!(!result.contains("\n\n\n"));
 }
 

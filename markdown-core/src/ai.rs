@@ -162,6 +162,20 @@ mod engine {
 
             // Generate tokens autoregressively
             let max_tokens: usize = 512;
+
+            // Token positions climb to tokens.len() + max_tokens and must stay
+            // under the KV cache (n_ctx = 2048), or decode() fails mid-generation
+            // and the whole output is lost. Reject an over-long prompt up front
+            // with a clear message instead.
+            const N_CTX: usize = 2048;
+            if tokens.len() + max_tokens > N_CTX {
+                return Err(format!(
+                    "Selection too long for the AI model ({} tokens; limit about {}). Please select less text.",
+                    tokens.len(),
+                    N_CTX.saturating_sub(max_tokens)
+                ));
+            }
+
             let mut output_bytes: Vec<u8> = Vec::new();
             let mut n_decoded = tokens.len();
 
@@ -185,15 +199,25 @@ mod engine {
                 batch
                     .add(new_token, n_decoded as i32, &[0], true)
                     .map_err(|_| "Failed to add token to batch")?;
-                ctx.decode(&mut batch)
-                    .map_err(|e| format!("Decode failed: {}", e))?;
+                // A decode failure here (e.g. KV cache full) should keep the
+                // text generated so far, not discard everything.
+                if ctx.decode(&mut batch).is_err() {
+                    break;
+                }
 
                 n_decoded += 1;
             }
 
-            String::from_utf8(output_bytes)
-                .map(|s| s.trim().to_string())
-                .map_err(|e| format!("UTF-8 conversion failed: {}", e))
+            // Generation can stop mid multi-byte UTF-8 char at the token cap, so
+            // keep the valid prefix rather than discarding the entire response.
+            let text = match String::from_utf8(output_bytes) {
+                Ok(s) => s,
+                Err(e) => {
+                    let valid = e.utf8_error().valid_up_to();
+                    String::from_utf8_lossy(&e.into_bytes()[..valid]).into_owned()
+                }
+            };
+            Ok(text.trim().to_string())
         }
     }
 }

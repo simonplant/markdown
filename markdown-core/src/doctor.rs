@@ -55,16 +55,11 @@ fn check_heading_hierarchy(
     _text: &str,
     diagnostics: &mut Vec<Diagnostic>,
 ) {
-    let headings: Vec<_> = tree
-        .walk()
-        .filter_map(|node| {
-            if let NodeKind::Heading { level } = node.kind {
-                Some((level, node.span.start, node.span.end))
-            } else {
-                None
-            }
-        })
-        .collect();
+    // Collect headings in document order, EXCLUDING headings nested in a
+    // blockquote — quoted material is not part of the document's own outline and
+    // must not perturb the level sequence.
+    let mut headings: Vec<(u8, usize, usize)> = Vec::new();
+    collect_doc_headings(&tree.root, false, &mut headings);
 
     if headings.len() < 2 {
         return;
@@ -132,6 +127,19 @@ fn check_duplicate_headings(
         } else {
             seen.insert(key, (start, end));
         }
+    }
+}
+
+/// Collect document headings in order, skipping any nested inside a blockquote.
+fn collect_doc_headings(node: &crate::ast::SyntaxNode, in_quote: bool, out: &mut Vec<(u8, usize, usize)>) {
+    if let NodeKind::Heading { level } = node.kind {
+        if !in_quote {
+            out.push((level, node.span.start, node.span.end));
+        }
+    }
+    let child_in_quote = in_quote || matches!(node.kind, NodeKind::BlockQuote);
+    for child in &node.children {
+        collect_doc_headings(child, child_in_quote, out);
     }
 }
 
@@ -207,8 +215,10 @@ fn check_inconsistent_list_markers(tree: &SyntaxTree, text: &str, diagnostics: &
     let mut byte = 0usize;
     let mut run_start: Option<usize> = None;
     let mut run_end = 0usize;
-    let mut markers: Vec<char> = Vec::new();
-    let mut items = 0u32;
+    // Per nesting depth (leading-whitespace width) within the current run: the
+    // distinct markers seen and the item count. A nested sublist legitimately
+    // uses a different marker per depth, so mixing is judged within one depth.
+    let mut by_indent: HashMap<usize, (Vec<char>, u32)> = HashMap::new();
 
     for line in text.split_inclusive('\n') {
         let start = byte;
@@ -223,44 +233,48 @@ fn check_inconsistent_list_markers(tree: &SyntaxTree, text: &str, diagnostics: &
         if is_item {
             if run_start.is_none() {
                 run_start = Some(start);
-                markers.clear();
-                items = 0;
+                by_indent.clear();
             }
             run_end = byte;
+            let indent = line.len() - t.len(); // leading-whitespace width (depth)
             let m = t.chars().next().unwrap();
-            if !markers.contains(&m) {
-                markers.push(m);
+            let entry = by_indent.entry(indent).or_default();
+            if !entry.0.contains(&m) {
+                entry.0.push(m);
             }
-            items += 1;
+            entry.1 += 1;
         } else if t.trim().is_empty() {
             // Blank line — keep a loose list's run open.
         } else {
-            flush_list_run(&mut run_start, run_end, &markers, items, diagnostics);
-            markers.clear();
-            items = 0;
+            flush_list_run(&mut run_start, run_end, &by_indent, diagnostics);
+            by_indent.clear();
         }
     }
-    flush_list_run(&mut run_start, run_end, &markers, items, diagnostics);
+    flush_list_run(&mut run_start, run_end, &by_indent, diagnostics);
 }
 
 fn flush_list_run(
     run_start: &mut Option<usize>,
     run_end: usize,
-    markers: &[char],
-    items: u32,
+    by_indent: &HashMap<usize, (Vec<char>, u32)>,
     diagnostics: &mut Vec<Diagnostic>,
 ) {
     if let Some(start) = run_start.take() {
-        if markers.len() > 1 && items >= 2 {
-            diagnostics.push(Diagnostic {
-                span: (start, run_end),
-                severity: Severity::Hint,
-                rule: "inconsistent-list-markers",
-                message: format!(
-                    "List mixes markers ({}) — pick one of -, *, or +",
-                    markers.iter().collect::<String>()
-                ),
-            });
+        // Flag only when a single nesting depth mixes >1 distinct marker across
+        // >=2 items (mixing across depths is normal nested-list style).
+        for (markers, items) in by_indent.values() {
+            if markers.len() > 1 && *items >= 2 {
+                diagnostics.push(Diagnostic {
+                    span: (start, run_end),
+                    severity: Severity::Hint,
+                    rule: "inconsistent-list-markers",
+                    message: format!(
+                        "List mixes markers ({}) — pick one of -, *, or +",
+                        markers.iter().collect::<String>()
+                    ),
+                });
+                break;
+            }
         }
     }
 }

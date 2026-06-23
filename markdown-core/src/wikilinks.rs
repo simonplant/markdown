@@ -40,15 +40,19 @@ pub fn resolve(link_text: &str, current_file_path: &str) -> Option<String> {
     let base_name = link_text.strip_suffix(".md").unwrap_or(link_text);
     let target_filename = format!("{}.md", base_name);
 
-    // If the link contains path separators, try it as a relative path first.
+    // If the link contains path separators, try it as a relative path first —
+    // but contained within the note's directory (reject absolute / `..` escapes
+    // so a document can't probe arbitrary filesystem paths like [[/etc/passwd]]).
     if link_text.contains('/') || link_text.contains('\\') {
-        let relative = if link_text.ends_with(".md") {
-            parent.join(link_text)
+        let rel = if link_text.ends_with(".md") {
+            link_text.to_string()
         } else {
-            parent.join(&target_filename)
+            target_filename.clone()
         };
-        if relative.is_file() {
-            return relative.canonicalize().ok()?.to_str().map(String::from);
+        if let Some(candidate) = contained_join(parent, &rel) {
+            if candidate.is_file() {
+                return candidate.canonicalize().ok()?.to_str().map(String::from);
+            }
         }
     }
 
@@ -89,6 +93,11 @@ fn find_md_file_recursive(dir: &Path, filename: &str, budget: &mut usize) -> Opt
 
     let mut subdirs = Vec::new();
     for entry in entries.flatten() {
+        // Skip symlinks so a cyclic link (e.g. `loop -> .`) can't be descended
+        // into repeatedly and exhaust the whole directory-visit budget.
+        if entry.file_type().map(|t| t.is_symlink()).unwrap_or(false) {
+            continue;
+        }
         let path = entry.path();
         if path.is_file() {
             if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
@@ -133,15 +142,20 @@ pub fn backlinks(file_path: &str) -> Result<Vec<Backlink>, String> {
 
     let search_root = target.parent().ok_or("No parent directory")?;
 
+    // Canonicalize the target so self-exclusion holds on case-insensitive
+    // filesystems (macOS) and across separator/symlink differences — otherwise a
+    // file can list itself as its own backlink.
+    let exclude = target.canonicalize().ok();
+
     let mut results = Vec::new();
     let mut budget = MAX_DIRS_SCANNED;
-    scan_for_backlinks(search_root, file_path, &patterns, &mut results, &mut budget);
+    scan_for_backlinks(search_root, exclude.as_deref(), &patterns, &mut results, &mut budget);
     Ok(results)
 }
 
 fn scan_for_backlinks(
     dir: &Path,
-    exclude_path: &str,
+    exclude: Option<&Path>,
     patterns: &[String],
     results: &mut Vec<Backlink>,
     budget: &mut usize,
@@ -156,14 +170,21 @@ fn scan_for_backlinks(
     };
 
     for entry in entries.flatten() {
+        // Skip symlinks to avoid cyclic descent (see find_md_file_recursive).
+        if entry.file_type().map(|t| t.is_symlink()).unwrap_or(false) {
+            continue;
+        }
         let path = entry.path();
         if path.is_file() {
             if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
                 if ext.eq_ignore_ascii_case("md") {
-                    let path_str = path.to_str().unwrap_or_default();
-                    if path_str == exclude_path {
-                        continue;
+                    // Exclude the target itself by canonical path, not raw string.
+                    if let Some(ex) = exclude {
+                        if path.canonicalize().ok().as_deref() == Some(ex) {
+                            continue;
+                        }
                     }
+                    let path_str = path.to_str().unwrap_or_default();
                     if let Ok(content) = std::fs::read_to_string(&path) {
                         for (line_num, line) in content.lines().enumerate() {
                             let line_lower = line.to_lowercase();
@@ -184,7 +205,7 @@ fn scan_for_backlinks(
         } else if path.is_dir() {
             if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
                 if !name.starts_with('.') && name != "node_modules" && name != "target" {
-                    scan_for_backlinks(&path, exclude_path, patterns, results, budget);
+                    scan_for_backlinks(&path, exclude, patterns, results, budget);
                     if *budget == 0 {
                         return;
                     }
@@ -205,11 +226,15 @@ pub fn create_target(link_text: &str, current_file_path: &str) -> Result<String,
     let target_filename = format!("{}.md", base_name);
 
     let target_path = if link_text.contains('/') || link_text.contains('\\') {
-        let p = if link_text.ends_with(".md") {
-            parent.join(link_text)
+        let rel = if link_text.ends_with(".md") {
+            link_text.to_string()
         } else {
-            parent.join(&target_filename)
+            target_filename.clone()
         };
+        // Contain the write to the note's directory: reject absolute / `..`-escaping
+        // links so document content can't create or overwrite arbitrary files.
+        let p = contained_join(parent, &rel)
+            .ok_or("Wikilink target escapes the note directory")?;
         if let Some(target_parent) = p.parent() {
             std::fs::create_dir_all(target_parent).map_err(|e| e.to_string())?;
         }
@@ -218,13 +243,61 @@ pub fn create_target(link_text: &str, current_file_path: &str) -> Result<String,
         parent.join(&target_filename)
     };
 
+    // Refuse to overwrite an existing file: `create_new` fails atomically if the
+    // path exists, so a [[Name]] colliding with a real note can't truncate it.
     let initial_content = format!("# {}\n", base_name);
-    std::fs::write(&target_path, &initial_content).map_err(|e| e.to_string())?;
+    {
+        use std::io::Write;
+        let mut f = std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&target_path)
+            .map_err(|e| {
+                if e.kind() == std::io::ErrorKind::AlreadyExists {
+                    format!("Target already exists: {}", target_path.display())
+                } else {
+                    e.to_string()
+                }
+            })?;
+        f.write_all(initial_content.as_bytes())
+            .map_err(|e| e.to_string())?;
+    }
 
     target_path
         .to_str()
         .map(String::from)
         .ok_or_else(|| "Invalid path".to_string())
+}
+
+/// Join `link` onto `base`, rejecting absolute links and any result that escapes
+/// `base` via `..`. Purely lexical (no filesystem access) so it also works for a
+/// target that doesn't exist yet. Returns the contained path, or None if it would
+/// escape the base directory.
+fn contained_join(base: &Path, link: &str) -> Option<PathBuf> {
+    use std::path::Component;
+    if Path::new(link).is_absolute() {
+        return None;
+    }
+    let normalize = |p: &Path| -> PathBuf {
+        let mut out = PathBuf::new();
+        for comp in p.components() {
+            match comp {
+                Component::ParentDir => {
+                    out.pop();
+                }
+                Component::CurDir => {}
+                other => out.push(other.as_os_str()),
+            }
+        }
+        out
+    };
+    let base_norm = normalize(base);
+    let candidate = normalize(&base.join(link));
+    if candidate.starts_with(&base_norm) {
+        Some(candidate)
+    } else {
+        None
+    }
 }
 
 #[cfg(test)]
@@ -297,5 +370,37 @@ mod tests {
         let created = create_target("New Page", &here).unwrap();
         assert!(created.ends_with("New Page.md"));
         assert_eq!(fs::read_to_string(&created).unwrap(), "# New Page\n");
+    }
+
+    #[test]
+    fn create_target_rejects_absolute_link() {
+        let tmp = tempfile::tempdir().unwrap();
+        let here = write(tmp.path(), "index.md", "# index\n");
+        assert!(create_target("/tmp/evil", &here).is_err());
+    }
+
+    #[test]
+    fn create_target_rejects_parent_escape() {
+        let tmp = tempfile::tempdir().unwrap();
+        let sub = tmp.path().join("notes");
+        fs::create_dir_all(&sub).unwrap();
+        let here = write(&sub, "index.md", "# index\n");
+        assert!(create_target("../../escape", &here).is_err());
+        assert!(!tmp.path().join("escape.md").exists());
+    }
+
+    #[test]
+    fn create_target_refuses_to_overwrite_existing() {
+        let tmp = tempfile::tempdir().unwrap();
+        let here = write(tmp.path(), "index.md", "# index\n");
+        write(tmp.path(), "Existing.md", "# Existing\nreal content\n");
+        assert!(
+            create_target("Existing", &here).is_err(),
+            "create_target must not truncate an existing file"
+        );
+        assert_eq!(
+            fs::read_to_string(tmp.path().join("Existing.md")).unwrap(),
+            "# Existing\nreal content\n"
+        );
     }
 }

@@ -14,6 +14,17 @@ use crate::ast::{
 /// This is the primary entry point. The returned tree is an owned Rust struct
 /// tree — not a raw tree-sitter cursor.
 pub fn parse(text: &str) -> SyntaxTree {
+    // tree-sitter-markdown's external scanner ABORTS (a C `assert`, not a
+    // recoverable error) when block nesting overflows its 1024-byte
+    // serialization buffer — reachable with only a few hundred nested
+    // blockquotes/list levels, e.g. a ~300-byte `">".repeat(300)` document. That
+    // abort is a SIGABRT natively and a trap in WASM (which kills the whole core
+    // instance for the session). `.expect()` cannot catch it, so we must bound
+    // the input ourselves and degrade to a flat tree instead of parsing.
+    if block_nesting_too_deep(text) {
+        return degraded_tree(text);
+    }
+
     let mut parser = MarkdownParser::default();
     let md_tree = parser
         .parse(text.as_bytes(), None)
@@ -22,6 +33,63 @@ pub fn parse(text: &str) -> SyntaxTree {
     let root = build_tree_from_cursor(&mut md_tree.walk(), text);
     let root = maybe_wrap_frontmatter(root, text);
 
+    SyntaxTree { root }
+}
+
+/// True when a line nests block markers deeply enough to risk overflowing
+/// tree-sitter-markdown's scanner serialization buffer. Cheap leading-prefix scan.
+fn block_nesting_too_deep(text: &str) -> bool {
+    const MAX_QUOTE_NESTING: usize = 200; // consecutive `>` blockquote levels
+    const MAX_LEADING_WS: usize = 400; // ~200 list levels at 2 spaces each
+    for line in text.split('\n') {
+        let mut quotes = 0usize;
+        let mut ws = 0usize;
+        for &b in line.as_bytes() {
+            match b {
+                b'>' => {
+                    quotes += 1;
+                    if quotes > MAX_QUOTE_NESTING {
+                        return true;
+                    }
+                }
+                b' ' | b'\t' => {
+                    ws += 1;
+                    if ws > MAX_LEADING_WS {
+                        return true;
+                    }
+                }
+                _ => break,
+            }
+        }
+    }
+    false
+}
+
+/// A minimal tree (one paragraph over the whole text) used when the input is too
+/// deeply nested to hand to tree-sitter safely. Doctor/format see no structure
+/// and degrade to a no-op; read mode still shows the raw text.
+fn degraded_tree(text: &str) -> SyntaxTree {
+    let end_row = text.bytes().filter(|&b| b == b'\n').count();
+    let para = SyntaxNode {
+        kind: NodeKind::Paragraph,
+        span: Span { start: 0, end: text.len() },
+        point_range: PointRange {
+            start: Position { row: 0, column: 0 },
+            end: Position { row: end_row, column: 0 },
+        },
+        children: vec![],
+        text: None,
+    };
+    let root = SyntaxNode {
+        kind: NodeKind::Document,
+        span: Span { start: 0, end: text.len() },
+        point_range: PointRange {
+            start: Position { row: 0, column: 0 },
+            end: Position { row: end_row, column: 0 },
+        },
+        children: vec![para],
+        text: None,
+    };
     SyntaxTree { root }
 }
 
@@ -57,10 +125,13 @@ fn maybe_wrap_frontmatter(mut root: SyntaxNode, text: &str) -> SyntaxNode {
         fm_end
     };
 
-    let fm_text = &text[..fm_end];
-    let end_row = fm_text.lines().count().saturating_sub(1);
-    let last_line = fm_text.lines().last().unwrap_or("");
-    let end_col = last_line.len();
+    // Derive end_row/end_col from the same byte position as span.end, so the byte
+    // span and the point range name the same location. (`fm_text.lines()` strips
+    // the trailing newline that span.end includes, leaving point_range one line
+    // behind — every other node keeps span/point_range consistent.)
+    let consumed = &text[..fm_end];
+    let end_row = consumed.bytes().filter(|&b| b == b'\n').count();
+    let end_col = fm_end - consumed.rfind('\n').map_or(0, |i| i + 1);
 
     let fm_node = SyntaxNode {
         kind: NodeKind::FrontMatter,
@@ -73,7 +144,11 @@ fn maybe_wrap_frontmatter(mut root: SyntaxNode, text: &str) -> SyntaxNode {
         text: Some(text[rest_start..rest_start + close_offset_in_rest].trim().to_string()),
     };
 
-    // Insert frontmatter as first child, shifting others.
+    // Drop the tree-sitter block(s) that already cover the frontmatter bytes, so
+    // the YAML isn't represented twice (once as FrontMatter and once as a phantom
+    // paragraph that every tree walker would render/diagnose a second time).
+    root.children.retain(|c| c.span.start >= fm_end);
+    // Insert frontmatter as the first child.
     root.children.insert(0, fm_node);
     root
 }
